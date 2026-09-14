@@ -126,11 +126,28 @@ jobs:
           trg=$(q "SELECT count(*) FROM pg_trigger WHERE tgname='coin_ledger_no_mutate';")
           test "$trg" = "1" || { echo "::error::trigger append-only coin_ledger tidak ada"; exit 1; }
 
-          # Trigger harus benar-benar menolak, bukan sekadar terdaftar.
-          if q "UPDATE coin_ledger SET amount = 1;" 2>/dev/null; then
+          # Trigger harus benar-benar MENOLAK, bukan sekadar terdaftar.
+          #
+          # Satu baris disisipkan dulu, dan itu bukan formalitas: trigger ini
+          # FOR EACH ROW, jadi UPDATE pada tabel KOSONG menyentuh nol baris,
+          # tidak pernah menyalakan trigger, dan psql keluar 0. Versi pertama
+          # pemeriksaan ini jatuh persis di situ — lulus karena salah, bukan
+          # karena benar.
+          q "INSERT INTO users (id, email, password_hash, display_name)
+             VALUES ('00000000-0000-0000-0000-0000000000ci', 'ci@strive.test', 'x', 'CI');" >/dev/null
+          q "INSERT INTO coin_ledger (user_id, entry_type, amount, balance_after)
+             VALUES ('00000000-0000-0000-0000-0000000000ci', 'adjust', 1, 1);" >/dev/null
+
+          rows=$(q "SELECT count(*) FROM coin_ledger;")
+          test "$rows" = "1" || { echo "::error::baris uji gagal disisipkan, pemeriksaan trigger tidak sahih"; exit 1; }
+
+          if q "UPDATE coin_ledger SET amount = 999;" 2>/dev/null; then
             echo "::error::UPDATE coin_ledger TIDAK ditolak — trigger append-only tidak bekerja"; exit 1
           fi
-          echo "trigger append-only menolak UPDATE: benar"
+          if q "DELETE FROM coin_ledger;" 2>/dev/null; then
+            echo "::error::DELETE coin_ledger TIDAK ditolak — trigger append-only tidak bekerja"; exit 1
+          fi
+          echo "trigger append-only menolak UPDATE dan DELETE pada baris sungguhan: benar"
 
       # Kalau skema berubah tapi `pnpm db:types` lupa dijalankan, tipe di repo
       # jadi bohong dan tidak ada yang tahu sampai ada bug aneh di runtime.
