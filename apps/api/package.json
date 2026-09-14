@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "MODE=api nest start --watch",
-    "dev:worker": "MODE=worker nest start --watch",
+    "dev": "node ../../scripts/dev-api.mjs api",
+    "dev:worker": "node ../../scripts/dev-api.mjs worker",
     "build": "nest build",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",

@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port ${WEB_PORT:-3000}",
+    "dev": "node ../../scripts/dev-web.mjs dev",
     "build": "next build",
-    "start": "next start --port ${WEB_PORT:-3000}",
+    "start": "node ../../scripts/dev-web.mjs start",
     "typecheck": "tsc --noEmit",
     "test": "echo \"[web] belum ada test — lihat R-01 di docs/BACKLOG.md\""
   },
