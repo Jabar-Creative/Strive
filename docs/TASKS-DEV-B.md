@@ -24,7 +24,7 @@ Status ada di papan status `BACKLOG.md`, bukan di file ini. File ini adalah **ur
 | 3 | `F-07` | UI kit dari Shadcn blocks: button, card, pill, streak chip, coin pill, badge liga, kartu lesson | 1 | `F-06` |
 | 4 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | 1 | — |
 | 5 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | 0,5 | — |
-| 6 | `F-10` | Kunci 8 keputusan produk (PRD §5) · **bersama** | 0,5 | — |
+| 6 | `F-10` | Kunci 8 keputusan produk (PRD §5) · **bersama** | 0,25 | — |
 | 7 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 track percontohan | 0,5 | `F-04` _(Dev A)_ |
 
 ## Minggu 2 — 4 hari
@@ -91,8 +91,8 @@ Status ada di papan status `BACKLOG.md`, bukan di file ini. File ini adalah **ur
 | 1 | `MT-02` | Wawancara terpandu: bank soal statis + jawaban teks + feedback LLM | 1,5 | `MT-01` _(Dev A)_, `AI-01` |
 | 2 | `MT-03` | Review personal statement (LLM terstruktur) | 1 | `MT-01` _(Dev A)_, `AI-01` |
 | 3 | `MT-04` | UI kedua modul Mastery | 1 | `MT-02`, `MT-03` |
-| 4 | `R-01` | E2E Playwright: daftar -> belajar -> streak -> top-up -> scan | 1 | — |
-| 5 | `R-05` | Cadangan perbaikan bug · **bersama** | 2 | — |
+| 4 | `R-01` | E2E Playwright: daftar -> belajar -> streak -> top-up -> scan | 1 | `A-03`, `L-04`, `P-04`, `K-04` |
+| 5 | `R-05` | Cadangan perbaikan bug · **bersama** | 1 | — |
 
 ---
 

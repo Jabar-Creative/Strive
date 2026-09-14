@@ -21,9 +21,9 @@ Status ada di papan status `BACKLOG.md`, bukan di file ini. File ini adalah **ur
 |---:|---|---|---:|---|
 | 1 | `F-01` | Monorepo pnpm, TypeScript strict, ESLint, Prettier, hook pre-commit | 1 | — |
 | 2 | `F-03` | CI: lint, typecheck, unit test, build, migrasi kering | 1 | `F-01` |
-| 3 | `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | 1,5 | `F-02` _(Dev B)_ |
+| 3 | `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | 1,5 | `F-02` _(Dev B)_, `F-10` |
 | 4 | `F-05` | Deploy staging otomatis dari main (web, api, ai, PG, Redis, storage) | 1,5 | `F-03` |
-| 5 | `F-10` | Kunci 8 keputusan produk (PRD §5) · **bersama** | 0,5 | — |
+| 5 | `F-10` | Kunci 8 keputusan produk (PRD §5) · **bersama** | 0,25 | — |
 
 ## Minggu 2 — 5 hari
 
@@ -39,8 +39,8 @@ Status ada di papan status `BACKLOG.md`, bukan di file ini. File ini adalah **ur
 | # | ID | Item | Hari | Butuh |
 |---:|---|---|---:|---|
 | 1 | `C-02` | GET /wallet + GET /wallet/ledger (cursor-paginated) | 0,5 | `C-01` |
-| 2 | `L-03` | POST /attempts: attempt + streak + koin + outbox dalam satu transaksi | 2 | `C-01`, `L-02` _(Dev B)_, `S-01` |
-| 3 | `S-01` | StreakService timezone-aware + kredit freeze | 1,5 | `F-04` |
+| 2 | `S-01` | StreakService timezone-aware + kredit freeze | 1,5 | `F-04` |
+| 3 | `L-03` | POST /attempts: attempt + streak + koin + outbox dalam satu transaksi | 2 | `C-01`, `L-02` _(Dev B)_, `S-01` |
 | 4 | `S-02` | GET /hub agregat: streak, quest, peringkat, saldo, kartu berikut | 1 | `S-01`, `C-01` |
 
 ## Minggu 4 — 4,5 hari
@@ -84,10 +84,10 @@ Status ada di papan status `BACKLOG.md`, bukan di file ini. File ini adalah **ur
 
 | # | ID | Item | Hari | Butuh |
 |---:|---|---|---:|---|
-| 1 | `R-02` | Load test /hub & leaderboard — target p95 <250 ms @ 500 rps | 1 | — |
-| 2 | `R-03` | Audit keamanan: auth, webhook, upload, rate limit, header | 1 | — |
-| 3 | `R-04` | Observability: log terstruktur, error tracking, alert biaya & antrean | 1 | — |
-| 4 | `R-05` | Cadangan perbaikan bug · **bersama** | 2 | — |
+| 1 | `R-02` | Load test /hub & leaderboard — target p95 <250 ms @ 500 rps | 1 | `S-02`, `Q-02` |
+| 2 | `R-03` | Audit keamanan: auth, webhook, upload, rate limit, header | 1 | `A-02`, `P-03`, `K-01` |
+| 3 | `R-04` | Observability: log terstruktur, error tracking, alert biaya & antrean | 1 | `C-04`, `Q-03`, `AI-06` |
+| 4 | `R-05` | Cadangan perbaikan bug · **bersama** | 1 | — |
 | 5 | `SA-03` | Endpoint /admin/integrations/health + biaya vendor harian | 0,5 | `AI-06` |
 | 6 | `SA-04` | Dasbor Retool: transaksi, harga, audit, health | 0,5 | `SA-01` |
 
@@ -100,6 +100,7 @@ Item milik Dev A yang menunggu Dev B. **Cek status ini sebelum memulai minggu ba
 | Item kamu | W | Menunggu | Milik | W |
 |---|:---:|---|:---:|:---:|
 | `F-04` | W1 | `F-02` | Dev B | W1 |
+| `F-04` | W1 | `F-10` | **bersama** | W1 |
 | `L-03` | W3 | `L-02` | Dev B | W2 |
 | `S-04` | W4 | `N-01` | Dev B | W4 |
 | `P-02` | W5 | `P-01` | Dev B | W4 |

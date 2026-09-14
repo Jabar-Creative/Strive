@@ -25,7 +25,7 @@ menulis migrasi paralel adalah konflik yang baru ketahuan saat deploy
 
 **1,5 hari · Dev A · W1 · Butuh `F-02`**
 
-Selesai berarti: **26 tabel** berdiri (`docs/PRD.md` §9), `pnpm db:types`
+Selesai berarti: **31 tabel** berdiri (`docs/PRD.md` §9), `pnpm db:types`
 menghasilkan tipe Kysely yang dipakai API, dan **trigger immutable
 `coin_ledger` aktif dan terbukti menolak `UPDATE`**.
 

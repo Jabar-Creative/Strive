@@ -157,7 +157,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 **1 hari** · Dev **A** · Minggu **W1** · Butuh: _tidak ada_
 
-**Status:** lihat papan status di atas · **Selesai berarti:** `pnpm build` hijau di ketiga workspace (web, api, ai). `pnpm lint` dan `pnpm typecheck` nol error. Hook pre-commit menolak commit yang gagal lint.
+**Status:** lihat papan status di atas · **Selesai berarti:** `pnpm build` hijau untuk workspace TypeScript (web, api, contracts, ui); `services/ai` hijau lewat `pytest` — runtime-nya Python dan tidak punya langkah build. `pnpm lint` dan `pnpm typecheck` nol error. Hook pre-commit menolak commit yang gagal lint.
 
 ### `F-02` — docker-compose dev: PostgreSQL 16, Redis 7, MinIO, .env.example
 
@@ -173,9 +173,9 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 ### `F-04` — Migrasi 001_init.sql + codegen tipe Kysely
 
-**1,5 hari** · Dev **A** · Minggu **W1** · Butuh: `F-02`
+**1,5 hari** · Dev **A** · Minggu **W1** · Butuh: `F-02`, `F-10`
 
-**Status:** lihat papan status di atas · **Selesai berarti:** 26 tabel berdiri. `pnpm db:types` menghasilkan tipe yang dipakai API. Trigger immutable coin_ledger aktif dan terbukti menolak UPDATE.
+**Status:** lihat papan status di atas · **Selesai berarti:** 31 tabel berdiri (daftar lengkap di `PRD.md` §9.1). `pnpm db:types` menghasilkan tipe yang dipakai API. Trigger immutable coin_ledger aktif dan terbukti menolak UPDATE.
 
 ### `F-05` — Deploy staging otomatis dari main (web, api, ai, PG, Redis, storage)
 
@@ -625,27 +625,37 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 > TIDAK ditipiskan. Ini yang membedakan rilis dari demo.
 
+> **Dependensi E10 ditulis eksplisit, dan itu bukan izin untuk melewatkannya.**
+> Sebelumnya keempat item ini tertulis "Butuh: _tidak ada_", padahal acceptance
+> criteria-nya tidak bisa dibuktikan tanpa fitur yang diukurnya — p95 `GET /hub`
+> tidak bisa diukur sebelum `S-02` ada, dan E2E "daftar → belajar → top-up →
+> scan" tidak bisa jalan sebelum keempat layar itu ada.
+>
+> Kalau sebuah dependensi mundur, **responsnya memperbaiki dependensi itu, bukan
+> membuang pengerasannya.** Seluruh `E10` ada di daftar "tidak boleh dipotong" —
+> lihat bagian akhir file ini dan `DELIVERY-PLAN.md` §2 tuas 3.
+
 ### `R-01` — E2E Playwright: daftar -> belajar -> streak -> top-up -> scan
 
-**1 hari** · Dev **B** · Minggu **W8** · Butuh: _tidak ada_
+**1 hari** · Dev **B** · Minggu **W8** · Butuh: `A-03`, `L-04`, `P-04`, `K-04`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Jalan di CI pada setiap PR ke main. Waktu eksekusi <8 menit.
 
 ### `R-02` — Load test /hub & leaderboard — target p95 <250 ms @ 500 rps
 
-**1 hari** · Dev **A** · Minggu **W8** · Butuh: _tidak ada_
+**1 hari** · Dev **A** · Minggu **W8** · Butuh: `S-02`, `Q-02`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Angka terukur dan tercatat, bukan perkiraan. Hasil disimpan sebagai baseline untuk perbandingan berikutnya.
 
 ### `R-03` — Audit keamanan: auth, webhook, upload, rate limit, header
 
-**1 hari** · Dev **A** · Minggu **W8** · Butuh: _tidak ada_
+**1 hari** · Dev **A** · Minggu **W8** · Butuh: `A-02`, `P-03`, `K-01`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Checklist OWASP ASVS L1 tuntas. Nol temuan kritis. Secret tidak pernah masuk log.
 
 ### `R-04` — Observability: log terstruktur, error tracking, alert biaya & antrean
 
-**1 hari** · Dev **A** · Minggu **W8** · Butuh: _tidak ada_
+**1 hari** · Dev **A** · Minggu **W8** · Butuh: `C-04`, `Q-03`, `AI-06`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Insiden terdeteksi sebelum pengguna melapor. Alert biaya vendor harian aktif dengan ambang yang disepakati.
 

@@ -155,7 +155,7 @@ Tidak ada fitur yang dikirim minggu ini, dan itu disengaja. Yang dikirim adalah 
 | | `F-11` Pipeline seed konten · 0,5 |
 | | `F-10` Kunci 8 keputusan produk · 0,25 |
 
-**Gate:** staging hidup dan menerima deploy dari `main`; 26 tabel berdiri; halaman `/_specimen` tampil di dua tema; 12 rute bisa dinavigasi; **8 keputusan produk tertulis dan ditandatangani di PRD §5**.
+**Gate:** staging hidup dan menerima deploy dari `main`; 31 tabel berdiri; halaman `/_specimen` tampil di dua tema; 12 rute bisa dinavigasi; **8 keputusan produk tertulis dan ditandatangani di PRD §5**.
 
 ### Minggu 2 — Auth, ledger & rangka aplikasi
 **Dev A 5,0 · Dev B 4,0**

@@ -206,6 +206,12 @@ Istilah domain yang dipakai konsisten di kode, UI, dan dokumen. **Jangan membuat
 
 > **Status: USULAN — butuh konfirmasi sebelum W1 berakhir.**
 > Setiap angka di bawah sudah dipakai konsisten di seluruh dokumen ini, skema database, dan seed. Mengubahnya setelah W2 berarti migrasi data. Kalau disetujui apa adanya, cukup ubah status baris ini jadi **TERKUNCI** beserta tanggal dan nama pemutus.
+>
+> **Bagian ini memblokir `F-04` (migrasi `001_init.sql`).** `pricing_config`,
+> `streaks.freeze_credits`, `streaks.freeze_purchased_month`, dan ukuran squad
+> semuanya menurunkan angkanya dari sini. Karena itu `F-10` tercatat sebagai
+> dependensi `F-04` di `BACKLOG.md` — bukan formalitas: menulis skema di atas
+> angka yang masih usulan berarti menulisnya dua kali.
 
 ### Q1 — Berapa nilai satu koin?
 
@@ -1214,7 +1220,13 @@ AC-NO-3
 
 ## 9. Skema database
 
-**26 tabel.** Tidak ada satu pun kolom organisasi/tenant. PostgreSQL 16.
+**31 tabel.** Tidak ada satu pun kolom organisasi/tenant. PostgreSQL 16.
+
+> Angka ini dihitung dari daftar §9.1 di bawah dan **harus tetap cocok dengannya**.
+> Dua tabel berdiri lebih dulu daripada fiturnya, dan itu disengaja:
+> `push_tokens` (Web Push ditunda — §22) dan `reviewer_weights` (kalibrasi bobot
+> ditunda — §7 E11 PR-8). Keduanya ada sejak `001_init.sql` supaya fiturnya bisa
+> diaktifkan tanpa migrasi.
 
 ### 9.1 Peta domain
 
@@ -2059,6 +2071,12 @@ Tiga skenario harus punya runbook tertulis sebelum rilis:
 ### 19.2 Variabel environment
 
 ```bash
+# Proses
+MODE=api                  # api | worker — satu image, dua peran (lihat §8.1)
+WEB_PORT=3000             # Next.js
+API_PORT=3001             # NestJS
+AI_SERVICE_PORT=8000      # FastAPI
+
 # Core
 NODE_ENV=                 # development | production
 APP_URL=                  # https://app.striveacademy.id
@@ -2192,6 +2210,9 @@ Ditulis eksplisit agar tidak diam-diam masuk kembali.
 | Tanggal | Versi | Perubahan | Oleh |
 |---|---|---|---|
 | 14 Sep 2026 | 2.0 | Versi awal end-to-end. Scope B2C dikunci, 17 epik, ekonomi koin ditetapkan. | — |
+| 14 Sep 2026 | 2.0.1 | **§9** jumlah tabel dikoreksi 26 → **31**, dihitung ulang dari daftar §9.1 yang tidak berubah. Angka 26 tidak pernah cocok dengan daftarnya; acceptance criteria `F-04` ikut dikoreksi. Tidak ada tabel yang ditambah atau dibuang. | sesi fondasi repo |
+| 14 Sep 2026 | 2.0.1 | **§19.2** menambah `MODE`, `WEB_PORT`, `API_PORT`, `AI_SERVICE_PORT`. `MODE=api\|worker` sudah jadi keputusan arsitektur di §8.1 tapi tidak pernah tercantum sebagai variabel environment. | sesi fondasi repo |
+| 14 Sep 2026 | 2.0.1 | **§5** ditegaskan memblokir `F-04`. Tidak ada angka keputusan yang diubah — **status tetap USULAN dan masih menunggu tanda tangan manusia.** | sesi fondasi repo |
 | | | _Isi baris baru setiap kali ada keputusan yang mengubah dokumen ini._ | |
 
 ---
