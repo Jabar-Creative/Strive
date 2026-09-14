@@ -4,9 +4,9 @@
 
 | | |
 |---|---|
-| **Versi** | 2.0 |
+| **Versi** | 2.1 |
 | **Tanggal** | 14 September 2026 |
-| **Status** | Siap implementasi — menunggu konfirmasi §5 |
+| **Status** | Siap implementasi — **§5 TERKUNCI 14 September 2026** |
 | **Scope** | B2C murni. Tanpa multi-tenancy, tanpa Web3, tanpa hardware NFC. |
 | **Dokumen terkait** | `BACKLOG.md` (estimasi) · `DELIVERY-PLAN.md` (jadwal) · `CLAUDE.md` (konvensi kode) |
 
@@ -204,14 +204,34 @@ Istilah domain yang dipakai konsisten di kode, UI, dan dokumen. **Jangan membuat
 
 ## 5. Delapan keputusan produk terkunci
 
-> **Status: USULAN — butuh konfirmasi sebelum W1 berakhir.**
-> Setiap angka di bawah sudah dipakai konsisten di seluruh dokumen ini, skema database, dan seed. Mengubahnya setelah W2 berarti migrasi data. Kalau disetujui apa adanya, cukup ubah status baris ini jadi **TERKUNCI** beserta tanggal dan nama pemutus.
+> **Status: TERKUNCI · 14 September 2026 · pemutus: Fatih Maulana.**
 >
-> **Bagian ini memblokir `F-04` (migrasi `001_init.sql`).** `pricing_config`,
-> `streaks.freeze_credits`, `streaks.freeze_purchased_month`, dan ukuran squad
-> semuanya menurunkan angkanya dari sini. Karena itu `F-10` tercatat sebagai
-> dependensi `F-04` di `BACKLOG.md` — bukan formalitas: menulis skema di atas
-> angka yang masih usulan berarti menulisnya dua kali.
+> Kedelapan jawaban di bawah disetujui **apa adanya**. Tidak ada satu pun angka
+> yang berubah saat penguncian — yang berubah hanya statusnya.
+>
+> Setiap angka sudah dipakai konsisten di seluruh dokumen ini, skema database,
+> dan seed. **Mengubahnya sekarang berarti migrasi data.** Dibuka kembali hanya
+> lewat baris baru di §23 dengan **alasan baru**, bukan lewat diskusi ulang.
+>
+> **`F-04` (migrasi `001_init.sql`) tidak lagi terblokir dari sisi keputusan.**
+> `pricing_config`, `streaks.freeze_credits`, `streaks.freeze_purchased_month`,
+> dan ukuran squad boleh ditulis di atas angka-angka ini.
+
+> ### Dua kewajiban yang TIDAK ikut terkunci
+>
+> Penguncian ini mengunci **keputusan produk**, bukan menggugurkan dua hal yang
+> masih harus dikerjakan manusia. Keduanya memblokir **pembukaan top-up ke
+> publik**, bukan pengembangan.
+>
+> **1 · Konsultasi hukum (Q2).** Koin non-transferable, non-refundable, dan
+> tidak kedaluwarsa dirancang agar statusnya voucher sekali pakai — bukan alat
+> pembayaran. **Konsultasi harus selesai sebelum top-up dibuka, bukan sesudah.**
+>
+> **2 · Harga kontrak Copyleaks (Q7).** Harga ke pengguna terkunci di 2.400 koin
+> (cache hit 240). **Biaya vendor di §6.4 masih ILUSTRASI** dengan asumsi
+> Rp 2.000 per 1.000 kata. Begitu harga kontrak aktual diketahui, hitung ulang
+> margin dengan formula §6.4 — dan kalau biaya vendor ternyata lebih tinggi,
+> **naikkan harga scan, jangan menipiskan margin.**
 
 ### Q1 — Berapa nilai satu koin?
 
@@ -2212,7 +2232,8 @@ Ditulis eksplisit agar tidak diam-diam masuk kembali.
 | 14 Sep 2026 | 2.0 | Versi awal end-to-end. Scope B2C dikunci, 17 epik, ekonomi koin ditetapkan. | — |
 | 14 Sep 2026 | 2.0.1 | **§9** jumlah tabel dikoreksi 26 → **31**, dihitung ulang dari daftar §9.1 yang tidak berubah. Angka 26 tidak pernah cocok dengan daftarnya; acceptance criteria `F-04` ikut dikoreksi. Tidak ada tabel yang ditambah atau dibuang. | sesi fondasi repo |
 | 14 Sep 2026 | 2.0.1 | **§19.2** menambah `MODE`, `WEB_PORT`, `API_PORT`, `AI_SERVICE_PORT`. `MODE=api\|worker` sudah jadi keputusan arsitektur di §8.1 tapi tidak pernah tercantum sebagai variabel environment. | sesi fondasi repo |
-| 14 Sep 2026 | 2.0.1 | **§5** ditegaskan memblokir `F-04`. Tidak ada angka keputusan yang diubah — **status tetap USULAN dan masih menunggu tanda tangan manusia.** | sesi fondasi repo |
+| 14 Sep 2026 | 2.0.1 | **§5** ditegaskan memblokir `F-04`. Tidak ada angka keputusan yang diubah. | sesi fondasi repo |
+| 14 Sep 2026 | **2.1** | **§5 DIKUNCI: USULAN → TERKUNCI.** Kedelapan keputusan disetujui apa adanya; **nol angka berubah**. `F-04` tidak lagi terblokir dari sisi keputusan. Dua kewajiban dicatat eksplisit sebagai TIDAK ikut terkunci dan tetap memblokir pembukaan top-up: konsultasi hukum (Q2) dan harga kontrak Copyleaks (Q7). | **Fatih Maulana** |
 | | | _Isi baris baru setiap kali ada keputusan yang mengubah dokumen ini._ | |
 
 ---

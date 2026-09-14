@@ -15,8 +15,12 @@ Dua jalur berbeda, jangan tertukar:
   untuk file yang sama tidak boleh menggandakan kartu.
 - **Konten masuk lewat pipeline, bukan diketik manual ke DB** (`F-11`).
 - Angka di `pricing_config` mengikuti `docs/PRD.md` §6 dan **delapan keputusan
-  produk di §5**. Kalau §5 belum berstatus TERKUNCI, seed harga belum boleh
-  dianggap final.
+  produk di §5**. **§5 berstatus TERKUNCI sejak 14 September 2026**, jadi angka
+  seed boleh ditulis final — 1 koin = Rp 25, scan 2.400, cache hit 240,
+  CV 400, wawancara 300, statement 500, prompt run 20, kredit freeze 200.
+- Yang **belum** final: biaya vendor Copyleaks di `PRD.md` §6.4 masih ilustrasi.
+  Itu tidak mengubah harga seed (harga ke pengguna terkunci), tapi mengubah
+  perhitungan margin. Lihat "Dua kewajiban yang TIDAK ikut terkunci" di §5.
 
 ## Peringatan jadwal
 

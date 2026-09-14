@@ -375,9 +375,9 @@ Rencana 107% terisi tidak punya ruang untuk menunggu. Setiap baris di bawah ini 
 | Kebutuhan | Memblokir | Kenapa mendesak |
 |---|---|---|
 | **Pemilik konten** | `L-04` · gate W3 | ±90 kartu untuk satu track. Kalau dua developer ini yang menulis, hilang 5–8 hari dari 72,5 yang ada — dan rencananya sudah kelebihan 4,5. |
-| **Jawaban 8 keputusan produk** | `F-10` · seluruh W2 | Nilai koin, kredit freeze, pembentukan squad. Menentukan skema; dijawab di W5 berarti menulis ulang. Default usulan sudah ada di `PRD.md` §5 — tinggal dikonfirmasi. |
+| ~~**Jawaban 8 keputusan produk**~~ **SELESAI** | `F-10` · seluruh W2 | **Terkunci 14 Sep 2026 oleh Fatih Maulana** — `PRD.md` §5 berstatus TERKUNCI, kedelapan angka disetujui apa adanya. `F-04` tidak lagi terblokir dari sisi keputusan. |
 | **Akun sandbox Midtrans/Xendit** | `P-02` · W5 | Verifikasi merchant bisa makan berhari-hari. |
-| **Akun & kuota Copyleaks** | `K-03` · W7 | Harga per halaman menentukan nilai koin, yang dikunci di W1. |
+| **Akun & kuota Copyleaks** | `K-03` · W7 | Harga ke pengguna sudah dikunci (2.400 koin, `PRD.md` §5 Q7). Yang masih terbuka adalah **harga kontrak aktual** — itu menentukan margin, bukan harga. Lihat §6.4. |
 | **API key LLM + hard limit** | `AI-03` · W5 | Pasang batas biaya di dashboard vendor sejak awal, bukan setelah tagihan pertama. |
 | **Lisensi Retool + Resend** | `SA-04` · W8, `N-01` · W4 | Dua dari komponen yang dibeli. Tanpa ini, 2,5 hari kembali jadi pekerjaan developer. |
 | **Domain + akun cloud** | `F-05` · W1 | Deploy staging berhenti tanpa ini di hari kedua. |
