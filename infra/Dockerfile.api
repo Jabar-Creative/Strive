@@ -1,0 +1,31 @@
+# apps/api — NestJS. SATU image, dua peran: MODE=api | MODE=worker.
+# Dibangun dari ROOT repo:  docker build -f infra/Dockerfile.api .
+FROM node:22-alpine AS base
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+WORKDIR /repo
+
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+COPY apps/api/package.json           apps/api/
+COPY packages/contracts/package.json packages/contracts/
+RUN pnpm install --frozen-lockfile --filter @strive/api...
+
+FROM deps AS build
+COPY tsconfig.base.json ./
+COPY packages packages
+COPY apps/api apps/api
+RUN pnpm --filter @strive/api build && pnpm prune --prod
+
+FROM node:22-alpine AS runtime
+ENV NODE_ENV=production
+ENV MODE=api
+WORKDIR /app
+RUN addgroup -S strive && adduser -S strive -G strive
+COPY --from=build --chown=strive:strive /repo/node_modules          ./node_modules
+COPY --from=build --chown=strive:strive /repo/apps/api/node_modules ./apps/api/node_modules
+COPY --from=build --chown=strive:strive /repo/apps/api/dist         ./dist
+COPY --from=build --chown=strive:strive /repo/packages              ./packages
+USER strive
+EXPOSE 3001
+# MODE=worker menjalankan pool BullMQ dari image yang sama (lihat src/main.ts).
+CMD ["node", "dist/main.js"]

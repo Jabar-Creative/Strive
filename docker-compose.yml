@@ -1,0 +1,5 @@
+# Definisi sebenarnya ada di infra/docker-compose.yml.
+# File ini hanya agar `docker compose up -d` bisa dijalankan dari ROOT repo,
+# persis seperti yang tertulis di CLAUDE.md bagian "Perintah".
+include:
+  - path: infra/docker-compose.yml
