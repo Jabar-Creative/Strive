@@ -1,0 +1,6 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# services/ai sengaja TIDAK masuk workspace pnpm — runtime-nya Python.
+# Verifikasinya lewat `pnpm dev:ai` dan `cd services/ai && pytest`.

@@ -1,0 +1,5 @@
+# Hook pre-commit — item F-01.
+# Commit DITOLAK kalau lint gagal. Ini yang membuat aturan di CLAUDE.md punya gigi:
+# aturan yang hanya ditulis di dokumen akan dilanggar; aturan yang menolak commit
+# tidak akan.
+pnpm lint-staged
