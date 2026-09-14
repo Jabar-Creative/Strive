@@ -41,7 +41,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-03` | CI: lint, typecheck, unit test, build, migrasi ke… | A | W1 | 1 | `todo` | — | — | — |
 | `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | A | W1 | 1,5 | `todo` | — | — | — |
 | `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `todo` | — | — | — |
-| `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `todo` | — | — | — |
+| `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `todo` | — | — | — |
 | `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `todo` | — | — | — |
 | `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `todo` | — | — | — |
@@ -118,10 +118,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 73 | 72,5 |
-| `done` | 0 | 0 |
+| `done` | 1 | 0,5 |
 | `in_progress` | 0 | 0 |
 | `blocked` | 0 | 0 |
-| `todo` | 73 | 72,5 |
+| `todo` | 72 | 72,0 |
 
 ---
 ## Ringkasan per epik
