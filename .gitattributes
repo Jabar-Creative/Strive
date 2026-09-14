@@ -1,0 +1,19 @@
+# Normalisasi akhir baris.
+#
+# Tanpa file ini, Git di Windows (core.autocrlf=true secara default) menulis
+# CRLF ke working tree. Script shell yang ter-checkout dengan CRLF gagal
+# dijalankan dengan pesan yang menyesatkan: `\r: command not found`.
+# Repo ini dipakai lintas macOS, Linux, dan Windows, jadi akhir baris dikunci
+# ke LF untuk semua file teks.
+* text=auto eol=lf
+
+# Biner — jangan pernah disentuh normalisasi.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
