@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ES2023",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "isolatedModules": false,
+
+    // SENGAJA tanpa "incremental". Dengan incremental aktif, `tsc --noEmit`
+    // (script typecheck) menulis .tsbuildinfo yang membuat `nest build`
+    // berikutnya menganggap output sudah mutakhir dan TIDAK MENGHASILKAN dist/
+    // apa pun — build "hijau" tapi kosong. Build API < 2 detik; tidak sepadan.
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

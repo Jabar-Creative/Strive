@@ -1,0 +1,7 @@
+{
+  // Dipakai `nest build` (lihat nest-cli.json). Bedanya dengan tsconfig.json
+  // hanya satu: test tidak ikut masuk dist/.
+  // `pnpm typecheck` tetap memakai tsconfig.json supaya test IKUT dicek tipenya.
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts"]
+}
