@@ -298,14 +298,23 @@ benar diuji dari apa yang hanya diperkirakan.</p>
     <tr><td>Web (Next.js)</td><td class="pass">Diuji, lulus</td><td class="pend">Belum diuji di sesi ini</td></tr>
     <tr><td>API (NestJS)</td><td class="pass">Diuji, lulus</td><td class="pend">Belum diuji di sesi ini</td></tr>
     <tr><td>AI (FastAPI)</td><td class="pass">Diuji, lulus</td><td class="pend">Belum diuji di sesi ini</td></tr>
-    <tr><td>lint, typecheck, test, build</td><td class="pass">Diuji, hijau</td><td class="pend">Dijalankan CI</td></tr>
+    <tr><td>lint, typecheck, test, build</td><td class="pass">Diuji, hijau</td><td class="pass">Hijau di CI (ubuntu-latest)</td></tr>
     <tr><td>docker compose</td><td class="fail">Tidak bisa diuji</td><td class="pend">Belum diuji di sesi ini</td></tr>
   </tbody>
 </table>
 </div>
 
-<div class="card">
-<p><strong>Kenapa kolom kanan jujur ditulis belum diuji.</strong> Perubahan di item ini memakai Node murni tanpa
+<div class="card ok">
+<p><strong>Sebagian kolom kanan sudah terjawab CI.</strong> Ketiga job CI berjalan di <code>ubuntu-latest</code>
+dan ketiganya lulus di PR ini: <code>lint / typecheck / test / build</code>, <code>ai service / test</code>, dan
+<code>migrasi kering</code>. Jadi perubahan ini terbukti tidak merusak jalur build dan test di Linux, dan itu bukti
+nyata bukan perkiraan.</p>
+<p><strong>Yang tetap belum terjawab: <code>pnpm dev</code> di macOS dan Linux.</strong> CI tidak pernah menjalankan
+<code>pnpm dev</code>, jadi lulusnya CI tidak membuktikan ketiga server dev benar-benar menyala di sana.</p>
+</div>
+
+<div class="card warn">
+<p><strong>Kenapa sisanya jujur ditulis belum diuji.</strong> Perubahan di item ini memakai Node murni tanpa
 sintaks khusus sistem operasi, jadi secara teknis seharusnya aman di macOS dan Linux. Tapi kata seharusnya bukan
 bukti, dan justru asumsi semacam itu yang membuat repo ini rusak di Windows sejak awal tanpa ada yang menyadarinya.
 Permintaan konkret ke reviewer ada di bagian berikutnya.</p>
