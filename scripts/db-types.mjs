@@ -48,4 +48,21 @@ const result = spawnSync(
 );
 
 if (result.status !== 0) process.exit(result.status ?? 1);
+
+// Diformat prettier di sini, bukan dibiarkan apa adanya.
+//
+// Berkas ini ikut di-commit, jadi hook lint-staged akan memformatnya saat
+// commit — sementara kysely-codegen mengeluarkan gaya kutip yang berbeda.
+// Tanpa langkah ini, pemeriksaan drift di CI (`git diff --exit-code`) selalu
+// merah karena beda tanda kutip, bukan karena skemanya benar-benar berubah.
+const format = spawnSync(
+  process.execPath,
+  [resolveBin(root, 'prettier', 'prettier'), '--write', out],
+  {
+    stdio: 'inherit',
+    cwd: root,
+  },
+);
+if (format.status !== 0) process.exit(format.status ?? 1);
+
 console.log(`[db:types] tipe ditulis ke ${path.relative(root, out)}`);
