@@ -67,7 +67,7 @@
 <h1>F-02: laporan verifikasi lingkungan pengembangan</h1>
 <p class="lede">Item ini tidak menulis <code>docker-compose.yml</code> baru, filenya sudah ada di <code>main</code>.
 Tugas sebenarnya adalah membuktikan bahwa developer baru benar benar bisa jalan dari nol, dan itu belum pernah diuji.
-Hasilnya: lima masalah nyata ditemukan, empat sudah diperbaiki, satu bagian masih belum bisa dibuktikan.</p>
+Hasilnya: enam masalah nyata ditemukan, empat sudah diperbaiki, dua butuh keputusan, dan satu bagian masih belum bisa dibuktikan.</p>
 
 <div class="meta">
   <span class="chip">Tanggal: 14 September 2026</span>
@@ -229,7 +229,7 @@ pengecekan versi di script.</p>
 
 <h2>7. Katalog regresi</h2>
 
-<p>Lima masalah ditemukan selama verifikasi. Empat sudah diperbaiki, satu dicatat sebagai milik item lain.
+<p>Enam masalah ditemukan selama verifikasi. Empat sudah diperbaiki, dua dicatat dan butuh keputusan.
 Tabel ini ada supaya masalah yang sama tidak muncul lagi tanpa ketahuan.</p>
 
 <div class="scroll">
@@ -278,8 +278,40 @@ Tabel ini ada supaya masalah yang sama tidak muncul lagi tanpa ketahuan.</p>
       <td class="pend">Belum diperbaiki, sengaja</td>
       <td>Buka localhost:3000 lalu lihat tab network</td>
     </tr>
+    <tr>
+      <td>R6</td>
+      <td><code>pnpm build</code> di Windows</td>
+      <td>Pohon standalone Next.js ditulis <strong>di luar repo</strong>, sekitar 1,8 MB menumpuk di folder induk tiap build</td>
+      <td><code>outputFileTracingRoot</code> memakai <code>new URL(...).pathname</code>. Di Windows itu menghasilkan
+      <code>/C:/Users/Nama%20Ada%20Spasi/...</code>, ada slash di depan dan spasi ter-encode, jadi bukan path
+      filesystem yang sah. Di path yang mengandung spasi, ini juga rusak di macOS dan Linux</td>
+      <td class="pend">Belum diperbaiki, butuh keputusan</td>
+      <td>Jalankan <code>pnpm build</code> di Windows, lalu lihat isi folder induk repo</td>
+    </tr>
   </tbody>
 </table>
+</div>
+
+<div class="card warn">
+<h3>Kenapa R6 tidak ikut diperbaiki, padahal perbaikannya satu baris</h3>
+<p>Perbaikan yang benar jelas: <code>fileURLToPath(new URL('../../', import.meta.url))</code>. Sudah kucoba, dan
+hasilnya justru mengajarkan sesuatu.</p>
+<p><strong>Sebelum diperbaiki:</strong> build lulus (exit 0), tapi menulis ke tempat yang salah.
+<strong>Sesudah diperbaiki:</strong> build menargetkan tempat yang benar, lalu gagal dengan
+<code>EPERM: operation not permitted, symlink</code>. Sebabnya tata letak <code>node_modules</code> milik pnpm
+butuh symlink, dan Windows hanya mengizinkan pembuatan symlink kalau Developer Mode menyala atau prosesnya admin.
+Di mesin ini keduanya tidak terpenuhi.</p>
+<p>Jadi perbaikan yang benar menukar bug yang diam dengan <strong>gate wajib yang merah</strong>. Gate merah
+memblokir seluruh pekerjaan Dev B di Windows, karena <code>pnpm build</code> wajib hijau sebelum PR dibuka.
+Folder nyasar cuma bikin berantakan. Yang pertama jauh lebih mahal, jadi perubahannya kukembalikan dan
+temuannya kucatat di sini.</p>
+<p><strong>Butuh keputusan, ada dua jalan.</strong> Pertama, perbaiki <code>outputFileTracingRoot</code> lalu minta
+developer Windows menyalakan Developer Mode. Kedua, jadikan <code>output: 'standalone'</code> aktif hanya saat build
+Docker, karena satu-satunya yang memakainya memang <code>infra/Dockerfile.web</code> dan itu berjalan di Linux.
+Jalan kedua menyentuh jalur deploy, yang bersinggungan dengan <code>F-05</code>, jadi bukan keputusan yang pantas
+kuambil sendiri di dalam item ini.</p>
+<p>Perlu dicatat: di macOS dan Linux dengan path tanpa spasi, kedua bentuk itu menghasilkan string yang sama persis,
+jadi tidak ada yang berubah untuk Dev A hari ini.</p>
 </div>
 
 <p>R5 tidak diperbaiki di sini karena itu urusan branding dan design token, yang jadi lingkup F-06.
