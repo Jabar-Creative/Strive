@@ -23,7 +23,12 @@ Status ada di papan status `BACKLOG.md`, bukan di file ini. File ini adalah **ur
 | 2 | `F-03` | CI: lint, typecheck, unit test, build, migrasi kering | 1 | `F-01` |
 | 3 | `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | 1,5 | `F-02` _(Dev B)_, `F-10` |
 | 4 | `F-05` | Deploy staging otomatis dari main (web, api, ai, PG, Redis, storage) | 1,5 | `F-03` |
-| 5 | `F-10` | Kunci 8 keputusan produk (PRD §5) · **bersama** | 0,25 | — |
+| 5 | ~~`F-10`~~ | ~~Kunci 8 keputusan produk (PRD §5) · **bersama**~~ | ~~0,25~~ | ✅ `done` · `8fe9dc6` |
+
+> **Sisa Minggu 1: 5,0 hari.** `F-10` sudah `done` — PRD §5 TERKUNCI
+> 14 Sep 2026, pemutus Fatih Maulana.
+>
+> `F-04` kini tinggal menunggu **`F-02` dari Dev B**, bukan dua dependensi.
 
 ## Minggu 2 — 5 hari
 
@@ -100,7 +105,7 @@ Item milik Dev A yang menunggu Dev B. **Cek status ini sebelum memulai minggu ba
 | Item kamu | W | Menunggu | Milik | W |
 |---|:---:|---|:---:|:---:|
 | `F-04` | W1 | `F-02` | Dev B | W1 |
-| `F-04` | W1 | `F-10` | **bersama** | W1 |
+| ~~`F-04`~~ | W1 | ~~`F-10`~~ | **bersama** | ✅ `done` |
 | `L-03` | W3 | `L-02` | Dev B | W2 |
 | `S-04` | W4 | `N-01` | Dev B | W4 |
 | `P-02` | W5 | `P-01` | Dev B | W4 |

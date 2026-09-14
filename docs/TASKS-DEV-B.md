@@ -24,8 +24,16 @@ Status ada di papan status `BACKLOG.md`, bukan di file ini. File ini adalah **ur
 | 3 | `F-07` | UI kit dari Shadcn blocks: button, card, pill, streak chip, coin pill, badge liga, kartu lesson | 1 | `F-06` |
 | 4 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | 1 | — |
 | 5 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | 0,5 | — |
-| 6 | `F-10` | Kunci 8 keputusan produk (PRD §5) · **bersama** | 0,25 | — |
+| 6 | ~~`F-10`~~ | ~~Kunci 8 keputusan produk (PRD §5) · **bersama**~~ | ~~0,25~~ | ✅ `done` · `8fe9dc6` |
 | 7 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 track percontohan | 0,5 | `F-04` _(Dev A)_ |
+
+> **Sisa Minggu 1: 4,5 hari.** `F-10` sudah `done` (PRD §5 dikunci 14 Sep 2026
+> oleh Dev A) — lewati, langsung ke `F-02`.
+>
+> **Mulai dari `F-02` dan jangan ditunda.** Item itu memblokir `F-04` (migrasi)
+> milik Dev A, dan `F-04` adalah awal jalur kritis
+> `F-04 → A-01 → C-01 → L-03 → Q-03 → Q-05` yang panjangnya 4 minggu tanpa
+> kelonggaran. Sekarang `F-10` selesai, `F-02` satu-satunya yang menahan Dev A.
 
 ## Minggu 2 — 4 hari
 
