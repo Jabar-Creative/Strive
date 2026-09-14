@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Pertanyaan yang tidak dijawab dokumen
+    url: https://github.com/Jabar-Creative/Strive/blob/main/AGENTS.md
+    about: >-
+      Kalau PRD/BACKLOG/CLAUDE.md tidak menjawab, BERHENTI dan tanya — jangan
+      memutuskan diam-diam. Lihat AGENTS.md "Kapan harus berhenti dan bertanya".
