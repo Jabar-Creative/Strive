@@ -3,8 +3,14 @@ name: CI
 on:
   push:
     branches: [main]
+  # SETIAP pull request, bukan hanya yang menargetkan `main`.
+  #
+  # Sebelumnya di sini tertulis `branches: [main]`, dan akibatnya PR bertumpuk
+  # (PR yang base-nya branch lain) TIDAK mendapat CI sama sekali — bukan merah,
+  # tapi kosong. Ketahuan saat mencoba membuktikan acceptance criteria F-03
+  # "PR menjadi merah kalau salah satu gagal": PR yang sengaja dibuat gagal
+  # justru tidak melaporkan status apa pun.
   pull_request:
-    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
