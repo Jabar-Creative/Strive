@@ -37,7 +37,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 | ID | Item | Dev | W | Hari | Status | Bukti (commit/PR) | Tanggal | Catatan |
 |---|---|:---:|:---:|---:|---|---|---|---|
-| `F-01` | Monorepo pnpm, TypeScript strict, ESLint, Prettie… | A | W1 | 1 | `in_progress` | — | 2026-09-15 | — |
+| `F-01` | Monorepo pnpm, TypeScript strict, ESLint, Prettie… | A | W1 | 1 | `review` | `9199c10` | 2026-09-15 | Seluruh AC terbukti. Ditambah penegakan versi Python (keputusan 1 PR #3). Menunggu review @kemalzaki. |
 | `F-03` | CI: lint, typecheck, unit test, build, migrasi ke… | A | W1 | 1 | `todo` | — | — | — |
 | `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | A | W1 | 1,5 | `todo` | — | — | — |
 | `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `todo` | — | — | — |
@@ -119,9 +119,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 73 | 72,5 |
 | `done` | 2 | 1,0 |
+| `review` | 1 | 1,0 |
 | `in_progress` | 0 | 0 |
 | `blocked` | 0 | 0 |
-| `todo` | 71 | 71,5 |
+| `todo` | 70 | 70,5 |
 
 ---
 ## Ringkasan per epik
