@@ -67,7 +67,7 @@
 <h1>F-02: laporan verifikasi lingkungan pengembangan</h1>
 <p class="lede">Item ini tidak menulis <code>docker-compose.yml</code> baru, filenya sudah ada di <code>main</code>.
 Tugas sebenarnya adalah membuktikan bahwa developer baru benar benar bisa jalan dari nol, dan itu belum pernah diuji.
-Hasilnya: enam masalah nyata ditemukan, empat sudah diperbaiki, dua butuh keputusan, dan satu bagian masih belum bisa dibuktikan.</p>
+Hasilnya: enam masalah nyata ditemukan, empat sudah diperbaiki, dua butuh keputusan, dan seluruh acceptance criteria kini terbukti, termasuk bagian Docker.</p>
 
 <div class="meta">
   <span class="chip">Tanggal: 14 September 2026</span>
@@ -75,7 +75,7 @@ Hasilnya: enam masalah nyata ditemukan, empat sudah diperbaiki, dua butuh keputu
   <span class="chip">OS: Windows 11 (build 26200)</span>
   <span class="chip">Branch: f-02-docker-compose-dev</span>
   <span class="chip ok">Aplikasi: terbukti hidup</span>
-  <span class="chip bad">Docker: belum terbukti</span>
+  <span class="chip ok">Docker: tiga container healthy</span>
 </div>
 
 <h2>1. Untuk yang tidak sempat baca semuanya</h2>
@@ -95,7 +95,7 @@ Tidak ada dependensi baru yang ditambahkan, itu disengaja. Perilakunya sekarang 
 
 <p><strong>Dampaknya ke jadwal.</strong> F-02 memblokir F-04 milik Dev A, dan F-04 adalah awal jalur kritis empat minggu
 yang tidak punya kelonggaran sama sekali. Bagian aplikasi sudah terbukti jalan, jadi hambatan utamanya sudah hilang.
-Satu bagian (Docker) masih perlu dibuktikan, penjelasannya di bagian 6.</p>
+Bagian Docker akhirnya ikut terbukti setelah Docker Desktop dipasang di mesin ini, penjelasannya di bagian 6.</p>
 </div>
 
 <h2>2. Angka acceptance criteria</h2>
@@ -116,6 +116,29 @@ cache berbeda, karena keduanya menggambarkan developer yang berbeda.</p>
     <p>Clone kedua di mesin yang sama, store pnpm sudah terisi.
     Ini yang dialami developer yang mengulang setup atau menambah worktree.</p>
   </div>
+</div>
+
+<div class="card ok">
+<h3>Pengukuran definitif: seluruh tiga perintah AC, Docker ikut dihitung</h3>
+<p>Dua angka di atas diukur saat Docker belum terpasang, jadi keduanya melewatkan satu perintah dari AC.
+Setelah Docker Desktop dipasang, seluruh rangkaian diulang dari kloning bersih supaya tidak ada bagian yang
+diperkirakan.</p>
+<p class="big">2 menit 24 detik</p>
+<div class="scroll">
+<table>
+  <thead><tr><th>Langkah</th><th>Waktu</th><th>Keterangan</th></tr></thead>
+  <tbody>
+    <tr><td><code>git clone</code></td><td>2 dtk</td><td>Branch F-02</td></tr>
+    <tr><td><code>pnpm i</code></td><td>33 dtk</td><td>Store pnpm hangat</td></tr>
+    <tr><td><code>docker compose up -d</code></td><td>10 dtk</td><td>Sampai ketiganya <code>(healthy)</code>, image sudah ter-cache</td></tr>
+    <tr><td><code>pnpm dev</code></td><td>99 dtk</td><td>Sampai tiga endpoint menjawab, venv dibangun ulang</td></tr>
+    <tr><td><strong>Total</strong></td><td><strong>144 dtk</strong></td><td>Batas AC 600 dtk</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Unduhan image pertama kali (PostgreSQL, Redis, MinIO, mc) memakan <strong>95 detik</strong> terpisah, dan itu
+biaya sekali seumur mesin. Bahkan kalau angka itu ditambahkan penuh, totalnya masih 239 detik, kurang dari
+setengah anggaran waktu.</p>
 </div>
 
 <p><strong>Kesimpulan: AC terpenuhi dengan margin besar.</strong> Skenario terburuk pun selesai di bawah setengah
@@ -154,6 +177,42 @@ $ curl -s localhost:3000 | head -c 80
 <code>MODE</code> benar benar sampai ke proses anak lewat pembungkus yang baru. Sebelum diperbaiki, variabel itu
 tidak pernah sampai dan prosesnya mati sebelum sempat menyala.</p>
 
+<h3>Tiga container healthy</h3>
+
+<p>Ini bagian AC yang paling lama tidak terbukti. Sekarang ada outputnya.</p>
+
+<pre><code>$ docker compose ps
+NAME              IMAGE                                              STATUS                    PORTS
+strive-minio      quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z   Up 21 seconds (healthy)   127.0.0.1:59000-&gt;9000/tcp, 127.0.0.1:59001-&gt;9001/tcp
+strive-postgres   postgres:16-alpine                                 Up 22 seconds (healthy)   127.0.0.1:55432-&gt;5432/tcp
+strive-redis      redis:7-alpine                                     Up 22 seconds (healthy)   127.0.0.1:56379-&gt;6379/tcp</code></pre>
+
+<p>Perhatikan kolom PORTS: semuanya <code>127.0.0.1:</code>, bukan <code>0.0.0.0:</code>. Itu bukti perbaikan
+keamanan S-1 di bagian 10 benar benar bekerja, bukan sekadar tertulis di file.</p>
+
+<p>Ketiganya juga diuji melayani permintaan sungguhan, bukan sekadar berstatus healthy:</p>
+
+<pre><code>$ docker compose exec postgres psql -U strive -d strive -c "select version();"
+ PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+
+$ docker compose exec redis redis-cli ping
+PONG
+
+$ curl -s -o /dev/null -w "%{http_code}" localhost:59001     # MinIO console
+200</code></pre>
+
+<p>Dan tiga bucket benar benar dibuat, ketiganya privat seperti yang dijanjikan komentar di compose:</p>
+
+<pre><code>$ mc ls local
+strive-assets/   strive-documents/   strive-public/
+
+$ for b in strive-documents strive-assets strive-public; do mc anonymous get local/$b; done
+Access permission for 'local/strive-documents' is 'private'
+Access permission for 'local/strive-assets'    is 'private'
+Access permission for 'local/strive-public'    is 'private'</code></pre>
+
+<p>Nama <code>strive-public</code> memang menyesatkan, tapi perilakunya benar: privat.</p>
+
 <h3>Seluruh rute web menjawab</h3>
 <p>Lima belas rute diperiksa satu per satu, semuanya HTTP 200. Ini sekaligus memverifikasi klaim F-09 bahwa
 dua belas layar inti sudah bisa dinavigasi.</p>
@@ -173,6 +232,12 @@ dua belas layar inti sudah bisa dinavigasi.</p>
   <img src="images/02-web-mobile-375.png" alt="Peta rute Strive Academy pada lebar mobile 375 piksel" />
   <figcaption>Mobile 375x812. Diverifikasi lewat script di browser: <code>scrollWidth</code> 375 sama dengan
   <code>clientWidth</code> 375, jadi tidak ada scroll horizontal dan tidak ada elemen terpotong.</figcaption>
+</figure>
+
+<figure>
+  <img src="images/03-minio-buckets.png" alt="Konsol MinIO menampilkan tiga bucket Strive" />
+  <figcaption>Konsol MinIO di <code>localhost:59001</code>, login <code>strive</code>. Tiga bucket yang dibuat
+  <code>minio-init</code> terlihat di sini, bukti stack penyimpanan benar benar hidup dan bisa dipakai.</figcaption>
 </figure>
 
 <h2>5. Matriks skenario</h2>
@@ -196,27 +261,31 @@ dua belas layar inti sudah bisa dinavigasi.</p>
     <tr><td>13</td><td>Gate</td><td><code>pnpm test</code></td><td>Hijau</td><td class="pass">LULUS, 6 test</td><td>contracts 2, api 4</td></tr>
     <tr><td>14</td><td>Gate</td><td><code>pnpm build</code></td><td>Hijau</td><td class="pass">LULUS, 18 halaman</td><td>Output build Next.js</td></tr>
     <tr><td>15</td><td>Gate</td><td><code>pytest</code> layanan AI</td><td>Hijau</td><td class="pass">LULUS, 2 test</td><td>Dijalankan dari venv</td></tr>
-    <tr><td>16</td><td>Blocker</td><td><code>docker compose up -d</code></td><td>Tiga container healthy</td><td class="fail">BELUM DIUJI</td><td>Docker tidak terpasang, lihat bagian 6</td></tr>
+    <tr><td>16</td><td>Happy path</td><td><code>docker compose up -d</code></td><td>Tiga container healthy</td><td class="pass">LULUS, 10 dtk</td><td><code>docker compose ps</code>, lihat bagian 3</td></tr>
+    <tr><td>17</td><td>Happy path</td><td>Postgres melayani query, Redis PING, MinIO console</td><td>Ketiganya menjawab</td><td class="pass">LULUS</td><td>psql, redis-cli, curl</td></tr>
+    <tr><td>18</td><td>Negatif</td><td>Bucket MinIO tidak boleh publik</td><td>Ketiganya <code>private</code></td><td class="pass">LULUS, 3/3</td><td><code>mc anonymous get</code></td></tr>
+    <tr><td>19</td><td>Negatif</td><td>Port compose tidak boleh terbuka ke LAN</td><td>Terikat ke <code>127.0.0.1</code></td><td class="pass">LULUS</td><td>Kolom PORTS di <code>docker compose ps</code></td></tr>
   </tbody>
 </table>
 </div>
 
-<h2>6. Yang belum bisa dibuktikan, dan kenapa</h2>
+<h2>6. Bagian yang sempat tidak bisa dibuktikan</h2>
 
-<div class="card bad">
-<h3>Docker tidak terpasang di mesin ini</h3>
-<p>Satu bagian acceptance criteria belum terbukti: <code>docker compose up -d</code> yang menghasilkan
-PostgreSQL, Redis, dan MinIO berstatus <code>(healthy)</code>.</p>
-<p>Alasannya bukan kelalaian dan bukan kegagalan konfigurasi. Mesin ini memang tidak punya Docker sama sekali.
-Sudah diperiksa satu per satu: Docker Desktop tidak terpasang, WSL tidak punya distribusi terpasang, dan tidak ada
-runtime container alternatif (podman, nerdctl, minikube, colima).</p>
-<p><strong>Ini sengaja dilaporkan apa adanya, bukan ditutup dengan kesimpulan dari membaca file.</strong>
-Isi <code>infra/docker-compose.yml</code> sudah dibaca dan terlihat benar: healthcheck ada di ketiga layanan,
-volume persisten ada, tiga bucket MinIO dibuat privat, dan image MinIO diambil dari quay.io supaya tidak kena
-penolakan pull dari Docker Hub. Tapi terlihat benar bukan berarti terbukti jalan. AGENTS.md langkah 7 melarang
-menandai item selesai atas dasar pembacaan kode.</p>
-<p><strong>Yang dibutuhkan:</strong> pasang Docker Desktop, jalankan <code>docker compose up -d</code> diikuti
-<code>docker compose ps</code>, lalu tempel hasilnya. Setelah itu F-02 baru boleh berstatus done.</p>
+<div class="card ok">
+<h3>Docker sudah terpasang, dan bagian ini akhirnya terbukti</h3>
+<p>Saat laporan ini pertama ditulis, mesin ini tidak punya Docker sama sekali, jadi satu perintah dari
+acceptance criteria tidak bisa dijalankan. Bagian ini sengaja dibiarkan terbuka, bukan ditutup dengan kesimpulan
+dari membaca file.</p>
+<p>Docker Desktop 4.91.0 kemudian dipasang, dan seluruh rangkaian diulang dari kloning bersih. Hasilnya:
+<strong>ketiga container mencapai <code>(healthy)</code> dalam 10 detik</strong>, tiga bucket dibuat privat, dan
+ketiga layanan melayani permintaan sungguhan. Outputnya ada di bagian 3.</p>
+<p><strong>Yang ternyata benar sejak awal:</strong> isi <code>infra/docker-compose.yml</code> memang sudah tepat.
+Healthcheck di ketiga layanan bekerja, volume persisten terbentuk, image MinIO dari quay.io ter-pull tanpa
+penolakan, dan <code>minio-init</code> membuat tiga bucket lalu berhenti seperti yang dirancang. Tidak ada satu
+baris pun di file itu yang perlu diperbaiki karena salah.</p>
+<p><strong>Dan yang tidak akan ketahuan kalau hanya dibaca:</strong> bahwa perbaikan keamanan S-1 benar benar
+mengikat port ke <code>127.0.0.1</code>. Itu hanya terlihat di kolom PORTS milik <code>docker compose ps</code>,
+pada stack yang sungguhan berjalan.</p>
 </div>
 
 <div class="card warn">
@@ -331,7 +400,7 @@ benar diuji dari apa yang hanya diperkirakan.</p>
     <tr><td>API (NestJS)</td><td class="pass">Diuji, lulus</td><td class="pend">Belum diuji di sesi ini</td></tr>
     <tr><td>AI (FastAPI)</td><td class="pass">Diuji, lulus</td><td class="pend">Belum diuji di sesi ini</td></tr>
     <tr><td>lint, typecheck, test, build</td><td class="pass">Diuji, hijau</td><td class="pass">Hijau di CI (ubuntu-latest)</td></tr>
-    <tr><td>docker compose</td><td class="fail">Tidak bisa diuji</td><td class="pend">Belum diuji di sesi ini</td></tr>
+    <tr><td>docker compose</td><td class="pass">Diuji, tiga container healthy</td><td class="pend">Belum diuji di sesi ini</td></tr>
   </tbody>
 </table>
 </div>
@@ -358,8 +427,6 @@ Permintaan konkret ke reviewer ada di bagian berikutnya.</p>
   <li><strong>Jalankan <code>pnpm dev</code> di macOS.</strong> Ini satu satunya hal yang tidak bisa dibuktikan dari
   sisi saya, dan justru paling penting: perbaikan lintas sistem operasi tidak ada gunanya kalau merusak mesin yang
   tadinya sudah jalan.</li>
-  <li><strong>Jalankan <code>docker compose up -d</code> lalu <code>docker compose ps</code>.</strong> Tempel hasilnya
-  di PR. Setelah itu F-02 boleh ditandai done.</li>
   <li><strong>Putuskan soal versi Python.</strong> 3.13 diterima, atau 3.12 ditegakkan.</li>
   <li><strong>Konfirmasi soal kepemilikan file.</strong> Perubahan ini menyentuh <code>apps/api/package.json</code>,
   yang berada di wilayah kerja Dev A. Tabel kepemilikan di CLAUDE.md hanya mengunci <code>attempts.service.ts</code>
@@ -458,15 +525,24 @@ ditaruh di bawah <code>packages/</code>. Satu file <code>.dockerignore</code> me
 <h2>11. Ringkasan status</h2>
 
 <div class="card ok">
-<p><strong>Sudah terbukti:</strong> aplikasi hidup dari clone bersih dalam 2 sampai 4 menit, jauh di bawah batas 10 menit.
-Ketiga layanan menjawab. Lima belas rute menjawab 200. Empat gate mutu hijau. Tampilan aman di desktop dan 375px.
+<p><strong>Seluruh acceptance criteria terbukti.</strong> Dari kloning bersih sampai aplikasi hidup:
+<strong>2 menit 24 detik</strong>, memakai ketiga perintah AC apa adanya, jauh di bawah batas 10 menit.
+Tiga container <code>(healthy)</code>. Tiga endpoint menjawab. Lima belas rute menjawab 200. Tiga bucket privat.
+Empat gate mutu hijau di Windows, dan tiga job CI hijau di ubuntu-latest. Tampilan aman di desktop dan 375px.
 Konsol bersih dari error aplikasi.</p>
 </div>
 
-<div class="card bad">
-<p><strong>Belum terbukti:</strong> bagian Docker dari acceptance criteria. Karena itu F-02 belum ditandai
-<code>done</code> di papan status, melainkan <code>review</code>. Menandainya done sekarang berarti papan status
-berbohong, dan itu melanggar AGENTS.md aturan keras nomor 2.</p>
+<div class="card warn">
+<p><strong>Kenapa papan status masih <code>review</code>, bukan <code>done</code>.</strong> Yang tersisa bukan lagi
+soal bukti, tapi soal proses: Definition of Done di CLAUDE.md menuntut PR di-review orang satunya dan ter-merge ke
+<code>main</code>. Itu milik @Fatihmaull, bukan sesuatu yang bisa kutandai sendiri. Begitu PR di-approve dan
+ter-merge, F-02 boleh langsung <code>done</code> dengan kolom Bukti diisi hash commit merge-nya.</p>
+</div>
+
+<div class="card">
+<p><strong>Yang masih butuh keputusan, dan tidak menghalangi merge:</strong> versi Python (3.13 diterima atau 3.12
+ditegakkan), dan R6 di bagian 7 (<code>outputFileTracingRoot</code> menulis di luar repo). Keduanya sudah
+dijelaskan lengkap di bagiannya masing masing.</p>
 </div>
 
 </div>
