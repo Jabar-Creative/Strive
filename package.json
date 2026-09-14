@@ -8,8 +8,8 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "db:migrate": "node scripts/not-implemented.mjs db:migrate F-04",
-    "db:types": "node scripts/not-implemented.mjs db:types F-04",
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "db:types": "node scripts/db-types.mjs",
     "seed": "node scripts/not-implemented.mjs seed F-04",
     "seed:content": "node scripts/not-implemented.mjs seed:content F-11",
     "dev": "concurrently -k -n web,api,ai -c cyan,magenta,yellow \"pnpm dev:web\" \"pnpm dev:api\" \"pnpm dev:ai\"",
@@ -40,13 +40,16 @@
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.17.0",
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
     "concurrently": "^9.1.0",
     "eslint": "^9.17.0",
     "eslint-config-next": "15.5.25",
     "eslint-config-prettier": "^9.1.0",
     "globals": "^15.14.0",
     "husky": "^9.1.7",
+    "kysely-codegen": "^0.17.0",
     "lint-staged": "^15.2.11",
+    "pg": "^8.13.1",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.1"
