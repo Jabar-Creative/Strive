@@ -16,7 +16,7 @@
     "dev:web": "pnpm --filter @strive/web dev",
     "dev:api": "pnpm --filter @strive/api dev",
     "dev:worker": "pnpm --filter @strive/api dev:worker",
-    "dev:ai": "bash scripts/dev-ai.sh",
+    "dev:ai": "node scripts/dev-ai.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

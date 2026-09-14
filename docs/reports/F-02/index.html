@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>F-02 - Laporan verifikasi lingkungan dev</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #16181d; --muted: #5b6270; --line: #e3e6ec;
+    --card: #f7f8fa; --ok: #0f7b3f; --ok-bg: #e6f4ec;
+    --bad: #b3261e; --bad-bg: #fdeceb; --warn: #8a5a00; --warn-bg: #fdf3e2;
+    --code: #f2f3f6; --accent: #1b4dc1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --fg: #e8eaef; --muted: #a0a7b4; --line: #2b2f37;
+      --card: #1b1e24; --ok: #6ede9e; --ok-bg: #16301f;
+      --bad: #ff9e96; --bad-bg: #3a1c19; --warn: #f0c274; --warn-bg: #35280f;
+      --code: #1f232a; --accent: #8fb0ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 30px; line-height: 1.25; margin: 0 0 8px; }
+  h2 { font-size: 21px; margin: 44px 0 12px; padding-top: 18px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 26px 0 8px; }
+  .lede { color: var(--muted); font-size: 17px; margin: 0 0 22px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 26px; }
+  .chip { font-size: 13px; padding: 4px 10px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--line); color: var(--muted); }
+  .chip.ok { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+  .chip.bad { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+  .card { background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 16px 18px; margin: 16px 0; }
+  .card.bad { background: var(--bad-bg); border-color: transparent; }
+  .card.warn { background: var(--warn-bg); border-color: transparent; }
+  .card.ok { background: var(--ok-bg); border-color: transparent; }
+  .card h3 { margin-top: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px;
+    text-transform: uppercase; letter-spacing: .03em; }
+  .scroll { overflow-x: auto; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 13.5px; }
+  pre { background: var(--code); padding: 14px 16px; border-radius: 8px;
+    overflow-x: auto; font-size: 13px; line-height: 1.55; }
+  pre code { background: none; padding: 0; }
+  .pass { color: var(--ok); font-weight: 600; }
+  .fail { color: var(--bad); font-weight: 600; }
+  .pend { color: var(--warn); font-weight: 600; }
+  figure { margin: 18px 0; }
+  figure img { width: 100%; border: 1px solid var(--line); border-radius: 8px; display: block; }
+  figcaption { color: var(--muted); font-size: 13.5px; margin-top: 7px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 700px) { .two { grid-template-columns: 1fr; } }
+  .big { font-size: 27px; font-weight: 700; }
+  a { color: var(--accent); }
+  ol li, ul li { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>F-02: laporan verifikasi lingkungan pengembangan</h1>
+<p class="lede">Item ini tidak menulis <code>docker-compose.yml</code> baru, filenya sudah ada di <code>main</code>.
+Tugas sebenarnya adalah membuktikan bahwa developer baru benar benar bisa jalan dari nol, dan itu belum pernah diuji.
+Hasilnya: enam masalah nyata ditemukan, empat sudah diperbaiki, dua butuh keputusan, dan seluruh acceptance criteria kini terbukti, termasuk bagian Docker.</p>
+
+<div class="meta">
+  <span class="chip">Tanggal: 14 September 2026</span>
+  <span class="chip">Environment: dev lokal</span>
+  <span class="chip">OS: Windows 11 (build 26200)</span>
+  <span class="chip">Branch: f-02-docker-compose-dev</span>
+  <span class="chip ok">Aplikasi: terbukti hidup</span>
+  <span class="chip ok">Docker: tiga container healthy</span>
+</div>
+
+<h2>1. Untuk yang tidak sempat baca semuanya</h2>
+
+<div class="card">
+<p><strong>Masalahnya apa.</strong> Acceptance criteria F-02 berbunyi: developer baru bisa jalan dari <code>git clone</code>
+sampai aplikasi hidup dalam 10 menit, hanya dengan tiga perintah. Kalimat itu belum pernah diuji di mesin bersih.
+Kalau tidak pernah diuji, setiap developer baru kehilangan waktu di lubang yang sama, dan tidak ada yang tahu lubang itu ada.</p>
+
+<p><strong>Apa yang ditemukan.</strong> Di Windows, <code>pnpm dev</code> gagal total. Bukan satu layanan, tapi ketiga tiganya.
+Penyebabnya sama: script di <code>package.json</code> ditulis dengan sintaks shell ala macOS dan Linux, sedangkan pnpm di
+Windows menjalankannya lewat cmd.exe yang tidak mengerti sintaks itu. Artinya repo ini sebelumnya hanya bisa dipakai
+developer bersistem macOS atau Linux, dan tidak ada satu baris dokumen pun yang menyebutkan batasan itu.</p>
+
+<p><strong>Apa yang dikerjakan.</strong> Empat script pembungkus kecil berbasis Node menggantikan sintaks shell tadi.
+Tidak ada dependensi baru yang ditambahkan, itu disengaja. Perilakunya sekarang identik di macOS, Linux, dan Windows.</p>
+
+<p><strong>Dampaknya ke jadwal.</strong> F-02 memblokir F-04 milik Dev A, dan F-04 adalah awal jalur kritis empat minggu
+yang tidak punya kelonggaran sama sekali. Bagian aplikasi sudah terbukti jalan, jadi hambatan utamanya sudah hilang.
+Bagian Docker akhirnya ikut terbukti setelah Docker Desktop dipasang di mesin ini, penjelasannya di bagian 6.</p>
+</div>
+
+<h2>2. Angka acceptance criteria</h2>
+
+<p>AC aslinya: dari <code>git clone</code> sampai app hidup dalam kurang dari 10 menit. Diukur dua kali dengan kondisi
+cache berbeda, karena keduanya menggambarkan developer yang berbeda.</p>
+
+<div class="two">
+  <div class="card ok">
+    <h3>Mesin benar benar baru</h3>
+    <p class="big">4 menit 10 detik</p>
+    <p>pnpm baru dipasang, store kosong, venv Python dibangun dari nol.
+    Ini yang dialami developer yang baru pertama kali menyentuh project ini.</p>
+  </div>
+  <div class="card ok">
+    <h3>Sudah pernah pakai pnpm</h3>
+    <p class="big">2 menit 9 detik</p>
+    <p>Clone kedua di mesin yang sama, store pnpm sudah terisi.
+    Ini yang dialami developer yang mengulang setup atau menambah worktree.</p>
+  </div>
+</div>
+
+<div class="card ok">
+<h3>Pengukuran definitif: seluruh tiga perintah AC, Docker ikut dihitung</h3>
+<p>Dua angka di atas diukur saat Docker belum terpasang, jadi keduanya melewatkan satu perintah dari AC.
+Setelah Docker Desktop dipasang, seluruh rangkaian diulang dari kloning bersih supaya tidak ada bagian yang
+diperkirakan.</p>
+<p class="big">2 menit 24 detik</p>
+<div class="scroll">
+<table>
+  <thead><tr><th>Langkah</th><th>Waktu</th><th>Keterangan</th></tr></thead>
+  <tbody>
+    <tr><td><code>git clone</code></td><td>2 dtk</td><td>Branch F-02</td></tr>
+    <tr><td><code>pnpm i</code></td><td>33 dtk</td><td>Store pnpm hangat</td></tr>
+    <tr><td><code>docker compose up -d</code></td><td>10 dtk</td><td>Sampai ketiganya <code>(healthy)</code>, image sudah ter-cache</td></tr>
+    <tr><td><code>pnpm dev</code></td><td>99 dtk</td><td>Sampai tiga endpoint menjawab, venv dibangun ulang</td></tr>
+    <tr><td><strong>Total</strong></td><td><strong>144 dtk</strong></td><td>Batas AC 600 dtk</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Unduhan image pertama kali (PostgreSQL, Redis, MinIO, mc) memakan <strong>95 detik</strong> terpisah, dan itu
+biaya sekali seumur mesin. Bahkan kalau angka itu ditambahkan penuh, totalnya masih 239 detik, kurang dari
+setengah anggaran waktu.</p>
+</div>
+
+<p><strong>Kesimpulan: AC terpenuhi dengan margin besar.</strong> Skenario terburuk pun selesai di bawah setengah
+anggaran waktu. Tidak ada alasan mengubah angka 10 menit di backlog.</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Langkah</th><th>Mesin baru</th><th>Store hangat</th><th>Catatan</th></tr></thead>
+  <tbody>
+    <tr><td><code>git clone</code></td><td>2,6 dtk</td><td>4 dtk</td><td>Repo masih kecil</td></tr>
+    <tr><td><code>pnpm i</code></td><td>155,3 dtk</td><td>39 dtk</td><td>Bagian terbesar saat store kosong</td></tr>
+    <tr><td><code>pnpm dev</code> sampai tiga endpoint menjawab</td><td>92,5 dtk</td><td>85,8 dtk</td><td>Ditahan pembuatan venv Python</td></tr>
+    <tr><td><strong>Total</strong></td><td><strong>250,4 dtk</strong></td><td><strong>128,8 dtk</strong></td><td>Batas AC: 600 dtk</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Yang paling lama bukan yang diduga. Saat store kosong, <code>pnpm i</code> memakan 62 persen total waktu.
+Saat store hangat, yang paling lama justru pembuatan virtualenv Python di layanan AI, dan itu hanya terjadi
+sekali per clone.</p>
+
+<h2>3. Bukti tiap endpoint</h2>
+
+<p>Diambil dari proses <code>pnpm dev</code> yang benar benar berjalan, bukan dari membaca kode.</p>
+
+<pre><code>$ curl -s localhost:3001/health
+{"status":"ok","service":"api","mode":"api","timestamp":"2026-09-14T14:42:34.003Z"}
+
+$ curl -s localhost:8000/health
+{"status":"ok","service":"ai","mode":"api","timestamp":"2026-09-14T14:43:06.453239Z"}
+
+$ curl -s localhost:3000 | head -c 80
+&lt;!DOCTYPE html&gt;&lt;html lang="id"&gt;&lt;head&gt;&lt;meta charSet="utf-8"/&gt;&lt;meta name="viewport" ...</code></pre>
+
+<p>Nilai <code>"mode":"api"</code> pada respons API bukan sekadar hiasan. Itu bukti bahwa variabel environment
+<code>MODE</code> benar benar sampai ke proses anak lewat pembungkus yang baru. Sebelum diperbaiki, variabel itu
+tidak pernah sampai dan prosesnya mati sebelum sempat menyala.</p>
+
+<h3>Tiga container healthy</h3>
+
+<p>Ini bagian AC yang paling lama tidak terbukti. Sekarang ada outputnya.</p>
+
+<pre><code>$ docker compose ps
+NAME              IMAGE                                              STATUS                    PORTS
+strive-minio      quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z   Up 21 seconds (healthy)   127.0.0.1:59000-&gt;9000/tcp, 127.0.0.1:59001-&gt;9001/tcp
+strive-postgres   postgres:16-alpine                                 Up 22 seconds (healthy)   127.0.0.1:55432-&gt;5432/tcp
+strive-redis      redis:7-alpine                                     Up 22 seconds (healthy)   127.0.0.1:56379-&gt;6379/tcp</code></pre>
+
+<p>Perhatikan kolom PORTS: semuanya <code>127.0.0.1:</code>, bukan <code>0.0.0.0:</code>. Itu bukti perbaikan
+keamanan S-1 di bagian 10 benar benar bekerja, bukan sekadar tertulis di file.</p>
+
+<p>Ketiganya juga diuji melayani permintaan sungguhan, bukan sekadar berstatus healthy:</p>
+
+<pre><code>$ docker compose exec postgres psql -U strive -d strive -c "select version();"
+ PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+
+$ docker compose exec redis redis-cli ping
+PONG
+
+$ curl -s -o /dev/null -w "%{http_code}" localhost:59001     # MinIO console
+200</code></pre>
+
+<p>Dan tiga bucket benar benar dibuat, ketiganya privat seperti yang dijanjikan komentar di compose:</p>
+
+<pre><code>$ mc ls local
+strive-assets/   strive-documents/   strive-public/
+
+$ for b in strive-documents strive-assets strive-public; do mc anonymous get local/$b; done
+Access permission for 'local/strive-documents' is 'private'
+Access permission for 'local/strive-assets'    is 'private'
+Access permission for 'local/strive-public'    is 'private'</code></pre>
+
+<p>Nama <code>strive-public</code> memang menyesatkan, tapi perilakunya benar: privat.</p>
+
+<h3>Seluruh rute web menjawab</h3>
+<p>Lima belas rute diperiksa satu per satu, semuanya HTTP 200. Ini sekaligus memverifikasi klaim F-09 bahwa
+dua belas layar inti sudah bisa dinavigasi.</p>
+
+<pre><code>/  /login  /register  /reset  /verify  /hub  /learn  /squad
+/clinic  /career  /mastery  /store  /wallet  /mentor  /admin
+=&gt; 15 dari 15 menjawab 200</code></pre>
+
+<h2>4. Bukti visual</h2>
+
+<figure>
+  <img src="images/01-web-desktop-1440.png" alt="Peta rute Strive Academy pada lebar desktop 1440 piksel" />
+  <figcaption>Desktop 1440x900. Peta rute ter render, konsol browser bersih dari error aplikasi.</figcaption>
+</figure>
+
+<figure>
+  <img src="images/02-web-mobile-375.png" alt="Peta rute Strive Academy pada lebar mobile 375 piksel" />
+  <figcaption>Mobile 375x812. Diverifikasi lewat script di browser: <code>scrollWidth</code> 375 sama dengan
+  <code>clientWidth</code> 375, jadi tidak ada scroll horizontal dan tidak ada elemen terpotong.</figcaption>
+</figure>
+
+<figure>
+  <img src="images/03-minio-buckets.png" alt="Konsol MinIO menampilkan tiga bucket Strive" />
+  <figcaption>Konsol MinIO di <code>localhost:59001</code>, login <code>strive</code>. Tiga bucket yang dibuat
+  <code>minio-init</code> terlihat di sini, bukti stack penyimpanan benar benar hidup dan bisa dipakai.</figcaption>
+</figure>
+
+<h2>5. Matriks skenario</h2>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>#</th><th>Jenis</th><th>Skenario</th><th>Diharapkan</th><th>Hasil</th><th>Cara verifikasi</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Happy path</td><td>Clone bersih, <code>pnpm i</code>, <code>pnpm dev</code></td><td>Tiga endpoint menjawab di bawah 10 menit</td><td class="pass">LULUS, 2m09s</td><td>Stopwatch plus polling HTTP</td></tr>
+    <tr><td>2</td><td>Happy path</td><td>Web di localhost:3000</td><td>HTTP 200, halaman ter render</td><td class="pass">LULUS</td><td>curl dan browser</td></tr>
+    <tr><td>3</td><td>Happy path</td><td>API di localhost:3001/health</td><td>JSON status ok</td><td class="pass">LULUS</td><td>curl</td></tr>
+    <tr><td>4</td><td>Happy path</td><td>AI di localhost:8000/health</td><td>JSON status ok</td><td class="pass">LULUS</td><td>curl</td></tr>
+    <tr><td>5</td><td>Happy path</td><td>Seluruh 15 rute web</td><td>Semua 200</td><td class="pass">LULUS, 15/15</td><td>Loop curl</td></tr>
+    <tr><td>6</td><td>Edge</td><td>Jalan tanpa file <code>.env</code></td><td>Tetap hidup, memakai default aman</td><td class="pass">LULUS</td><td>Tidak ada .env dibuat selama pengujian</td></tr>
+    <tr><td>7</td><td>Edge</td><td>Tampilan di lebar 375px</td><td>Tanpa scroll horizontal</td><td class="pass">LULUS</td><td>Evaluasi scrollWidth di browser</td></tr>
+    <tr><td>8</td><td>Negatif</td><td>Konsol browser saat halaman dibuka</td><td>Tidak ada error aplikasi</td><td class="pass">LULUS</td><td>Hanya 404 favicon, lihat R5</td></tr>
+    <tr><td>9</td><td>Negatif</td><td>Request gagal di tab network</td><td>Tidak ada 4xx atau 5xx</td><td class="pend">SEBAGIAN</td><td>404 favicon.ico, kosmetik</td></tr>
+    <tr><td>10</td><td>Edge</td><td>venv Python setengah jadi lalu prosesnya dimatikan</td><td>Run berikutnya membangun ulang, bukan memakai yang rusak</td><td class="pass">LULUS</td><td>Terjadi sungguhan saat run pertama gagal, run kedua membangun ulang</td></tr>
+    <tr><td>11</td><td>Gate</td><td><code>pnpm lint</code></td><td>Hijau</td><td class="pass">LULUS, exit 0</td><td>Output perintah</td></tr>
+    <tr><td>12</td><td>Gate</td><td><code>pnpm typecheck</code></td><td>Hijau</td><td class="pass">LULUS, exit 0</td><td>4 project, semua Done</td></tr>
+    <tr><td>13</td><td>Gate</td><td><code>pnpm test</code></td><td>Hijau</td><td class="pass">LULUS, 6 test</td><td>contracts 2, api 4</td></tr>
+    <tr><td>14</td><td>Gate</td><td><code>pnpm build</code></td><td>Hijau</td><td class="pass">LULUS, 18 halaman</td><td>Output build Next.js</td></tr>
+    <tr><td>15</td><td>Gate</td><td><code>pytest</code> layanan AI</td><td>Hijau</td><td class="pass">LULUS, 2 test</td><td>Dijalankan dari venv</td></tr>
+    <tr><td>16</td><td>Happy path</td><td><code>docker compose up -d</code></td><td>Tiga container healthy</td><td class="pass">LULUS, 10 dtk</td><td><code>docker compose ps</code>, lihat bagian 3</td></tr>
+    <tr><td>17</td><td>Happy path</td><td>Postgres melayani query, Redis PING, MinIO console</td><td>Ketiganya menjawab</td><td class="pass">LULUS</td><td>psql, redis-cli, curl</td></tr>
+    <tr><td>18</td><td>Negatif</td><td>Bucket MinIO tidak boleh publik</td><td>Ketiganya <code>private</code></td><td class="pass">LULUS, 3/3</td><td><code>mc anonymous get</code></td></tr>
+    <tr><td>19</td><td>Negatif</td><td>Port compose tidak boleh terbuka ke LAN</td><td>Terikat ke <code>127.0.0.1</code></td><td class="pass">LULUS</td><td>Kolom PORTS di <code>docker compose ps</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>6. Bagian yang sempat tidak bisa dibuktikan</h2>
+
+<div class="card ok">
+<h3>Docker sudah terpasang, dan bagian ini akhirnya terbukti</h3>
+<p>Saat laporan ini pertama ditulis, mesin ini tidak punya Docker sama sekali, jadi satu perintah dari
+acceptance criteria tidak bisa dijalankan. Bagian ini sengaja dibiarkan terbuka, bukan ditutup dengan kesimpulan
+dari membaca file.</p>
+<p>Docker Desktop 4.91.0 kemudian dipasang, dan seluruh rangkaian diulang dari kloning bersih. Hasilnya:
+<strong>ketiga container mencapai <code>(healthy)</code> dalam 10 detik</strong>, tiga bucket dibuat privat, dan
+ketiga layanan melayani permintaan sungguhan. Outputnya ada di bagian 3.</p>
+<p><strong>Yang ternyata benar sejak awal:</strong> isi <code>infra/docker-compose.yml</code> memang sudah tepat.
+Healthcheck di ketiga layanan bekerja, volume persisten terbentuk, image MinIO dari quay.io ter-pull tanpa
+penolakan, dan <code>minio-init</code> membuat tiga bucket lalu berhenti seperti yang dirancang. Tidak ada satu
+baris pun di file itu yang perlu diperbaiki karena salah.</p>
+<p><strong>Dan yang tidak akan ketahuan kalau hanya dibaca:</strong> bahwa perbaikan keamanan S-1 benar benar
+mengikat port ke <code>127.0.0.1</code>. Itu hanya terlihat di kolom PORTS milik <code>docker compose ps</code>,
+pada stack yang sungguhan berjalan.</p>
+</div>
+
+<div class="card warn">
+<h3>Catatan tambahan: versi Python</h3>
+<p>CLAUDE.md menetapkan Python 3.12 untuk layanan AI. Mesin ini punya Python 3.13.1, dan venv terbentuk memakai
+versi itu. Seluruh test lulus, jadi tidak ada yang rusak hari ini. Tapi selisih versi antar developer adalah sumber
+bug yang baru muncul belakangan, jadi lebih baik disepakati sekarang: 3.13 diterima, atau 3.12 ditegakkan lewat
+pengecekan versi di script.</p>
+</div>
+
+<h2>7. Katalog regresi</h2>
+
+<p>Enam masalah ditemukan selama verifikasi. Empat sudah diperbaiki, dua dicatat dan butuh keputusan.
+Tabel ini ada supaya masalah yang sama tidak muncul lagi tanpa ketahuan.</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>#</th><th>Pemicu</th><th>Gejala</th><th>Akar masalah</th><th>Setelah perbaikan</th><th>Cara reproduksi</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>R1</td>
+      <td><code>pnpm dev</code> di Windows</td>
+      <td><code>option '-p, --port' argument '${WEB_PORT:-3000}' is invalid</code></td>
+      <td>cmd.exe tidak mengembangkan sintaks nilai default ala POSIX, teksnya diteruskan mentah ke Next.js</td>
+      <td>Port diselesaikan di Node lewat <code>scripts/dev-web.mjs</code></td>
+      <td>Jalankan <code>pnpm dev:web</code> di Windows sebelum commit 92f90c8</td>
+    </tr>
+    <tr>
+      <td>R2</td>
+      <td><code>pnpm dev</code> di Windows</td>
+      <td><code>Invalid parameter - =api</code></td>
+      <td>Awalan variabel environment gaya POSIX tidak dikenal cmd.exe</td>
+      <td>MODE disetel lewat env proses anak di <code>scripts/dev-api.mjs</code></td>
+      <td>Jalankan <code>pnpm dev:api</code> di Windows sebelum commit 92f90c8</td>
+    </tr>
+    <tr>
+      <td>R3</td>
+      <td><code>pnpm dev:ai</code> di Windows</td>
+      <td>Gagal sebelum layanan sempat menyala</td>
+      <td>Tiga sebab sekaligus: <code>bash</code> di PATH menunjuk stub WSL, <code>python3</code> menunjuk stub Microsoft
+      Store yang keluar dengan kode 9009, dan venv Windows menaruh interpreter di <code>Scripts</code> bukan <code>bin</code></td>
+      <td><code>scripts/dev-ai.mjs</code> mencari interpreter yang benar benar menjawab <code>--version</code>,
+      dan tahu letak venv per sistem operasi</td>
+      <td>Jalankan <code>pnpm dev:ai</code> di Windows tanpa distribusi WSL</td>
+    </tr>
+    <tr>
+      <td>R4</td>
+      <td>Clone di Windows</td>
+      <td>Script shell ter checkout dengan akhir baris CRLF</td>
+      <td>Repo tidak punya <code>.gitattributes</code>, sedangkan Git di Windows default ke <code>core.autocrlf=true</code></td>
+      <td><code>.gitattributes</code> mengunci seluruh file teks ke LF</td>
+      <td><code>file scripts/dev-ai.sh</code> di working tree Windows sebelum commit 09c5db5</td>
+    </tr>
+    <tr>
+      <td>R5</td>
+      <td>Buka halaman mana pun</td>
+      <td>404 pada <code>/favicon.ico</code> di tab network dan konsol</td>
+      <td>Belum ada favicon di <code>apps/web</code></td>
+      <td class="pend">Belum diperbaiki, sengaja</td>
+      <td>Buka localhost:3000 lalu lihat tab network</td>
+    </tr>
+    <tr>
+      <td>R6</td>
+      <td><code>pnpm build</code> di Windows</td>
+      <td>Pohon standalone Next.js ditulis <strong>di luar repo</strong>, sekitar 1,8 MB menumpuk di folder induk tiap build</td>
+      <td><code>outputFileTracingRoot</code> memakai <code>new URL(...).pathname</code>. Di Windows itu menghasilkan
+      <code>/C:/Users/Nama%20Ada%20Spasi/...</code>, ada slash di depan dan spasi ter-encode, jadi bukan path
+      filesystem yang sah. Di path yang mengandung spasi, ini juga rusak di macOS dan Linux</td>
+      <td class="pend">Belum diperbaiki, butuh keputusan</td>
+      <td>Jalankan <code>pnpm build</code> di Windows, lalu lihat isi folder induk repo</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="card warn">
+<h3>Kenapa R6 tidak ikut diperbaiki, padahal perbaikannya satu baris</h3>
+<p>Perbaikan yang benar jelas: <code>fileURLToPath(new URL('../../', import.meta.url))</code>. Sudah kucoba, dan
+hasilnya justru mengajarkan sesuatu.</p>
+<p><strong>Sebelum diperbaiki:</strong> build lulus (exit 0), tapi menulis ke tempat yang salah.
+<strong>Sesudah diperbaiki:</strong> build menargetkan tempat yang benar, lalu gagal dengan
+<code>EPERM: operation not permitted, symlink</code>. Sebabnya tata letak <code>node_modules</code> milik pnpm
+butuh symlink, dan Windows hanya mengizinkan pembuatan symlink kalau Developer Mode menyala atau prosesnya admin.
+Di mesin ini keduanya tidak terpenuhi.</p>
+<p>Jadi perbaikan yang benar menukar bug yang diam dengan <strong>gate wajib yang merah</strong>. Gate merah
+memblokir seluruh pekerjaan Dev B di Windows, karena <code>pnpm build</code> wajib hijau sebelum PR dibuka.
+Folder nyasar cuma bikin berantakan. Yang pertama jauh lebih mahal, jadi perubahannya kukembalikan dan
+temuannya kucatat di sini.</p>
+<p><strong>Butuh keputusan, ada dua jalan.</strong> Pertama, perbaiki <code>outputFileTracingRoot</code> lalu minta
+developer Windows menyalakan Developer Mode. Kedua, jadikan <code>output: 'standalone'</code> aktif hanya saat build
+Docker, karena satu-satunya yang memakainya memang <code>infra/Dockerfile.web</code> dan itu berjalan di Linux.
+Jalan kedua menyentuh jalur deploy, yang bersinggungan dengan <code>F-05</code>, jadi bukan keputusan yang pantas
+kuambil sendiri di dalam item ini.</p>
+<p>Perlu dicatat: di macOS dan Linux dengan path tanpa spasi, kedua bentuk itu menghasilkan string yang sama persis,
+jadi tidak ada yang berubah untuk Dev A hari ini.</p>
+</div>
+
+<p>R5 tidak diperbaiki di sini karena itu urusan branding dan design token, yang jadi lingkup F-06.
+AGENTS.md aturan keras nomor 6 meminta bug milik item lain dicatat, bukan diperbaiki sambil lalu, supaya PR tetap
+bisa direview. Dampaknya kosmetik dan tidak mengganggu fungsi apa pun.</p>
+
+<h2>8. Matriks cakupan</h2>
+
+<p>Satu item bisa lulus di satu sistem operasi dan gagal total di sistem lain. Tabel ini memisahkan apa yang benar
+benar diuji dari apa yang hanya diperkirakan.</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Yang diuji</th><th>Windows 11</th><th>macOS dan Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Web (Next.js)</td><td class="pass">Diuji, lulus</td><td class="pend">Belum diuji di sesi ini</td></tr>
+    <tr><td>API (NestJS)</td><td class="pass">Diuji, lulus</td><td class="pend">Belum diuji di sesi ini</td></tr>
+    <tr><td>AI (FastAPI)</td><td class="pass">Diuji, lulus</td><td class="pend">Belum diuji di sesi ini</td></tr>
+    <tr><td>lint, typecheck, test, build</td><td class="pass">Diuji, hijau</td><td class="pass">Hijau di CI (ubuntu-latest)</td></tr>
+    <tr><td>docker compose</td><td class="pass">Diuji, tiga container healthy</td><td class="pend">Belum diuji di sesi ini</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="card ok">
+<p><strong>Sebagian kolom kanan sudah terjawab CI.</strong> Ketiga job CI berjalan di <code>ubuntu-latest</code>
+dan ketiganya lulus di PR ini: <code>lint / typecheck / test / build</code>, <code>ai service / test</code>, dan
+<code>migrasi kering</code>. Jadi perubahan ini terbukti tidak merusak jalur build dan test di Linux, dan itu bukti
+nyata bukan perkiraan.</p>
+<p><strong>Yang tetap belum terjawab: <code>pnpm dev</code> di macOS dan Linux.</strong> CI tidak pernah menjalankan
+<code>pnpm dev</code>, jadi lulusnya CI tidak membuktikan ketiga server dev benar-benar menyala di sana.</p>
+</div>
+
+<div class="card warn">
+<p><strong>Kenapa sisanya jujur ditulis belum diuji.</strong> Perubahan di item ini memakai Node murni tanpa
+sintaks khusus sistem operasi, jadi secara teknis seharusnya aman di macOS dan Linux. Tapi kata seharusnya bukan
+bukti, dan justru asumsi semacam itu yang membuat repo ini rusak di Windows sejak awal tanpa ada yang menyadarinya.
+Permintaan konkret ke reviewer ada di bagian berikutnya.</p>
+</div>
+
+<h2>9. Yang diminta dari reviewer</h2>
+
+<ol>
+  <li><strong>Jalankan <code>pnpm dev</code> di macOS.</strong> Ini satu satunya hal yang tidak bisa dibuktikan dari
+  sisi saya, dan justru paling penting: perbaikan lintas sistem operasi tidak ada gunanya kalau merusak mesin yang
+  tadinya sudah jalan.</li>
+  <li><strong>Putuskan soal versi Python.</strong> 3.13 diterima, atau 3.12 ditegakkan.</li>
+  <li><strong>Konfirmasi soal kepemilikan file.</strong> Perubahan ini menyentuh <code>apps/api/package.json</code>,
+  yang berada di wilayah kerja Dev A. Tabel kepemilikan di CLAUDE.md hanya mengunci <code>attempts.service.ts</code>
+  dan <code>db/migrations</code>, jadi secara aturan tidak dilanggar, tapi lebih baik disebut terang terangan
+  daripada ketahuan belakangan.</li>
+</ol>
+
+<h2>10. Audit keamanan</h2>
+
+<p>Dijalankan setelah kode selesai ditulis, sesuai kewajiban di aturan kerja. Cakupannya: keempat script baru,
+<code>infra/docker-compose.yml</code>, <code>.env.example</code>, dan pemeriksaan rahasia di seluruh 22 commit.</p>
+
+<h3>Yang bersih, dan dibuktikan bukan diasumsikan</h3>
+
+<div class="card ok">
+<ul>
+  <li><strong>Tidak ada command injection di keempat script.</strong> Diuji langsung, bukan disimpulkan dari teori:
+  nilai <code>WEB_PORT</code> berisi <code>3000 &amp; echo PWNED &amp; rem</code> sampai ke proses anak sebagai satu
+  elemen argv utuh, tidak dipecah dan tidak dieksekusi. Memakai <code>spawn</code> tanpa <code>shell: true</code>
+  memang cukup sebagai mitigasi.</li>
+  <li><strong>Port tidak bisa menyelinap jadi flag Node.</strong> Posisinya di argv ada setelah path script,
+  dan Node berhenti mengurai opsinya sendiri pada argumen non-opsi pertama.</li>
+  <li><strong>Nol dependensi baru.</strong> Blok <code>dependencies</code> dan <code>devDependencies</code> di ketiga
+  <code>package.json</code> identik dengan <code>main</code>, dan <code>pnpm-lock.yaml</code> tidak berubah.</li>
+  <li><strong>Tidak ada rahasia yang bocor.</strong> Seluruh 22 commit disisir untuk file kunci dan pola nilai rahasia
+  nyata: nol kecocokan. Tidak ada yang perlu dirotasi.</li>
+  <li><strong>Bucket MinIO memang privat.</strong> Tidak ada perintah policy atau anonymous di file itu.</li>
+  <li><strong>CI tidak terdampak</strong> oleh penghapusan <code>dev-ai.sh</code>. Job AI memanggil pytest langsung.</li>
+</ul>
+</div>
+
+<h3>Dua temuan yang diperbaiki di PR ini</h3>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>ID</th><th>Tingkat</th><th>Temuan</th><th>Perbaikan</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>S-1</td><td>Sedang</td>
+      <td>Port Postgres, Redis, dan MinIO di-publish ke <code>0.0.0.0</code>, bukan hanya localhost.
+      Sintaks pendek <code>'55432:5432'</code> tanpa IP host melewati aturan firewall host.
+      Karena repo ini publik, passwordnya bukan tebakan: siapa pun yang satu Wi-Fi bisa membacanya di GitHub
+      lalu menyambung ke database dev.</td>
+      <td>Keempat port dibatasi ke <code>127.0.0.1</code></td>
+    </tr>
+    <tr>
+      <td>S-2</td><td>Sedang</td>
+      <td><code>AUTH_SECRET</code> dan <code>AI_SERVICE_TOKEN</code> punya nilai default yang bisa dipakai.
+      Nilai <code>AUTH_SECRET</code> yang lama bahkan lolos ambang 32 byte, jadi pengecekan panjang yang naif
+      akan meloloskannya tanpa ada yang berteriak. Kalau sampai terbawa ke staging, itu bypass autentikasi penuh.
+      Semua kunci vendor lain di file itu sudah dikosongkan, jadi dua ini justru menyimpang dari pola filenya sendiri.</td>
+      <td>Keduanya dikosongkan, komentarnya diperbarui. Jumlah variabel tetap 36, jadi pemetaan ke PRD 19.2 utuh</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Tiga temuan yang dicatat, tidak diperbaiki di sini</h3>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>ID</th><th>Tingkat</th><th>Temuan</th><th>Kenapa ditunda</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>S-3</td><td>Rendah</td>
+      <td>Image MinIO tertinggal 21 bulan, terdampak CVE-2025-62506 (CVSS 8.1)</td>
+      <td>Tidak bisa dieksploitasi pada konfigurasi sekarang: prasyaratnya butuh service account atau kredensial STS
+      dengan policy terbatas, sedangkan compose ini hanya memakai akun root. Lebih penting lagi, menaikkan versi image
+      berarti mengubah sesuatu yang <strong>tidak bisa saya uji tanpa Docker</strong>. Menaikkan pin tanpa bisa
+      membuktikan imagenya bahkan bisa di-pull adalah persis jenis tebakan yang dilarang di sini.</td>
+    </tr>
+    <tr>
+      <td>S-4</td><td>Rendah</td>
+      <td>Redis jalan tanpa <code>requirepass</code></td>
+      <td>Wajar untuk dev di balik loopback. Yang membuatnya berisiko adalah kombinasinya dengan S-1, dan S-1 sudah
+      diperbaiki. Yang wajib dicatat: pola ini tidak boleh terbawa ke staging.</td>
+    </tr>
+    <tr>
+      <td>S-2b</td><td>Sedang</td>
+      <td>Belum ada penjagaan saat boot yang menolak start kalau <code>AUTH_SECRET</code> kosong atau sama dengan
+      nilai contoh di lingkungan non-dev</td>
+      <td>Itu kode di Core API, lingkup <code>A-01</code> (Better-Auth) milik Dev A. Komentar bukan mekanisme
+      penegakan, jadi ini layak dikerjakan, tapi bukan di item ini.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="card warn">
+<p><strong>Satu hal di luar cakupan yang tetap perlu diketahui:</strong> repo tidak punya <code>.dockerignore</code>.
+Hari ini tidak ada rahasia yang tersalin karena <code>infra/Dockerfile.api</code> sudah selektif dan memakai user
+non-root. Tapi <code>COPY packages packages</code> akan ikut menyapu file <code>.env</code> apa pun yang suatu saat
+ditaruh di bawah <code>packages/</code>. Satu file <code>.dockerignore</code> menutup ini permanen.</p>
+</div>
+
+<h2>11. Ringkasan status</h2>
+
+<div class="card ok">
+<p><strong>Seluruh acceptance criteria terbukti.</strong> Dari kloning bersih sampai aplikasi hidup:
+<strong>2 menit 24 detik</strong>, memakai ketiga perintah AC apa adanya, jauh di bawah batas 10 menit.
+Tiga container <code>(healthy)</code>. Tiga endpoint menjawab. Lima belas rute menjawab 200. Tiga bucket privat.
+Empat gate mutu hijau di Windows, dan tiga job CI hijau di ubuntu-latest. Tampilan aman di desktop dan 375px.
+Konsol bersih dari error aplikasi.</p>
+</div>
+
+<div class="card warn">
+<p><strong>Kenapa papan status masih <code>review</code>, bukan <code>done</code>.</strong> Yang tersisa bukan lagi
+soal bukti, tapi soal proses: Definition of Done di CLAUDE.md menuntut PR di-review orang satunya dan ter-merge ke
+<code>main</code>. Itu milik @Fatihmaull, bukan sesuatu yang bisa kutandai sendiri. Begitu PR di-approve dan
+ter-merge, F-02 boleh langsung <code>done</code> dengan kolom Bukti diisi hash commit merge-nya.</p>
+</div>
+
+<div class="card">
+<p><strong>Yang masih butuh keputusan, dan tidak menghalangi merge:</strong> versi Python (3.13 diterima atau 3.12
+ditegakkan), dan R6 di bagian 7 (<code>outputFileTracingRoot</code> menulis di luar repo). Keduanya sudah
+dijelaskan lengkap di bagiannya masing masing.</p>
+</div>
+
+</div>
+</body>
+</html>

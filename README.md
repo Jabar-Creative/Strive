@@ -82,7 +82,9 @@ pnpm lint         pnpm typecheck    pnpm test            pnpm build
 pnpm test:e2e                                # item R-01
 pnpm seed:content <file>                     # item F-11
 
-cd services/ai && ./.venv/bin/python -m pytest   # test AI service
+# test AI service — venv Windows menaruh interpreter di Scripts, bukan bin
+cd services/ai && ./.venv/bin/python -m pytest        # macOS / Linux
+cd services/ai && ./.venv/Scripts/python -m pytest    # Windows
 ```
 
 **Sebelum membuka PR, keempatnya wajib hijau:**
