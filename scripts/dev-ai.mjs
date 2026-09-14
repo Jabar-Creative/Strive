@@ -83,6 +83,10 @@ if (!fs.existsSync(venvPython) || want !== have) {
 }
 
 const port = process.env.AI_SERVICE_PORT || '8000';
+if (!/^[0-9]+$/.test(port)) {
+  console.error(`[ai] AI_SERVICE_PORT harus berupa angka, dapat: ${port}`);
+  process.exit(1);
+}
 const child = spawn(venvPython, ['-m', 'uvicorn', 'app.main:app', '--reload', '--port', port], {
   cwd: serviceDir,
   stdio: 'inherit',

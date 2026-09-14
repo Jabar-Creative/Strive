@@ -26,6 +26,10 @@ if (!COMMANDS.includes(command)) {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkgDir = path.join(root, 'apps', 'web');
 const port = process.env.WEB_PORT || '3000';
+if (!/^[0-9]+$/.test(port)) {
+  console.error(`[web] WEB_PORT harus berupa angka, dapat: ${port}`);
+  process.exit(1);
+}
 
 const child = spawn(
   process.execPath,
