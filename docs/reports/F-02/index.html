@@ -326,7 +326,95 @@ Permintaan konkret ke reviewer ada di bagian berikutnya.</p>
   daripada ketahuan belakangan.</li>
 </ol>
 
-<h2>10. Ringkasan status</h2>
+<h2>10. Audit keamanan</h2>
+
+<p>Dijalankan setelah kode selesai ditulis, sesuai kewajiban di aturan kerja. Cakupannya: keempat script baru,
+<code>infra/docker-compose.yml</code>, <code>.env.example</code>, dan pemeriksaan rahasia di seluruh 22 commit.</p>
+
+<h3>Yang bersih, dan dibuktikan bukan diasumsikan</h3>
+
+<div class="card ok">
+<ul>
+  <li><strong>Tidak ada command injection di keempat script.</strong> Diuji langsung, bukan disimpulkan dari teori:
+  nilai <code>WEB_PORT</code> berisi <code>3000 &amp; echo PWNED &amp; rem</code> sampai ke proses anak sebagai satu
+  elemen argv utuh, tidak dipecah dan tidak dieksekusi. Memakai <code>spawn</code> tanpa <code>shell: true</code>
+  memang cukup sebagai mitigasi.</li>
+  <li><strong>Port tidak bisa menyelinap jadi flag Node.</strong> Posisinya di argv ada setelah path script,
+  dan Node berhenti mengurai opsinya sendiri pada argumen non-opsi pertama.</li>
+  <li><strong>Nol dependensi baru.</strong> Blok <code>dependencies</code> dan <code>devDependencies</code> di ketiga
+  <code>package.json</code> identik dengan <code>main</code>, dan <code>pnpm-lock.yaml</code> tidak berubah.</li>
+  <li><strong>Tidak ada rahasia yang bocor.</strong> Seluruh 22 commit disisir untuk file kunci dan pola nilai rahasia
+  nyata: nol kecocokan. Tidak ada yang perlu dirotasi.</li>
+  <li><strong>Bucket MinIO memang privat.</strong> Tidak ada perintah policy atau anonymous di file itu.</li>
+  <li><strong>CI tidak terdampak</strong> oleh penghapusan <code>dev-ai.sh</code>. Job AI memanggil pytest langsung.</li>
+</ul>
+</div>
+
+<h3>Dua temuan yang diperbaiki di PR ini</h3>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>ID</th><th>Tingkat</th><th>Temuan</th><th>Perbaikan</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>S-1</td><td>Sedang</td>
+      <td>Port Postgres, Redis, dan MinIO di-publish ke <code>0.0.0.0</code>, bukan hanya localhost.
+      Sintaks pendek <code>'55432:5432'</code> tanpa IP host melewati aturan firewall host.
+      Karena repo ini publik, passwordnya bukan tebakan: siapa pun yang satu Wi-Fi bisa membacanya di GitHub
+      lalu menyambung ke database dev.</td>
+      <td>Keempat port dibatasi ke <code>127.0.0.1</code></td>
+    </tr>
+    <tr>
+      <td>S-2</td><td>Sedang</td>
+      <td><code>AUTH_SECRET</code> dan <code>AI_SERVICE_TOKEN</code> punya nilai default yang bisa dipakai.
+      Nilai <code>AUTH_SECRET</code> yang lama bahkan lolos ambang 32 byte, jadi pengecekan panjang yang naif
+      akan meloloskannya tanpa ada yang berteriak. Kalau sampai terbawa ke staging, itu bypass autentikasi penuh.
+      Semua kunci vendor lain di file itu sudah dikosongkan, jadi dua ini justru menyimpang dari pola filenya sendiri.</td>
+      <td>Keduanya dikosongkan, komentarnya diperbarui. Jumlah variabel tetap 36, jadi pemetaan ke PRD 19.2 utuh</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Tiga temuan yang dicatat, tidak diperbaiki di sini</h3>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>ID</th><th>Tingkat</th><th>Temuan</th><th>Kenapa ditunda</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>S-3</td><td>Rendah</td>
+      <td>Image MinIO tertinggal 21 bulan, terdampak CVE-2025-62506 (CVSS 8.1)</td>
+      <td>Tidak bisa dieksploitasi pada konfigurasi sekarang: prasyaratnya butuh service account atau kredensial STS
+      dengan policy terbatas, sedangkan compose ini hanya memakai akun root. Lebih penting lagi, menaikkan versi image
+      berarti mengubah sesuatu yang <strong>tidak bisa saya uji tanpa Docker</strong>. Menaikkan pin tanpa bisa
+      membuktikan imagenya bahkan bisa di-pull adalah persis jenis tebakan yang dilarang di sini.</td>
+    </tr>
+    <tr>
+      <td>S-4</td><td>Rendah</td>
+      <td>Redis jalan tanpa <code>requirepass</code></td>
+      <td>Wajar untuk dev di balik loopback. Yang membuatnya berisiko adalah kombinasinya dengan S-1, dan S-1 sudah
+      diperbaiki. Yang wajib dicatat: pola ini tidak boleh terbawa ke staging.</td>
+    </tr>
+    <tr>
+      <td>S-2b</td><td>Sedang</td>
+      <td>Belum ada penjagaan saat boot yang menolak start kalau <code>AUTH_SECRET</code> kosong atau sama dengan
+      nilai contoh di lingkungan non-dev</td>
+      <td>Itu kode di Core API, lingkup <code>A-01</code> (Better-Auth) milik Dev A. Komentar bukan mekanisme
+      penegakan, jadi ini layak dikerjakan, tapi bukan di item ini.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="card warn">
+<p><strong>Satu hal di luar cakupan yang tetap perlu diketahui:</strong> repo tidak punya <code>.dockerignore</code>.
+Hari ini tidak ada rahasia yang tersalin karena <code>infra/Dockerfile.api</code> sudah selektif dan memakai user
+non-root. Tapi <code>COPY packages packages</code> akan ikut menyapu file <code>.env</code> apa pun yang suatu saat
+ditaruh di bawah <code>packages/</code>. Satu file <code>.dockerignore</code> menutup ini permanen.</p>
+</div>
+
+<h2>11. Ringkasan status</h2>
 
 <div class="card ok">
 <p><strong>Sudah terbukti:</strong> aplikasi hidup dari clone bersih dalam 2 sampai 4 menit, jauh di bawah batas 10 menit.
