@@ -38,7 +38,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | ID | Item | Dev | W | Hari | Status | Bukti (commit/PR) | Tanggal | Catatan |
 |---|---|:---:|:---:|---:|---|---|---|---|
 | `F-01` | Monorepo pnpm, TypeScript strict, ESLint, Prettie… | A | W1 | 1 | `todo` | — | — | — |
-| `F-03` | CI: lint, typecheck, unit test, build, migrasi ke… | A | W1 | 1 | `todo` | — | — | — |
+| `F-03` | CI: lint, typecheck, unit test, build, migrasi ke… | A | W1 | 1 | `in_progress` | — | 2026-09-15 | — |
 | `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | A | W1 | 1,5 | `review` | `c5d5c31` | 2026-09-15 | 31 tabel cocok PRD §9.1. Trigger append-only, partisi attempt_date, PK surrogate squad_members — ketiganya terbukti. Menunggu review @kemalzaki. |
 | `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `todo` | — | — | — |
 | `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
