@@ -42,7 +42,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | A | W1 | 1,5 | `todo` | — | — | — |
 | `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `todo` | — | — | — |
 | `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
-| `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `review` | `09c5db5` | 2026-09-14 | Seluruh AC terbukti: clone bersih sampai app hidup 2m24s, termasuk `docker compose up -d` dengan 3 container `(healthy)`. Menunggu review @Fatihmaull. Bukti: `docs/reports/F-02/` |
+| `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
 | `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `todo` | — | — | — |
 | `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `todo` | — | — | — |
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `todo` | — | — | — |
@@ -118,8 +118,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 73 | 72,5 |
-| `done` | 1 | 0,5 |
-| `review` | 1 | 0,5 |
+| `done` | 2 | 1,0 |
 | `in_progress` | 0 | 0 |
 | `blocked` | 0 | 0 |
 | `todo` | 71 | 71,5 |
