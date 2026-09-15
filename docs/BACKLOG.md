@@ -51,7 +51,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 0,5 | `todo` | — | — | — |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `review` | `2a154ff` | 2026-09-15 | 13 test integrasi DB nyata hijau; kelima test WAJIB catatan risiko terbukti. Menunggu review @kemalzaki. |
-| `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `todo` | — | — | — |
+| `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `in_progress` | — | 2026-09-15 | — |
 | `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `todo` | — | — | — |
 | `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
 | `L-02` | GradingService — penilaian sepenuhnya di server | B | W2 | 1 | `todo` | — | — | — |
@@ -120,9 +120,9 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | Total | 73 | 72,5 |
 | `done` | 5 | 4,5 |
 | `review` | 3 | 3,5 |
-| `in_progress` | 0 | 0 |
+| `in_progress` | 1 | 1,5 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 64 | 63,0 |
+| `todo` | 63 | 61,5 |
 
 ---
 ## Ringkasan per epik
