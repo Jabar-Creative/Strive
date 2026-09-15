@@ -1,8 +1,7 @@
-import { Kysely, PostgresDialect, sql } from 'kysely';
-import { Pool } from 'pg';
+import { Kysely, sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { DB } from '../src/infra/kysely';
+import { createDatabase, type DB } from '../src/infra/kysely';
 import { CoinLedgerService, InsufficientCoinsError } from '../src/modules/wallet';
 
 /**
@@ -61,9 +60,7 @@ async function seedUser(id: string, balance: number, email: string) {
 }
 
 beforeAll(async () => {
-  db = new Kysely<DB>({
-    dialect: new PostgresDialect({ pool: new Pool({ connectionString: url }) }),
-  });
+  db = createDatabase(url);
   coins = new CoinLedgerService();
   try {
     await db.selectFrom('coin_ledger').select('id').limit(1).execute();
@@ -161,26 +158,22 @@ describe('CoinLedgerService (database nyata)', () => {
     });
     expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(40);
 
-    await db
-      .transaction()
-      .execute((trx) =>
-        coins.release(trx, {
-          userId: USER_A,
-          refType: 'scan',
-          refId: scanId,
-          reason: 'vendor down',
-        }),
-      );
-    await db
-      .transaction()
-      .execute((trx) =>
-        coins.release(trx, {
-          userId: USER_A,
-          refType: 'scan',
-          refId: scanId,
-          reason: 'dipanggil lagi',
-        }),
-      );
+    await db.transaction().execute((trx) =>
+      coins.release(trx, {
+        userId: USER_A,
+        refType: 'scan',
+        refId: scanId,
+        reason: 'vendor down',
+      }),
+    );
+    await db.transaction().execute((trx) =>
+      coins.release(trx, {
+        userId: USER_A,
+        refType: 'scan',
+        refId: scanId,
+        reason: 'dipanggil lagi',
+      }),
+    );
 
     const releases = await db
       .selectFrom('coin_ledger')
@@ -198,26 +191,22 @@ describe('CoinLedgerService (database nyata)', () => {
     if (!reachable) return;
     const key = 'idem-abc-123';
 
-    const a = await db
-      .transaction()
-      .execute((trx) =>
-        coins.write(trx, {
-          userId: USER_A,
-          entryType: 'earn_lesson',
-          amount: 20,
-          idempotencyKey: key,
-        }),
-      );
-    const b = await db
-      .transaction()
-      .execute((trx) =>
-        coins.write(trx, {
-          userId: USER_A,
-          entryType: 'earn_lesson',
-          amount: 20,
-          idempotencyKey: key,
-        }),
-      );
+    const a = await db.transaction().execute((trx) =>
+      coins.write(trx, {
+        userId: USER_A,
+        entryType: 'earn_lesson',
+        amount: 20,
+        idempotencyKey: key,
+      }),
+    );
+    const b = await db.transaction().execute((trx) =>
+      coins.write(trx, {
+        userId: USER_A,
+        entryType: 'earn_lesson',
+        amount: 20,
+        idempotencyKey: key,
+      }),
+    );
 
     expect(b.id).toBe(a.id);
     const rows = await db
