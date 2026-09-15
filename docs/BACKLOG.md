@@ -49,7 +49,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `todo` | — | — | — |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `todo` | — | — | — |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 0,5 | `blocked` | — | 2026-09-15 | TERBLOKIR isu #18: Better-Auth menuntut tabel `account` & `verification` yang tidak ada di PRD §9, dan AU-4/AU-5 (rotasi + deteksi reuse) tidak punya padanan. Butuh keputusan manusia. |
-| `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
+| `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `blocked` | — | 2026-09-15 | TERBLOKIR menunggu `A-01` (isu #18). Satu-satunya item Dev A yang benar-benar terhambat; C-01, L-01, S-01, Q-01 tetap siap. |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `todo` | — | — | — |
 | `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `todo` | — | — | — |
 | `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `todo` | — | — | — |
@@ -121,8 +121,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `done` | 5 | 4,5 |
 | `review` | 0 | 0 |
 | `in_progress` | 0 | 0 |
-| `blocked` | 2 | 2,0 |
-| `todo` | 66 | 66,0 |
+| `blocked` | 3 | 3,0 |
+| `todo` | 65 | 65,0 |
 
 ---
 ## Ringkasan per epik
