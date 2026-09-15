@@ -37,10 +37,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 | ID | Item | Dev | W | Hari | Status | Bukti (commit/PR) | Tanggal | Catatan |
 |---|---|:---:|:---:|---:|---|---|---|---|
-| `F-01` | Monorepo pnpm, TypeScript strict, ESLint, Prettie… | A | W1 | 1 | `todo` | — | — | — |
-| `F-03` | CI: lint, typecheck, unit test, build, migrasi ke… | A | W1 | 1 | `todo` | — | — | — |
-| `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | A | W1 | 1,5 | `todo` | — | — | — |
-| `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `todo` | — | — | — |
+| `F-01` | Monorepo pnpm, TypeScript strict, ESLint, Prettie… | A | W1 | 1 | `done` | `3836fed` | 2026-09-15 | PR #4 ter-merge. 4 AC terbukti + penegakan versi Python (keputusan 1 PR #3), 5 jalur diuji. |
+| `F-03` | CI: lint, typecheck, unit test, build, migrasi ke… | A | W1 | 1 | `done` | `973d7cf` | 2026-09-15 | PR #11 ter-merge. PR merah dibuktikan lewat PR #7 sungguhan, CI 77 dtk, migrasi terhadap DB kosong + verifikasi 31 tabel & trigger. |
+| `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | A | W1 | 1,5 | `done` | `9aa3037` | 2026-09-15 | PR #5 ter-merge. 31 tabel cocok PRD §9.1 (nol hilang, nol berlebih). Trigger append-only, partisi attempt_date, PK surrogate squad_members terbukti. BELUM di-review Dev B. |
+| `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `blocked` | — | 2026-09-15 | TERBLOKIR: butuh domain + akun cloud (belum ada pemiliknya). Memilih penyedia = vendor di luar PRD §12 → keputusan manusia. Keputusan 2 & 5 dari PR #3 sudah dikerjakan terpisah. |
 | `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
 | `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `review` | `a551052` | 2026-09-15 | AC terbukti di browser: /_specimen 200, token berganti di mode gelap, 375px tanpa scroll horizontal, konsol bersih. TEMUAN: ink-500 mode terang 4,14:1 di bawah AA, perlu keputusan desain. Bukti: docs/reports/F-06/ |
@@ -118,11 +118,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 73 | 72,5 |
-| `done` | 2 | 1,0 |
+| `done` | 5 | 4,5 |
 | `review` | 1 | 1,0 |
 | `in_progress` | 0 | 0 |
-| `blocked` | 0 | 0 |
-| `todo` | 70 | 70,5 |
+| `blocked` | 1 | 1,5 |
+| `todo` | 66 | 65,5 |
 
 ---
 ## Ringkasan per epik
