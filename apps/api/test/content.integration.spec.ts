@@ -1,9 +1,8 @@
 import type { HttpException } from '@nestjs/common';
-import { Kysely, PostgresDialect, sql } from 'kysely';
-import { Pool } from 'pg';
+import { Kysely, sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { DB } from '../src/infra/kysely';
+import { createDatabase, type DB } from '../src/infra/kysely';
 import { ContentService } from '../src/modules/learning';
 
 /**
@@ -32,9 +31,7 @@ const LESSON_A = '00000000-0000-4000-8000-00000000f001';
 const LESSON_B = '00000000-0000-4000-8000-00000000f002';
 
 beforeAll(async () => {
-  db = new Kysely<DB>({
-    dialect: new PostgresDialect({ pool: new Pool({ connectionString: url }) }),
-  });
+  db = createDatabase(url);
   content = new ContentService(db);
   try {
     await db.selectFrom('tracks').select('id').limit(1).execute();
