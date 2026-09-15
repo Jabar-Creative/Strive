@@ -50,3 +50,7 @@ yarn-error.log*
 
 # ── Volume data lokal (docker compose) ─────────────────────────────────────
 .data/
+
+# CATATAN: apps/api/src/infra/kysely/database.d.ts adalah hasil `pnpm db:types`
+# dan SENGAJA ikut di-commit — job CI `node` tidak punya PostgreSQL, jadi
+# typecheck di sana butuh berkas itu ada di repo. Regenerate, jangan diedit.
