@@ -112,7 +112,10 @@ strive-academy/
 │  └─ ui/                      token design system + primitif Shadcn
 ├─ db/
 │  ├─ migrations/              SQL murni, berurut, forward-only
-│  └─ seeds/                   track contoh, item store, pricing_config
+│  │                           001_init.sql = 31 tabel (F-04, selesai)
+│  └─ seeds/                   KOSONG — item F-11
+├─ scripts/                    perkakas lintas-OS, Node murni, nol dependensi
+│                              dev-web · dev-api · dev-ai · db-migrate · db-types
 ├─ docs/                       PRD.md · BACKLOG.md · DELIVERY-PLAN.md
 └─ infra/                      docker-compose dev, Dockerfile, CI
 ```
@@ -125,6 +128,9 @@ strive-academy/
 | `packages/ui/` | **Dev B saja** | Dev A memakai apa adanya; kalau kurang, minta |
 | `packages/contracts/` | Dev B menulis, Dev A memakai | Perubahan breaking = PR terpisah |
 | `apps/api/src/modules/learning/attempts.service.ts` | **Dev A saja** | Satu transaksi, satu pemilik |
+| `db/migrations/001_init.sql` | **tidak ada pemilik** | Sudah diterapkan. Forward-only: koreksi = migrasi baru, bukan edit |
+| `apps/api/src/infra/kysely/database.d.ts` | **hasil generate** | Jangan diedit tangan. `pnpm db:types`, lalu commit |
+| `scripts/` | Dev A | Perkakas lintas-OS. Dev B memakai; kalau kurang, minta |
 
 ---
 
@@ -132,11 +138,13 @@ strive-academy/
 
 ```bash
 pnpm i                    # pasang seluruh workspace
-docker compose up -d      # PostgreSQL, Redis, MinIO
-pnpm db:migrate           # jalankan migrasi
-pnpm db:types             # generate tipe Kysely dari skema
-pnpm seed                 # seed pricing_config, track contoh, item store
-pnpm seed:content <file>  # impor konten kartu dari CSV/JSON (idempoten)
+docker compose up -d      # PostgreSQL, Redis, MinIO (port 55432/56379/59000)
+cp .env.example .env      # opsional: stack jalan tanpa .env, semua punya default
+
+pnpm db:migrate           # forward-only, satu transaksi per file, checksum diperiksa
+pnpm db:types             # generate tipe Kysely DARI SKEMA SUNGGUHAN, lalu prettier
+pnpm seed                 # BELUM ADA — masih mencetak pesan
+pnpm seed:content <file>  # BELUM ADA — item F-11
 
 pnpm dev                  # web + api + ai bersamaan
 pnpm dev:web              # hanya Next.js
@@ -147,11 +155,18 @@ pnpm dev:ai               # FastAPI
 pnpm lint                 # ESLint seluruh workspace
 pnpm typecheck            # tsc --noEmit seluruh workspace
 pnpm test                 # Vitest unit + integrasi
-pnpm test:e2e             # Playwright
-pnpm build                # build seluruh workspace
+pnpm test:e2e             # BELUM ADA — item R-01
+pnpm build                # workspace TypeScript. services/ai lewat pytest
+
+cd services/ai && ./.venv/bin/python -m pytest        # macOS / Linux
+cd services/ai && ./.venv/Scripts/python -m pytest    # Windows
 ```
 
 Sebelum membuka PR: `pnpm lint && pnpm typecheck && pnpm test && pnpm build` harus hijau.
+
+**Port bisa ditimpa** lewat `.env`: `WEB_PORT`, `API_PORT`, `AI_SERVICE_PORT`.
+Port PostgreSQL/Redis/MinIO sengaja digeser dan **terikat ke `127.0.0.1`** — repo ini
+publik dan password dev-nya ada di dalamnya.
 
 ---
 
@@ -373,3 +388,48 @@ Daftar ini dikumpulkan dari analisis rancangan. Semuanya sudah pernah hampir ter
 | Skor ATS dari LLM | Skor berubah-ubah untuk dokumen yang sama | Penilaian deterministik, tanpa LLM |
 | Superadmin lolos semua rute | Panel admin jadi lubang keamanan | Guard memeriksa peran yang tepat, bukan "minimal" |
 | Reviewer bisa melihat penulis | Kolusi antar-teman | Identitas dibuang di serializer |
+
+### Yang benar-benar terjadi, W1 2026
+
+Delapan di bawah ini bukan analisis rancangan — semuanya **sudah terjadi di repo ini**
+dan memakan waktu nyata. Jangan diulang.
+
+| Jebakan | Akibat | Pencegahan |
+|---|---|---|
+| Sintaks shell POSIX di script `package.json` (`MODE=api ...`, `${PORT:-3000}`) | **Repo tidak bisa dipakai di Windows sama sekali** — ketiga layanan gagal. pnpm di Windows menjalankan script lewat `cmd.exe` | Pembungkus Node di `scripts/*.mjs`. Jangan pernah menaruh sintaks shell di `package.json` |
+| Tidak ada `.gitattributes` | Script ter-checkout CRLF di Windows, gagal dengan pesan menyesatkan `\r: command not found` | `* text=auto eol=lf` |
+| Vitest memakai transform esbuild | esbuild **tidak mengemisi `design:paramtypes`**, jadi modul yang kabel DI-nya salah tetap lulus test dan baru meledak saat dijalankan | `apps/api` memakai `unplugin-swc`. Jangan dikembalikan ke esbuild |
+| `incremental: true` di `apps/api/tsconfig.json` | `tsc --noEmit` (typecheck) menulis `.tsbuildinfo`, lalu `nest build` melapor **sukses tanpa menghasilkan `dist/` apa pun** | Sengaja tidak dipakai. Build API < 2 detik |
+| Menguji trigger `FOR EACH ROW` pada tabel **kosong** | `UPDATE` menyentuh nol baris, trigger tidak menyala, perintah keluar 0 — **test lulus karena salah** | Sisipkan baris sungguhan dulu, verifikasi jumlahnya, baru coba UPDATE/DELETE |
+| `pull_request: branches: [main]` di CI | PR bertumpuk **tidak mendapat status check sama sekali** — bukan merah, tapi kosong, dan tetap terlihat bisa di-merge | `pull_request:` tanpa filter |
+| Port compose ditulis `'55432:5432'` | Bind ke `0.0.0.0` — siapa pun satu Wi-Fi bisa menyambung ke DB dev, dan passwordnya ada di repo publik | Selalu `'127.0.0.1:55432:5432'` |
+| Nilai contoh yang bisa dipakai di `.env.example` | `AUTH_SECRET` contoh lolos ambang 32 byte, jadi pengecekan panjang naif meloloskannya | Kunci dan token **dikosongkan**, bukan diisi contoh |
+
+---
+
+## Perkakas yang sudah berdiri
+
+Jangan bangun ulang; baca dulu.
+
+| Perkakas | Di mana | Aturan yang dijaganya |
+|---|---|---|
+| Runner migrasi | `scripts/db-migrate.mjs` | Forward-only, satu transaksi per file. **Checksum diperiksa** — mengubah migrasi yang sudah jalan ditolak |
+| Codegen tipe | `scripts/db-types.mjs` | Tipe diturunkan dari skema sungguhan, lalu diformat prettier. **SQL sumber kebenaran, TypeScript turunannya** |
+| Pembungkus dev | `scripts/dev-{web,api,ai}.mjs` | Lintas-OS, `spawn` tanpa `shell: true`, port divalidasi angka |
+
+**Tiga hal yang mudah salah dipahami soal skema:**
+
+1. **`public` memuat tepat 31 tabel domain.** Ledger migrasi tinggal di skema
+   `strive_meta`, dan `pnpm db:types` mengecualikannya. CI menolak kalau jumlahnya bukan 31.
+2. **`apps/api/src/infra/kysely/database.d.ts` ikut di-commit** dan **tidak boleh diedit tangan**.
+   Job CI `node` tidak punya PostgreSQL, jadi typecheck butuh berkas itu ada di repo.
+   CI menjalankan ulang codegen lalu `git diff --exit-code` — ubah skema tanpa
+   `pnpm db:types` = PR merah.
+3. **Partisi `lesson_attempts` habis 2027-03-01.** Insert di luar rentang **gagal**, bukan
+   jatuh ke partisi default. Job bulanan pembuat partisi belum punya item di backlog.
+
+**Satu penyimpangan dari PRD §9 yang menunggu keputusan manusia:** `peer_reviews` tidak
+punya foreign key ke `lesson_attempts`. PostgreSQL mewajibkan FK menunjuk seluruh primary
+key, dan PK-nya `(id, attempt_date)` karena terpartisi. Menambah kolom `attempt_date`
+berarti menambah kolom di luar PRD §9. Integritasnya ditegakkan di service sampai
+diputuskan.
