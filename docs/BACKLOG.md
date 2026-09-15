@@ -43,7 +43,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `blocked` | — | 2026-09-15 | TERBLOKIR: butuh domain + akun cloud (belum ada pemiliknya). Memilih penyedia = vendor di luar PRD §12 → keputusan manusia. Keputusan 2 & 5 dari PR #3 sudah dikerjakan terpisah. |
 | `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
-| `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `todo` | — | — | — |
+| `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `review` | `a551052` | 2026-09-15 | AC terbukti di browser: /_specimen 200, token berganti di mode gelap, 375px tanpa scroll horizontal, konsol bersih. TEMUAN: ink-500 mode terang 4,14:1 di bawah AA, perlu keputusan desain. Bukti: docs/reports/F-06/ |
 | `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `todo` | — | — | — |
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `todo` | — | — | — |
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `todo` | — | — | — |
@@ -119,10 +119,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 73 | 72,5 |
 | `done` | 5 | 4,5 |
-| `review` | 0 | 0 |
+| `review` | 1 | 1,0 |
 | `in_progress` | 0 | 0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 67 | 66,5 |
+| `todo` | 66 | 65,5 |
 
 ---
 ## Ringkasan per epik
