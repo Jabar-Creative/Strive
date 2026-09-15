@@ -1,0 +1,61 @@
+# Konteks build Docker.
+#
+# Yang paling penting di file ini bukan soal ukuran image, tapi soal rahasia:
+# `COPY packages packages` di infra/Dockerfile.api menyapu seluruh folder itu.
+# Hari ini tidak ada rahasia di sana, tapi file .env yang suatu saat ditaruh di
+# bawah packages/ akan ikut masuk image tanpa ada yang menyadarinya.
+# Satu file ini menutupnya permanen.
+
+# ── Rahasia — .env.example tetap boleh, isinya memang contoh ──────────────
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+
+# ── Dependensi & hasil build (dibangun ulang di dalam image) ──────────────
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+build
+**/build
+*.tsbuildinfo
+.turbo
+
+# ── Python ───────────────────────────────────────────────────────────────
+.venv
+**/.venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+**/.pytest_cache
+
+# ── Git & CI ─────────────────────────────────────────────────────────────
+.git
+.gitignore
+.github
+.husky
+
+# ── Test & laporan ───────────────────────────────────────────────────────
+coverage
+playwright-report
+test-results
+
+# ── Dokumen: tidak dipakai runtime mana pun ──────────────────────────────
+docs
+*.md
+!README.md
+
+# ── Lokal ────────────────────────────────────────────────────────────────
+.DS_Store
+*.log
+.vscode
+.idea
+.data
