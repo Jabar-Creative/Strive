@@ -143,6 +143,42 @@ Hanya setelah langkah 7 lengkap:
 
 Perbarui juga tabel **Ringkasan progres** di bawah papan.
 
+#### Ringkasan progres **dihitung**, tidak ditulis tangan
+
+`docs/BACKLOG.md` adalah satu file, jadi dua item yang dikerjakan di branch berbeda
+pasti bertabrakan di tabel ini. **Bahayanya bukan konfliknya, tapi resolusinya:**
+memilih salah satu sisi menghasilkan file yang ter-merge bersih, lulus CI, dan
+angkanya salah — tanpa ada yang menyadarinya.
+
+Sudah terjadi **dua kali** (PR #4 dan PR #19). Kedua kalinya, **tidak ada sisi yang benar**.
+
+Selesaikan baris itemnya dulu, lalu hitung ulang seluruh ringkasan dari baris papan:
+
+```bash
+python3 - <<'EOF'
+import pathlib, re, collections
+p = pathlib.Path('docs/BACKLOG.md'); s = p.read_text()
+assert '<<<<<<<' not in s, 'selesaikan dulu konflik baris itemnya'
+n = collections.Counter(); hari = collections.Counter(); total = 0.0
+for l in s.splitlines():
+    if not re.match(r'^\| `[A-Z]+-\d+` \|', l): continue
+    c = [x.strip() for x in l.split('|')[1:-1]]
+    if len(c) != 9: continue
+    st = c[5].strip('`'); d = float(c[4].replace(',', '.'))
+    n[st] += 1; hari[st] += d; total += d
+f = lambda x: f'{x:.1f}'.replace('.', ',')
+blok = ['| | Jumlah | Dev-hari |', '|---|---:|---:|', f'| Total | {sum(n.values())} | {f(total)} |']
+for st in ['done', 'review', 'in_progress', 'blocked', 'todo']:
+    blok.append(f'| `{st}` | {n[st]} | {f(hari[st])} |')
+awal = s.index('| | Jumlah | Dev-hari |'); akhir = s.index('\n\n', awal)
+p.write_text(s[:awal] + '\n'.join(blok) + s[akhir:])
+print('\n'.join(blok))
+EOF
+```
+
+Total harus tetap **74 item / 73,0 dev-hari** — kalau berubah, ada baris item yang
+ikut hilang atau terduplikasi saat merge.
+
 Aturan penulisan papan:
 
 - **Hanya ubah baris item yang kamu kerjakan** (plus koreksi dari langkah 2)
@@ -156,6 +192,26 @@ Aturan penulisan papan:
 git add -A
 git commit -m "<ID>: <perubahan singkat>"
 ```
+
+#### PR bertumpuk: **jangan** `--delete-branch`
+
+Kalau PR-mu memakai `--base` selain `main`, ia bagian dari sebuah stack.
+
+Menghapus branch dasar **menutup otomatis** PR yang menargetkannya, dan **PR yang
+sudah tertutup tidak bisa dibuka ulang maupun diubah base-nya.** Sudah terjadi:
+menghapus `f-04-migrasi-init` menutup PR #6, yang lalu butuh PR pengganti #11 dan
+kehilangan seluruh riwayat diskusinya.
+
+```bash
+gh pr merge <n> --squash                  # BENAR untuk PR bertumpuk
+gh pr merge <n> --squash --delete-branch   # SALAH — menutup PR di atasnya
+```
+
+Merge dari **bawah ke atas**, hapus branch-nya belakangan setelah seluruh stack masuk.
+
+Lebih baik lagi: **jangan bikin stack.** Aturan keras 1 ("satu sesi, satu item") sudah
+mencegahnya kalau dipatuhi — stack muncul justru ketika sesi berikutnya jalan sebelum
+PR sebelumnya ter-review.
 
 Laporan akhir sesi, wajib memuat empat bagian:
 
@@ -191,6 +247,8 @@ BERIKUTNYA
 | 8 | **Jangan `git push --force`, jangan rebase `main`** | — |
 | 9 | **Jangan commit secret, `.env`, atau kredensial** | — |
 | 10 | **Jangan ubah estimasi, ID, atau urutan minggu di backlog** | Itu keputusan manusia, bukan agent |
+| 11 | **Konflik di tabel Ringkasan progres TIDAK PERNAH diselesaikan dengan memilih satu sisi** | Memilih satu sisi menghasilkan file yang ter-merge bersih, lulus CI, dan **angkanya salah** — lihat langkah 8 |
+| 12 | **PR bertumpuk: jangan `--delete-branch` sampai seluruh stack ter-merge** | Menghapus branch dasar **menutup otomatis** PR di atasnya, dan PR tertutup tidak bisa dibuka ulang |
 
 ---
 

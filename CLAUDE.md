@@ -336,7 +336,16 @@ Jangan pernah parsing `message` di client. Selalu cabang pada `code`.
 
 Item belum selesai sampai **semua** baris ini benar:
 
-- [ ] Ter-merge ke `main` dan ter-deploy ke staging
+> **DILONGGARKAN SEMENTARA — 2026-09-15.** Baris "ter-deploy ke staging" **dinonaktifkan**
+> atas keputusan Dev A (isu #29). `F-05` ditunda sampai Dev A mengumumkan staging siap;
+> sampai saat itu, tidak ada staging untuk di-deploy, dan DoD yang mensyaratkannya membuat
+> **nol item bisa `done`** — termasuk item yang sudah ter-merge dan ter-review.
+>
+> **Saat Dev A bilang "staging ready": kembalikan baris pertama menjadi**
+> `Ter-merge ke `main` **dan ter-deploy ke staging**`, hapus blok catatan ini, lalu
+> periksa ulang item yang sudah `done` — sebagian mungkin belum pernah menyentuh staging.
+
+- [ ] Ter-merge ke `main` ~~dan ter-deploy ke staging~~ *(staging ditunda — lihat catatan di atas)*
 - [ ] Di-review orang satunya — setiap PR punya reviewer, tanpa pengecualian
 - [ ] Acceptance criteria di `docs/BACKLOG.md` **terbukti**, bukan diasumsikan
 - [ ] Ada test untuk jalur yang bisa gagal: uang, idempotensi, otorisasi, batas tanggal
