@@ -65,7 +65,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `L-05` | Layar daftar track & progres | B | W3 | 1 | `todo` | — | — | — |
 | `S-03` | UI Hub + streak chip 4 status + quest harian | B | W3 | 1,5 | `todo` | — | — | — |
 | `C-04` | Job rekonsiliasi harian + alert selisih | A | W4 | 0,5 | `todo` | — | — | — |
-| `Q-01` | Pembentukan squad otomatis (8-12 anggota) + gabun… | A | W4 | 0,5 | `todo` | — | — | — |
+| `Q-01` | Pembentukan squad otomatis (8-12 anggota) + gabun… | A | W4 | 0,5 | `review` | — | 2026-09-15 | `8aa37e6` |
 | `Q-02` | LeaderboardService: ZSET, rotasi kunci musim, reb… | A | W4 | 1,5 | `todo` | — | — | — |
 | `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINC… | A | W4 | 1 | `todo` | — | — | — |
 | `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `todo` | — | — | — |
@@ -119,10 +119,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 73 | 72,5 |
 | `done` | 5 | 4,5 |
-| `review` | 5 | 6,5 |
-| `in_progress` | 0 | 0 |
+| `review` | 6 | 7,0 |
+| `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 62 | 60,0 |
+| `todo` | 61 | 59,5 |
 
 ---
 ## Ringkasan per epik

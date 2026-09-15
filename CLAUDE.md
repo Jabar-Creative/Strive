@@ -403,6 +403,7 @@ dan memakan waktu nyata. Jangan diulang.
 | Menguji trigger `FOR EACH ROW` pada tabel **kosong** | `UPDATE` menyentuh nol baris, trigger tidak menyala, perintah keluar 0 — **test lulus karena salah** | Sisipkan baris sungguhan dulu, verifikasi jumlahnya, baru coba UPDATE/DELETE |
 | `pull_request: branches: [main]` di CI | PR bertumpuk **tidak mendapat status check sama sekali** — bukan merah, tapi kosong, dan tetap terlihat bisa di-merge | `pull_request:` tanpa filter |
 | Port compose ditulis `'55432:5432'` | Bind ke `0.0.0.0` — siapa pun satu Wi-Fi bisa menyambung ke DB dev, dan passwordnya ada di repo publik | Selalu `'127.0.0.1:55432:5432'` |
+| Menembak N operasi sekaligus lalu menyebutnya "test konkurensi" | Tiap koneksi baru berdiri pada waktu berbeda, jadi transaksinya praktis **berurutan** — test AC-2 squad lulus bahkan setelah `SELECT … FOR UPDATE` dicabut dari service | Paksa tumpang tindihnya: transaksi lain menahan kunci barisnya, para penantang menumpuk, baru dilepas bersamaan. Lalu **cabut penjaganya dan pastikan test merah** |
 | Nilai contoh yang bisa dipakai di `.env.example` | `AUTH_SECRET` contoh lolos ambang 32 byte, jadi pengecekan panjang naif meloloskannya | Kunci dan token **dikosongkan**, bukan diisi contoh |
 
 ---
@@ -427,6 +428,14 @@ Jangan bangun ulang; baca dulu.
    `pnpm db:types` = PR merah.
 3. **Partisi `lesson_attempts` habis 2027-03-01.** Insert di luar rentang **gagal**, bukan
    jatuh ke partisi default. Job bulanan pembuat partisi belum punya item di backlog.
+
+**Dua batas squad ditegakkan di tingkat yang berbeda — jangan disamakan.**
+`squad_members_one_active` adalah partial unique index, jadi "satu squad aktif per
+pengguna" aman dari jalur mana pun. Sebaliknya `squads_max_members_range` hanya
+membatasi **nilai kolom** `max_members` ke 8–12, **bukan jumlah anggota sungguhan** —
+PostgreSQL tidak bisa menyatakan "jumlah baris terkait <= nilai kolom" sebagai
+constraint sederhana. Batas 12 anggota hanya dijaga kunci baris di `SquadService.join()`.
+Kode lain yang menulis `squad_members` langsung membocorkannya tanpa suara.
 
 **Satu penyimpangan dari PRD §9 yang menunggu keputusan manusia:** `peer_reviews` tidak
 punya foreign key ke `lesson_attempts`. PostgreSQL mewajibkan FK menunjuk seluruh primary
