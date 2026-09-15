@@ -1,7 +1,7 @@
 # TASKS — Dev A
 
 > **Peran:** Core transaksional & integrasi  
-> **Beban:** 37,25 dev-hari terhadap 34 tersedia  
+> **Beban:** 37,75 dev-hari terhadap 34 tersedia  
 > **Antrean kerja.** Kerjakan dari atas ke bawah. Jangan melompat kecuali dependensi memaksa.
 
 Status ada di papan status `BACKLOG.md`, bukan di file ini. File ini adalah **urutan**, bukan **keadaan**.
@@ -85,7 +85,7 @@ Status ada di papan status `BACKLOG.md`, bukan di file ini. File ini adalah **ur
 | 3 | `SA-01` | View SQL untuk transaksi & audit + koneksi Retool read-only | 0,5 | `F-04` |
 | 4 | `SA-02` | PATCH /admin/pricing — terbit versi baru, bukan menimpa | 0,5 | `P-01` _(Dev B)_ |
 
-## Minggu 8 — 5 hari
+## Minggu 8 — 5,5 hari  ⚠ **lewat batas 5 hari**
 
 | # | ID | Item | Hari | Butuh |
 |---:|---|---|---:|---|
@@ -95,6 +95,7 @@ Status ada di papan status `BACKLOG.md`, bukan di file ini. File ini adalah **ur
 | 4 | `R-05` | Cadangan perbaikan bug · **bersama** | 1 | — |
 | 5 | `SA-03` | Endpoint /admin/integrations/health + biaya vendor harian | 0,5 | `AI-06` |
 | 6 | `SA-04` | Dasbor Retool: transaksi, harga, audit, health | 0,5 | `SA-01` |
+| 7 | `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm | 0,5 | `F-04` |
 
 ---
 
