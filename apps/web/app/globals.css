@@ -51,6 +51,93 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
   }
+
+  /*
+   * Palet Strive — docs/PRD.md §14.1. Nilai SALIN PERSIS dari tabel, tidak
+   * dihitung. Nama variabel = nama token (mis. `indigo-600`) supaya gampang
+   * ditelusuri balik ke PRD dan ke packages/ui/src/tokens/index.ts (sumber
+   * kebenaran versi TypeScript — kedua tempat WAJIB identik, lihat komentar
+   * di file itu).
+   *
+   * Mode gelap BUKAN inversi: setiap variabel di bawah `.dark` ditulis
+   * dengan nilainya sendiri. Tidak ada filter, tidak ada color-mix().
+   *
+   * Sengaja TIDAK dipetakan ke slot semantik shadcn (--primary, --ring,
+   * --destructive, dst di atas) pada sesi ini. Memutuskan mis. "--ring pakai
+   * indigo-600" atau "--destructive pakai rose-500" adalah keputusan desain
+   * komponen yang termasuk lingkup F-07 (Dev B, sesi terpisah) — F-06 hanya
+   * menyediakan tokennya, bukan memasangnya ke komponen.
+   */
+  :root {
+    --color-indigo-600: #4f3de8;
+    --color-flame-500: #ff6b35;
+    --color-coin-500: #ffc24b;
+    --color-mint-500: #14b88a;
+    --color-rose-500: #e5484d;
+    --color-ink-900: #14122b;
+    --color-ink-500: #7c74a3;
+    --color-paper: #fbfafe;
+    --color-surface: #ffffff;
+    --color-line: #e4e0f3;
+  }
+
+  .dark {
+    --color-indigo-600: #8477ff;
+    --color-flame-500: #ff7a45;
+    --color-coin-500: #ffc94f;
+    --color-mint-500: #2fcb9c;
+    --color-rose-500: #f26b70;
+    --color-ink-900: #f0edff;
+    --color-ink-500: #8a82b4;
+    --color-paper: #0d0b1a;
+    --color-surface: #161231;
+    --color-line: #2a2452;
+  }
+
+  /*
+   * Dua profil kepadatan — docs/PRD.md §14.3. Diterapkan lewat DATA-ATTRIBUTE
+   * (`data-density`), bukan class, karena classlist elemen sudah dipakai
+   * untuk hal lain (`.dark` = mode warna, class Tailwind = utility) — memakai
+   * data-attribute untuk kepadatan menjaga ketiga sumbu ini (warna, utility,
+   * kepadatan) tidak saling tabrakan secara sintaks. `data-density` dipasang
+   * pada elemen <main> di app/(student)/layout.tsx dan app/(console)/layout.tsx.
+   *
+   * `:root` di bawah adalah FALLBACK untuk halaman di luar kedua layout itu
+   * (mis. (auth), halaman peta rute `/`) — dipilih memakai nilai profil
+   * Student karena layar publik itu bernada merek yang bermain, bukan
+   * konsol padat.
+   *
+   * `--t-base` dan `--t-cel` adalah shorthand siap pakai di CSS murni
+   * (`transition: transform var(--t-base)`); pecahannya (`-duration`, `-ease`)
+   * dipetakan terpisah ke tailwind.config.ts karena utility Tailwind
+   * (`transitionDuration`, `transitionTimingFunction`) butuh nilai tunggal,
+   * tidak bisa menerima shorthand gabungan.
+   */
+  :root {
+    --r-card: 18px;
+    --r-ctl: 999px;
+    --t-base-duration: 320ms;
+    --t-base-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --t-base: var(--t-base-duration) var(--t-base-ease);
+    --t-cel-duration: 640ms;
+    --t-cel: var(--t-cel-duration) var(--t-base-ease);
+  }
+
+  [data-density='console'] {
+    --r-card: 8px;
+    --r-ctl: 6px;
+    --t-base-duration: 160ms;
+    --t-base-ease: ease-out;
+    --t-base: var(--t-base-duration) var(--t-base-ease);
+    /*
+     * Console TIDAK PERNAH punya animasi perayaan (PRD §14.3: confetti koin,
+     * api streak — keduanya elemen Student). Durasi dipatok 0 alih-alih
+     * menghapus variabelnya, supaya kode yang memakai var(--t-cel) tidak
+     * perlu percabangan khusus per profil; efeknya otomatis tidak terlihat.
+     */
+    --t-cel-duration: 0ms;
+    --t-cel: 0ms;
+  }
 }
 
 @layer base {
@@ -59,5 +146,30 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/*
+ * Aturan gerak — docs/PRD.md §14.3: seluruh durasi jadi 0 saat
+ * prefers-reduced-motion. Ini menutup transisi/animasi CSS murni lewat
+ * variabel di atas DAN lewat properti transition/animation apa pun di
+ * seluruh halaman. Framer Motion TIDAK otomatis ikut aturan ini — komponen
+ * yang memakainya (F-07) wajib memanggil `useReducedMotion()` sendiri.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-base-duration: 0ms;
+    --t-base: 0ms;
+    --t-cel-duration: 0ms;
+    --t-cel: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

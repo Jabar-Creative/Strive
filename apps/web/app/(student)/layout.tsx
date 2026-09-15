@@ -13,11 +13,14 @@ const LINKS = [
 
 /**
  * Layout (student) — profil kepadatan "Student" (docs/PRD.md §14.3).
+ * `data-density="student"` mengaktifkan `--r-card`/`--r-ctl`/`--t-base`/
+ * `--t-cel` versi Student dari app/globals.css untuk seluruh turunan
+ * elemen ini (lihat komentar profil kepadatan di globals.css).
  * Proteksi rute (student vs console) adalah item A-04 milik Dev B.
  */
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main>
+    <main data-density="student">
       <Nav links={LINKS} />
       {children}
     </main>
