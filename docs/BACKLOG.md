@@ -58,7 +58,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `todo` | — | — | — |
 | `C-02` | GET /wallet + GET /wallet/ledger (cursor-paginated) | A | W3 | 0,5 | `todo` | — | — | — |
 | `L-03` | POST /attempts: attempt + streak + koin + outbox … | A | W3 | 2 | `todo` | — | — | — |
-| `S-01` | StreakService timezone-aware + kredit freeze | A | W3 | 1,5 | `in_progress` | — | 2026-09-15 | — |
+| `S-01` | StreakService timezone-aware + kredit freeze | A | W3 | 1,5 | `review` | `474a8ca` | 2026-09-15 | 13 test lintas 3 zona waktu, kelima test WAJIB hijau, stabil 4x berturut. Menemukan bug parser DATE driver pg. Menunggu review @kemalzaki. |
 | `S-02` | GET /hub agregat: streak, quest, peringkat, saldo… | A | W3 | 1 | `todo` | — | — | — |
 | `AI-01` | FastAPI skeleton + auth service-to-service + conf… | B | W3 | 1 | `todo` | — | — | — |
 | `C-03` | UI dompet: saldo, riwayat, penjelasan tiap jenis … | B | W3 | 1 | `todo` | — | — | — |
@@ -119,10 +119,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 73 | 72,5 |
 | `done` | 5 | 4,5 |
-| `review` | 4 | 5,0 |
+| `review` | 5 | 6,5 |
 | `in_progress` | 0 | 0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 63 | 61,5 |
+| `todo` | 62 | 60,0 |
 
 ---
 ## Ringkasan per epik
