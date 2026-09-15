@@ -77,10 +77,19 @@ export class CoinLedgerService {
 
     const balanceAfter = user.coin_balance + amount;
 
-    // CO-6: saldo tidak boleh negatif, KECUALI koreksi `adjust` oleh Superadmin.
-    // Database juga menolaknya lewat CHECK; ini lapis pertama supaya pesannya
-    // berguna bagi pengguna, bukan pelanggaran constraint mentah.
-    if (balanceAfter < 0 && entryType !== 'adjust') {
+    // CO-6: saldo TIDAK PERNAH negatif — termasuk untuk `adjust`.
+    //
+    // Isu #27: teks CO-6 versi lama menjanjikan pengecualian untuk koreksi
+    // Superadmin, padahal CHECK `users_coin_balance_non_negative` tidak punya
+    // pengecualian apa pun. Jadi `adjust` yang melewati saldo lolos di sini
+    // lalu ditolak database dengan pelanggaran constraint mentah — separuh
+    // CO-6 tidak pernah bisa dijalankan, dan pemanggil tidak dapat petunjuk
+    // apa pun tentang apa yang salah.
+    //
+    // Diputuskan: saldo tidak pernah negatif, koreksi Superadmin dibatasi
+    // saldo yang tersedia. Kedua lapis sekarang sepakat; yang ini ada supaya
+    // pesannya berguna, bukan supaya aturannya berbeda.
+    if (balanceAfter < 0) {
       throw new InsufficientCoinsError(user.coin_balance, Math.abs(amount));
     }
 

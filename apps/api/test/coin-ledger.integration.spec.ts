@@ -161,26 +161,22 @@ describe('CoinLedgerService (database nyata)', () => {
     });
     expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(40);
 
-    await db
-      .transaction()
-      .execute((trx) =>
-        coins.release(trx, {
-          userId: USER_A,
-          refType: 'scan',
-          refId: scanId,
-          reason: 'vendor down',
-        }),
-      );
-    await db
-      .transaction()
-      .execute((trx) =>
-        coins.release(trx, {
-          userId: USER_A,
-          refType: 'scan',
-          refId: scanId,
-          reason: 'dipanggil lagi',
-        }),
-      );
+    await db.transaction().execute((trx) =>
+      coins.release(trx, {
+        userId: USER_A,
+        refType: 'scan',
+        refId: scanId,
+        reason: 'vendor down',
+      }),
+    );
+    await db.transaction().execute((trx) =>
+      coins.release(trx, {
+        userId: USER_A,
+        refType: 'scan',
+        refId: scanId,
+        reason: 'dipanggil lagi',
+      }),
+    );
 
     const releases = await db
       .selectFrom('coin_ledger')
@@ -198,26 +194,22 @@ describe('CoinLedgerService (database nyata)', () => {
     if (!reachable) return;
     const key = 'idem-abc-123';
 
-    const a = await db
-      .transaction()
-      .execute((trx) =>
-        coins.write(trx, {
-          userId: USER_A,
-          entryType: 'earn_lesson',
-          amount: 20,
-          idempotencyKey: key,
-        }),
-      );
-    const b = await db
-      .transaction()
-      .execute((trx) =>
-        coins.write(trx, {
-          userId: USER_A,
-          entryType: 'earn_lesson',
-          amount: 20,
-          idempotencyKey: key,
-        }),
-      );
+    const a = await db.transaction().execute((trx) =>
+      coins.write(trx, {
+        userId: USER_A,
+        entryType: 'earn_lesson',
+        amount: 20,
+        idempotencyKey: key,
+      }),
+    );
+    const b = await db.transaction().execute((trx) =>
+      coins.write(trx, {
+        userId: USER_A,
+        entryType: 'earn_lesson',
+        amount: 20,
+        idempotencyKey: key,
+      }),
+    );
 
     expect(b.id).toBe(a.id);
     const rows = await db
@@ -230,7 +222,7 @@ describe('CoinLedgerService (database nyata)', () => {
   });
 
   // ── WAJIB 5 ───────────────────────────────────────────────────────────
-  it('WAJIB-5: saldo tidak boleh negatif, kecuali entry_type=adjust', async () => {
+  it('WAJIB-5: saldo TIDAK PERNAH negatif — termasuk untuk adjust (CO-6)', async () => {
     if (!reachable) return;
 
     await expect(
@@ -244,24 +236,25 @@ describe('CoinLedgerService (database nyata)', () => {
     // Penolakan terjadi SEBELUM apa pun ditulis — saldo tidak bergerak.
     expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(100);
 
-    // `adjust` TIDAK diblokir lapis service: koreksi tepat ke nol lolos,
-    // sedangkan `spend_ai` dengan jumlah sama tadi ditolak.
+    // Koreksi Superadmin tepat sampai nol: lolos.
     await db
       .transaction()
       .execute((trx) => coins.write(trx, { userId: USER_A, entryType: 'adjust', amount: -100 }));
     expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(0);
 
-    // TEMUAN, bukan cacat service: `adjust` tetap TIDAK bisa membuat saldo
-    // negatif, karena CHECK `users_coin_balance_non_negative` tidak punya
-    // pengecualian untuk jenis entri apa pun. Artinya pengecualian di CO-6
-    // ("kecuali entry_type='adjust'") hanya berlaku di lapis service —
-    // cache-nya tetap dijaga database. Diuji supaya kalau suatu saat CHECK-nya
-    // dilonggarkan, test ini yang memberitahu.
+    // Koreksi yang melewati saldo tersedia: ditolak SERVICE dengan
+    // InsufficientCoinsError, bukan oleh pelanggaran constraint mentah.
+    //
+    // Isu #27: CO-6 versi lama menjanjikan pengecualian saldo negatif untuk
+    // `adjust`, padahal CHECK `users_coin_balance_non_negative` tidak punya
+    // pengecualian apa pun — setengah CO-6 tidak pernah bisa dijalankan, dan
+    // yang sampai ke pemanggil adalah error constraint yang tidak memberitahu
+    // apa-apa. Sekarang kedua lapis sepakat, dan pesannya berguna.
     await expect(
       db
         .transaction()
         .execute((trx) => coins.write(trx, { userId: USER_A, entryType: 'adjust', amount: -1 })),
-    ).rejects.toThrow(/users_coin_balance_non_negative/);
+    ).rejects.toBeInstanceOf(InsufficientCoinsError);
   });
 
   // ── Tambahan: semantik settle ─────────────────────────────────────────
