@@ -46,7 +46,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `todo` | — | — | — |
 | `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `todo` | — | — | — |
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `todo` | — | — | — |
-| `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `todo` | — | — | — |
+| `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `in_progress` | — | 2026-09-15 | — |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `todo` | — | — | — |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 0,5 | `todo` | — | — | — |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
@@ -120,9 +120,9 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | Total | 73 | 72,5 |
 | `done` | 5 | 4,5 |
 | `review` | 0 | 0 |
-| `in_progress` | 0 | 0 |
+| `in_progress` | 1 | 0,5 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 67 | 66,5 |
+| `todo` | 66 | 66,0 |
 
 ---
 ## Ringkasan per epik
