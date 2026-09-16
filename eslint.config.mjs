@@ -85,7 +85,47 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['../*/*', '../../*/*'],
+              // Nama modul DISEBUT SATU PER SATU, bukan pola `../*/*`.
+              //
+              // Alasannya ketahuan dari kegagalan nyata: ESLint mencocokkan
+              // pola ini dengan semantik gitignore, yang cocok di posisi MANA
+              // PUN — jadi `../*/*` ikut menolak `../../infra/kysely`, padahal
+              // itu BARREL infra dan justru cara yang benar. Versi pertama
+              // aturan ini memblokir impor yang benar, ketahuan saat C-01
+              // mengimpor tipe database.
+              //
+              // Daftar eksplisit tidak punya masalah itu: `infra`, `common`,
+              // `realtime`, dan `workers` bukan nama modul, jadi barrel-nya
+              // lolos sementara menembus ke dalam modul tetap ditolak.
+              //
+              // HARGA YANG DIBAYAR: menambah modul baru berarti menambah satu
+              // baris di sini. Itu disengaja — menambah modul adalah tindakan
+              // yang pantas terasa.
+              group: [
+                '../admin/*',
+                '../auth/*',
+                '../career/*',
+                '../health/*',
+                '../league/*',
+                '../learning/*',
+                '../mastery/*',
+                '../mentor/*',
+                '../notification/*',
+                '../payment/*',
+                '../scan/*',
+                '../squad/*',
+                '../store/*',
+                '../streak/*',
+                '../users/*',
+                '../wallet/*',
+                // Infra dan common bukan modul, tapi menembus ke DALAM
+                // barrel-nya tetap salah. Segmennya tetap (`infra`, `common`,
+                // dst) jadi pola ini tidak ikut menolak barrel-nya sendiri.
+                '../../infra/*/*',
+                '../../common/*/*',
+                '../../realtime/*/*',
+                '../../workers/*/*',
+              ],
               message:
                 'Batas modul: impor dari modul lain hanya lewat barrel file (contoh: `../wallet`), bukan file di dalamnya.',
             },
