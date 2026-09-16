@@ -1,6 +1,12 @@
 # db/migrations
 
-**Kosong. Ini disengaja.** Migrasi pertama adalah item `F-04` di `docs/BACKLOG.md`.
+Tiga migrasi, forward-only:
+
+| Berkas                            | Isi                                                                     |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| `001_init.sql`                    | 31 tabel domain (`F-04`)                                                |
+| `002_squad_capacity_trigger.sql`  | Kapasitas squad ditegakkan database, bukan cuma service (isu #26)       |
+| `003_peer_reviews_attempt_fk.sql` | `peer_reviews.attempt_date` + FK majemuk ke `lesson_attempts` (isu #15) |
 
 ## Kepemilikan
 
