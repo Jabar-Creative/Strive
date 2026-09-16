@@ -370,6 +370,35 @@ Item belum selesai sampai **semua** baris ini benar:
 > **PR bertumpuk tidak perlu approval berlapis.** Approval di puncak stack berlaku untuk
 > seluruh isinya; jangan mengulang approval tiap lapis dibongkar.
 
+### Branch protection `main` — keadaan sebenarnya
+
+Setelan ini **tidak terlihat dari isi repo**, jadi ditulis di sini. Terakhir diubah 2026-09-16.
+
+| Setelan | Nilai | Artinya |
+|---|---|---|
+| Approval dibutuhkan | **1** | Hanya menggigit PR Dev B — Dev A admin dan `enforce_admins: false` |
+| `enforce_admins` | **false** | Dev A bisa merge tanpa approval. Itu yang membuat aturan keras 13 mungkin |
+| `dismiss_stale_reviews` | **false** | Diubah dari `true`. Approval **tidak lagi gugur** saat ada push baru |
+| `strict` status checks | **true** | Branch wajib mutakhir terhadap `main` sebelum merge |
+| Status check wajib | **3** | `lint · typecheck · test · build` · `ai service · test` · `migrasi kering` |
+| Force push & penghapusan `main` | **dilarang** | — |
+| `required_conversation_resolution` | **true** | Komentar review wajib diselesaikan |
+
+**Kenapa `dismiss_stale_reviews` dimatikan, dan apa yang hilang karenanya.**
+
+Dengan `true`, approval gugur setiap kali ada commit baru — termasuk ketika yang mendorong
+adalah **reviewer-nya sendiri** dan yang didorong **bukan kode**. Itu benar-benar terjadi:
+rekonsiliasi papan di PR #36 hanya menyentuh `docs/BACKLOG.md`, dan approval-nya tetap gugur.
+
+**Yang hilang nyata:** approval sekarang **bertahan melewati perubahan kode**. Seseorang
+bisa mendapat approval, lalu mendorong kode yang sama sekali berbeda, dan approval lama
+tetap berlaku. Di repo dua orang dengan satu arah review, itu berarti **PR Dev B bisa
+berubah isi setelah disetujui**.
+
+Yang menahannya tinggal dua: `strict` status checks (CI wajib hijau pada commit terakhir)
+dan kebiasaan melihat ulang diff sebelum merge. **Periksa `git log` PR Dev B sejak approval
+sebelum me-merge-nya** — tidak ada lagi yang melakukannya untukmu.
+
 ---
 
 ## Git
