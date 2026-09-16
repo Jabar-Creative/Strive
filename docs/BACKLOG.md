@@ -44,10 +44,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `blocked` | — | 2026-09-15 | DITUNDA atas keputusan Dev A (isu #29), bukan menggantung tanpa pemilik. Staging tidak diadakan sampai Dev A mengumumkan siap. DoD dilonggarkan sementara: baris "ter-deploy ke staging" dinonaktifkan (CLAUDE.md). Menahan 20 item hilir. |
 | `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
-| `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `review` | `a551052` | 2026-09-15 | AC terbukti di browser: /_specimen 200, token berganti di mode gelap, 375px tanpa scroll horizontal, konsol bersih. TEMUAN: ink-500 mode terang 4,14:1 di bawah AA, perlu keputusan desain. Bukti: docs/reports/F-06/ |
+| `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `done` | `b060129` | 2026-09-15 | PR #12 ter-merge & di-review. 10/10 token cocok PRD §14.1, kontras teks utama 15,68-18,24:1 di kedua mode. Bukti hidup: /_specimen. Menutup isu #16. |
 | `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `todo` | — | — | — |
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `todo` | — | — | — |
-| `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `review` | `438cc1b` | 2026-09-15 | Nol baris kode baru: stub sudah ada, yang kurang buktinya. 12/12 rute 200 + navigasi diklik. 14 stub divalidasi: nol referensi item/PRD menggantung. Bukti: docs/reports/F-09/ |
+| `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-15 | PR #13 ter-merge & di-review. 12/12 rute HTTP 200, nol referensi menggantung ke backlog/PRD. Nol baris kode baru — memang hasil yang benar. |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `todo` | — | — | — |
 | `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `todo` | — | — | Dibuat dari isu #14. PRD §9.3 mewajibkannya tapi tidak ada item-nya — terlewat saat perencanaan. Partisi habis 2027-03-01 dan insert di luar rentang GAGAL. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 0,5 | `todo` | — | — | Isu #18 DIPUTUSKAN: jalan 1 — pakai skema Better-Auth, PRD §9 menyesuaikan. AU-5 (deteksi pemakaian ulang token) DIKORBANKAN, dicatat sebagai risiko diterima. Tidak lagi blocked. |
@@ -120,8 +120,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 74 | 73,0 |
-| `done` | 5 | 4,5 |
-| `review` | 2 | 1,5 |
+| `done` | 7 | 6,0 |
+| `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
 | `todo` | 66 | 65,5 |

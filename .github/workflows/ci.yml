@@ -149,6 +149,43 @@ jobs:
           fi
           echo "trigger append-only menolak UPDATE dan DELETE pada baris sungguhan: benar"
 
+          # ── isu #26: kapasitas squad ditegakkan database, bukan cuma service ──
+          #
+          # Pelajaran yang sama seperti di atas: trigger yang cuma TERDAFTAR tidak
+          # membuktikan apa pun. Squad diisi sampai penuh dengan baris sungguhan,
+          # baru anggota berikutnya dicoba.
+          q "INSERT INTO league_seasons (id, code, starts_at, ends_at)
+             VALUES ('00000000-0000-4000-8000-0000000000d1','CI-W1', now(), now() + interval '7 days');" >/dev/null
+          q "INSERT INTO squads (id, name, season_id, max_members)
+             VALUES ('00000000-0000-4000-8000-0000000000d2','CI','00000000-0000-4000-8000-0000000000d1', 8);" >/dev/null
+          q "INSERT INTO users (id, email, password_hash, display_name)
+             SELECT ('00000000-0000-4000-8000-0000000000e' || i)::uuid, 'ci'||i||'@strive.test','x','CI'||i
+             FROM generate_series(1,9) i;" >/dev/null
+          q "INSERT INTO squad_members (squad_id, user_id)
+             SELECT '00000000-0000-4000-8000-0000000000d2', ('00000000-0000-4000-8000-0000000000e' || i)::uuid
+             FROM generate_series(1,8) i;" >/dev/null
+
+          anggota=$(q "SELECT count(*) FROM squad_members WHERE left_at IS NULL;")
+          test "$anggota" = "8" || { echo "::error::baris uji squad gagal disisipkan ($anggota), pemeriksaan tidak sahih"; exit 1; }
+
+          if q "INSERT INTO squad_members (squad_id, user_id)
+                VALUES ('00000000-0000-4000-8000-0000000000d2','00000000-0000-4000-8000-0000000000e9');" 2>/dev/null; then
+            echo "::error::anggota ke-9 TIDAK ditolak — trigger kapasitas squad tidak bekerja"; exit 1
+          fi
+          echo "trigger kapasitas squad menolak anggota melebihi max_members: benar"
+
+          # ── isu #15: FK peer_reviews -> lesson_attempts ──
+          fk=$(q "SELECT count(*) FROM pg_constraint WHERE conname='peer_reviews_attempt_fk';")
+          test "$fk" = "1" || { echo "::error::FK peer_reviews_attempt_fk tidak ada"; exit 1; }
+
+          if q "INSERT INTO peer_reviews (attempt_id, attempt_date, reviewer_id, author_id, rubric_scores)
+                VALUES (gen_random_uuid(), current_date,
+                        '00000000-0000-4000-8000-0000000000e1',
+                        '00000000-0000-4000-8000-0000000000e2', '{}');" 2>/dev/null; then
+            echo "::error::peer_review ke attempt fantom TIDAK ditolak — FK tidak bekerja"; exit 1
+          fi
+          echo "FK peer_reviews menolak attempt yang tidak ada: benar"
+
       # Kalau skema berubah tapi `pnpm db:types` lupa dijalankan, tipe di repo
       # jadi bohong dan tidak ada yang tahu sampai ada bug aneh di runtime.
       - name: Tipe Kysely harus sinkron dengan skema
