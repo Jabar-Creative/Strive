@@ -435,6 +435,7 @@ memakan waktu nyata. Jangan diulang.
 | Port compose ditulis `'55432:5432'` | Bind ke `0.0.0.0` — siapa pun satu Wi-Fi bisa menyambung ke DB dev, dan passwordnya ada di repo publik | Selalu `'127.0.0.1:55432:5432'` |
 | `date - $1` di SQL dengan parameter bind | PostgreSQL punya `date - int → date` DAN `date - date → int`; parameter tanpa tipe membuatnya memilih **yang kedua**, lalu menolak hasilnya dengan `column is of type date but expression is of type integer` | Selalu cast eksplisit: `- ${sql.lit(n)}::int` |
 | Berkas test integrasi yang mengandaikan database kosong | `formSquads` memang membaca SELURUH pengguna aktif tanpa squad — itu perilakunya sebagai job mingguan. Sisa pengguna dari tiga berkas test lain ikut terbentuk jadi squad, dan hitungannya meleset tepat +9 | Berkas yang menguji operasi berlingkup-global **wajib** `TRUNCATE` di `beforeEach`. Aman karena `fileParallelism: false` |
+| Menembak N operasi sekaligus lalu menyebutnya "test konkurensi" | Tiap koneksi baru berdiri pada waktu berbeda, jadi transaksinya praktis **berurutan** — test AC-2 squad lulus bahkan setelah `SELECT … FOR UPDATE` dicabut dari service | Paksa tumpang tindihnya: transaksi lain menahan kunci barisnya, para penantang menumpuk, baru dilepas bersamaan. Lalu **cabut penjaganya dan pastikan test merah** |
 | Nilai contoh yang bisa dipakai di `.env.example` | `AUTH_SECRET` contoh lolos ambang 32 byte, jadi pengecekan panjang naif meloloskannya | Kunci dan token **dikosongkan**, bukan diisi contoh |
 
 ---

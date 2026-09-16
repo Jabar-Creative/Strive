@@ -1,3 +1,4 @@
-// Barrel modul `squad`. SATU-SATUNYA pintu masuk dari modul lain —
-// aturan lint `no-restricted-imports` menolak impor menembus ke file di dalam.
+// Barrel modul `squad`. SATU-SATUNYA pintu masuk dari modul lain.
 export * from './squad.module';
+export * from './squad.service';
+export * from './squad.types';
