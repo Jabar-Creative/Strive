@@ -337,13 +337,38 @@ Jangan pernah parsing `message` di client. Selalu cabang pada `code`.
 
 Item belum selesai sampai **semua** baris ini benar:
 
-- [ ] Ter-merge ke `main` dan ter-deploy ke staging
-- [ ] Di-review orang satunya — setiap PR punya reviewer, tanpa pengecualian
+> **DILONGGARKAN SEMENTARA — 2026-09-15.** Baris "ter-deploy ke staging" **dinonaktifkan**
+> atas keputusan Dev A (isu #29). `F-05` ditunda sampai Dev A mengumumkan staging siap;
+> sampai saat itu, tidak ada staging untuk di-deploy, dan DoD yang mensyaratkannya membuat
+> **nol item bisa `done`** — termasuk item yang sudah ter-merge dan ter-review.
+>
+> **Saat Dev A bilang "staging ready": kembalikan baris pertama menjadi**
+> `Ter-merge ke `main` **dan ter-deploy ke staging**`, hapus blok catatan ini, lalu
+> periksa ulang item yang sudah `done` — sebagian mungkin belum pernah menyentuh staging.
+
+- [ ] Ter-merge ke `main` ~~dan ter-deploy ke staging~~ *(staging ditunda — lihat catatan di atas)*
+- [ ] **PR dari Dev B** di-review Dev A. **PR dari Dev A tidak butuh reviewer** — Dev A pemilik kode dan pemutus (keputusan Dev A, 2026-09-16, isu #34)
 - [ ] Acceptance criteria di `docs/BACKLOG.md` **terbukti**, bukan diasumsikan
 - [ ] Ada test untuk jalur yang bisa gagal: uang, idempotensi, otorisasi, batas tanggal
 - [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm build` hijau
 - [ ] Tidak menambah peringatan TypeScript atau lint baru
 - [ ] Kalau menyentuh uang atau skema: ada catatan di PR tentang apa yang bisa rusak
+
+> **Kenapa reviewnya satu arah, dan apa yang hilang karenanya.**
+>
+> Proyek ini dua orang. Aturan "setiap PR punya reviewer" berarti satu orang yang tidak
+> sempat review menghentikan seluruh pekerjaan berikutnya — bukan memperlambat,
+> **menghentikan**: delapan PR menumpuk dan nomor migrasi mengunci setiap item skema
+> di belakangnya. Dev A memutuskan arus lebih penting daripada simetri.
+>
+> **Yang hilang nyata:** PR Dev A tidak lagi punya mata kedua, termasuk yang menyentuh
+> `coin_ledger` dan migrasi. Gantinya cuma tiga: CI yang menolak lebih dulu, test
+> integrasi terhadap database sungguhan, dan kebiasaan membaca ulang PR sendiri secara
+> bermusuhan sebelum merge. Ketiganya lebih lemah daripada manusia kedua. Itu harga
+> yang sudah diketahui, bukan yang terlewat.
+>
+> **PR bertumpuk tidak perlu approval berlapis.** Approval di puncak stack berlaku untuk
+> seluruh isinya; jangan mengulang approval tiap lapis dibongkar.
 
 ---
 
