@@ -77,6 +77,20 @@ export default tseslint.config(
   // CLAUDE.md + PRD §8.2: batas antar-modul ditegakkan lewat lint, bukan lewat
   // jaringan. Impor lintas modul HANYA lewat barrel file (`../wallet`), tidak
   // pernah menembus ke file di dalamnya (`../wallet/coin-ledger.service`).
+  //
+  // Nama modul domain dienumerasi eksplisit (disinkronkan dengan
+  // apps/api/src/app.module.ts dan CLAUDE.md "Struktur repo") alih-alih
+  // wildcard `../*/*` generik. Wildcard generik ikut menangkap
+  // `../../infra/kysely` — infra BUKAN modul domain (di situlah
+  // `KyselyModule`, dan setiap modul yang butuh `@Inject(DATABASE)` wajib
+  // mengimpornya) — dan memblokir SEMUA modul yang butuh Kysely, bukan cuma
+  // satu modul. (Percobaan pertama pakai negasi gitignore-style
+  // `!../../infra/**` — TERNYATA tidak didukung `no-restricted-imports` versi
+  // ESLint di repo ini, jadi diganti enumerasi presisi.) Ditemukan &
+  // diperbaiki saat mengerjakan P-01 (modul `payment` butuh Kysely untuk
+  // pertama kalinya).
+  //
+  // Kalau menambah modul domain baru: tambahkan namanya juga di sini.
   {
     files: ['apps/api/src/modules/**/*.ts'],
     rules: {
@@ -85,7 +99,24 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['../*/*', '../../*/*'],
+              group: [
+                'admin',
+                'auth',
+                'career',
+                'health',
+                'league',
+                'learning',
+                'mastery',
+                'mentor',
+                'notification',
+                'payment',
+                'scan',
+                'squad',
+                'store',
+                'streak',
+                'users',
+                'wallet',
+              ].flatMap((name) => [`../${name}/*`, `../../${name}/*`]),
               message:
                 'Batas modul: impor dari modul lain hanya lewat barrel file (contoh: `../wallet`), bukan file di dalamnya.',
             },
