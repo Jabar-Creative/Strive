@@ -77,10 +77,19 @@ export class CoinLedgerService {
 
     const balanceAfter = user.coin_balance + amount;
 
-    // CO-6: saldo tidak boleh negatif, KECUALI koreksi `adjust` oleh Superadmin.
-    // Database juga menolaknya lewat CHECK; ini lapis pertama supaya pesannya
-    // berguna bagi pengguna, bukan pelanggaran constraint mentah.
-    if (balanceAfter < 0 && entryType !== 'adjust') {
+    // CO-6: saldo TIDAK PERNAH negatif — termasuk untuk `adjust`.
+    //
+    // Isu #27: teks CO-6 versi lama menjanjikan pengecualian untuk koreksi
+    // Superadmin, padahal CHECK `users_coin_balance_non_negative` tidak punya
+    // pengecualian apa pun. Jadi `adjust` yang melewati saldo lolos di sini
+    // lalu ditolak database dengan pelanggaran constraint mentah — separuh
+    // CO-6 tidak pernah bisa dijalankan, dan pemanggil tidak dapat petunjuk
+    // apa pun tentang apa yang salah.
+    //
+    // Diputuskan: saldo tidak pernah negatif, koreksi Superadmin dibatasi
+    // saldo yang tersedia. Kedua lapis sekarang sepakat; yang ini ada supaya
+    // pesannya berguna, bukan supaya aturannya berbeda.
+    if (balanceAfter < 0) {
       throw new InsufficientCoinsError(user.coin_balance, Math.abs(amount));
     }
 
@@ -241,6 +250,24 @@ export class CoinLedgerService {
    */
   async release(trx: Trx, params: ReleaseParams): Promise<LedgerEntry | null> {
     const { userId, refType, refId, reason, actorId } = params;
+
+    // Kunci baris users DULU, sebelum memeriksa apa pun.
+    //
+    // Urutannya menentukan, dan versi pertama salah: pemeriksaan `settled` ada
+    // SEBELUM kunci diambil (kuncinya baru muncul di dalam `write()`). Kalau
+    // `settle` commit di sela itu, release tidak melihatnya dan tetap
+    // mengembalikan koin — hold jadi permanen MENURUT AUDIT sekaligus kembali
+    // ke saldo. Itu koin gratis, dan jalurnya nyata: reaper melepas hold
+    // menggantung > 30 menit persis saat worker-nya menyetel hold yang sama.
+    //
+    // `settle` sudah mengunci lebih dulu; sekarang keduanya memakai titik
+    // serialisasi yang sama, jadi yang kalah melihat hasil yang menang.
+    await trx
+      .selectFrom('users')
+      .select('id')
+      .where('id', '=', userId)
+      .forUpdate()
+      .executeTakeFirst();
 
     const holdEntry = await trx
       .selectFrom('coin_ledger')

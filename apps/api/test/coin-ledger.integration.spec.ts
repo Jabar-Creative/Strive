@@ -24,6 +24,8 @@ const URL_DEV = 'postgres://strive:strive_dev_only@localhost:55432/strive';
 const url = process.env['DATABASE_URL_TEST'] ?? process.env['DATABASE_URL'] ?? URL_DEV;
 
 let db: Kysely<DB>;
+/** Koneksi kedua, pool terpisah — menahan kunci tanpa berebut koneksi. */
+let dbPenahan: Kysely<DB>;
 let coins: CoinLedgerService;
 let reachable = false;
 
@@ -61,6 +63,7 @@ async function seedUser(id: string, balance: number, email: string) {
 
 beforeAll(async () => {
   db = createDatabase(url);
+  dbPenahan = createDatabase(url);
   coins = new CoinLedgerService();
   try {
     await db.selectFrom('coin_ledger').select('id').limit(1).execute();
@@ -72,6 +75,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (db) await db.destroy();
+  if (dbPenahan) await dbPenahan.destroy();
 });
 
 beforeEach(async () => {
@@ -219,7 +223,7 @@ describe('CoinLedgerService (database nyata)', () => {
   });
 
   // ── WAJIB 5 ───────────────────────────────────────────────────────────
-  it('WAJIB-5: saldo tidak boleh negatif, kecuali entry_type=adjust', async () => {
+  it('WAJIB-5: saldo TIDAK PERNAH negatif — termasuk untuk adjust (CO-6)', async () => {
     if (!reachable) return;
 
     await expect(
@@ -233,24 +237,90 @@ describe('CoinLedgerService (database nyata)', () => {
     // Penolakan terjadi SEBELUM apa pun ditulis — saldo tidak bergerak.
     expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(100);
 
-    // `adjust` TIDAK diblokir lapis service: koreksi tepat ke nol lolos,
-    // sedangkan `spend_ai` dengan jumlah sama tadi ditolak.
+    // Koreksi Superadmin tepat sampai nol: lolos.
     await db
       .transaction()
       .execute((trx) => coins.write(trx, { userId: USER_A, entryType: 'adjust', amount: -100 }));
     expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(0);
 
-    // TEMUAN, bukan cacat service: `adjust` tetap TIDAK bisa membuat saldo
-    // negatif, karena CHECK `users_coin_balance_non_negative` tidak punya
-    // pengecualian untuk jenis entri apa pun. Artinya pengecualian di CO-6
-    // ("kecuali entry_type='adjust'") hanya berlaku di lapis service —
-    // cache-nya tetap dijaga database. Diuji supaya kalau suatu saat CHECK-nya
-    // dilonggarkan, test ini yang memberitahu.
+    // Koreksi yang melewati saldo tersedia: ditolak SERVICE dengan
+    // InsufficientCoinsError, bukan oleh pelanggaran constraint mentah.
+    //
+    // Isu #27: CO-6 versi lama menjanjikan pengecualian saldo negatif untuk
+    // `adjust`, padahal CHECK `users_coin_balance_non_negative` tidak punya
+    // pengecualian apa pun — setengah CO-6 tidak pernah bisa dijalankan, dan
+    // yang sampai ke pemanggil adalah error constraint yang tidak memberitahu
+    // apa-apa. Sekarang kedua lapis sepakat, dan pesannya berguna.
     await expect(
       db
         .transaction()
         .execute((trx) => coins.write(trx, { userId: USER_A, entryType: 'adjust', amount: -1 })),
-    ).rejects.toThrow(/users_coin_balance_non_negative/);
+    ).rejects.toBeInstanceOf(InsufficientCoinsError);
+  });
+
+  it('CO-7: settle dan release BERSAMAAN → koin tidak boleh permanen SEKALIGUS kembali', async () => {
+    if (!reachable) return;
+    const refId = '00000000-0000-4000-8000-00000000cafe';
+
+    await db
+      .transaction()
+      .execute((trx) => coins.hold(trx, { userId: USER_A, amount: 100, refType: 'scan', refId }));
+    expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(0);
+
+    // Skenario nyata, bukan karangan: reaper melepas hold yang menggantung
+    // > 30 menit persis saat worker-nya menyetel hold yang sama.
+    //
+    // Gerbang membuat interleaving-nya deterministik. `settle` mengantre kunci
+    // baris users lebih dulu; `release` datang belakangan dan melakukan
+    // pemeriksaan `settled`-nya SEKARANG — saat settle masih tertahan dan
+    // belum menulis apa pun ke audit_log.
+    let lepas!: () => void;
+    const gerbang = new Promise<void>((r) => {
+      lepas = r;
+    });
+    const penahan = dbPenahan.transaction().execute(async (trx) => {
+      await sql`SELECT id FROM users WHERE id = ${USER_A} FOR UPDATE`.execute(trx);
+      await gerbang;
+    });
+    await new Promise((r) => setTimeout(r, 150));
+
+    const pSettle = db
+      .transaction()
+      .execute((trx) => coins.settle(trx, { userId: USER_A, refType: 'scan', refId }));
+    await new Promise((r) => setTimeout(r, 150));
+
+    const pRelease = db
+      .transaction()
+      .execute((trx) =>
+        coins.release(trx, { userId: USER_A, refType: 'scan', refId, reason: 'reaper' }),
+      );
+    await new Promise((r) => setTimeout(r, 300));
+
+    lepas();
+    await penahan;
+    await Promise.allSettled([pSettle, pRelease]);
+
+    // Yang menentukan bukan berapa promise yang fulfilled, tapi UANGNYA.
+    // Kalau keduanya lolos: audit bilang potongan permanen, sementara
+    // koinnya sudah kembali ke saldo pengguna. Itu koin gratis.
+    const saldo = await db.transaction().execute((t) => coins.trueBalance(t, USER_A));
+    const disetel = await db
+      .selectFrom('audit_log')
+      .select('id')
+      .where('action', '=', 'coin.settle')
+      .where('subject_id', '=', refId)
+      .executeTakeFirst();
+    const dilepas = await db
+      .selectFrom('coin_ledger')
+      .select('id')
+      .where('ref_id', '=', refId)
+      .where('entry_type', '=', 'release')
+      .executeTakeFirst();
+
+    expect(
+      Boolean(disetel) && Boolean(dilepas),
+      `hold di-settle DAN di-release sekaligus; saldo ledger ${saldo}`,
+    ).toBe(false);
   });
 
   // ── Tambahan: semantik settle ─────────────────────────────────────────
