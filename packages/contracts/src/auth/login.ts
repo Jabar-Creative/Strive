@@ -1,9 +1,17 @@
 import { z } from 'zod';
 import { userSchema } from './user';
 
+/**
+ * `.max(128)` — koreksi audit F-08 (temuan T-4): tanpa batas atas, endpoint
+ * ini bisa dipanggil TANPA LOGIN dengan password sepanjang beberapa
+ * megabyte. Better-Auth memakai scrypt yang mem-hash SELURUH input (beda
+ * dari bcrypt yang memotong di 72 byte) — beberapa puluh request begitu
+ * paralel cukup membebani CPU server untuk semua pengguna, bukan cuma
+ * pemanggilnya sendiri.
+ */
 export const loginRequestSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1, 'Password wajib diisi'),
+  password: z.string().min(1, 'Password wajib diisi').max(128),
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 

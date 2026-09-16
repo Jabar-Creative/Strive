@@ -8,9 +8,12 @@ import { z } from 'zod';
  * `timezone` opsional; server fallback ke 'Asia/Jakarta' kalau tidak valid
  * (AU-7) — validasi IANA yang sebenarnya terjadi di server, bukan di sini.
  */
+// `.max(128)` di password — koreksi audit F-08 (T-4), sama alasannya seperti
+// login.ts: tanpa batas atas, hashing scrypt Better-Auth bisa dibebani
+// input megabyte tanpa perlu login dulu.
 export const registerRequestSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(10, 'Password minimal 10 karakter'),
+  password: z.string().min(10, 'Password minimal 10 karakter').max(128),
   display_name: z.string().min(1).max(100),
   timezone: z.string().optional(),
 });

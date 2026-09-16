@@ -1,13 +1,22 @@
 import { z } from 'zod';
 import { isoDateTimeSchema, uuidSchema } from '../common';
 
-/** docs/PRD.md §7 E13 PL-1: prompt disusun dari 5 bagian tetap. */
+/**
+ * docs/PRD.md §7 E13 PL-1: prompt disusun dari 5 bagian tetap.
+ *
+ * `.max(2000)` per bagian — koreksi audit F-08 (T-4): tanpa batas atas,
+ * pengguna yang sudah membayar 20 koin bisa mengirim prompt sebesar apa pun,
+ * dan biaya token LLM yang ditanggung perusahaan lepas dari harga yang
+ * dibayar pengguna. Nilai 2000 karakter per bagian (~10.000 total) adalah
+ * perkiraan wajar untuk role/context/task/format/constraints — bukan angka
+ * PRD eksplisit, boleh disesuaikan saat biaya LLM sungguhan diukur.
+ */
 export const promptLabSectionsSchema = z.object({
-  role: z.string().min(1),
-  context: z.string().min(1),
-  task: z.string().min(1),
-  format: z.string().min(1),
-  constraints: z.string().min(1),
+  role: z.string().min(1).max(2000),
+  context: z.string().min(1).max(2000),
+  task: z.string().min(1).max(2000),
+  format: z.string().min(1).max(2000),
+  constraints: z.string().min(1).max(2000),
 });
 export type PromptLabSections = z.infer<typeof promptLabSectionsSchema>;
 

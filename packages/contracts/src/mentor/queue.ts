@@ -31,9 +31,12 @@ export type MentorQueueResponse = z.infer<typeof mentorQueueResponseSchema>;
  * POST /mentor/reviews/:id/validate — docs/PRD.md §10.3 ("Approve/tolak +
  * catatan") + PR-6 (approve memicu `earn_review` tepat sekali).
  */
+// `.max(2000)` pada mentor_note — koreksi audit F-08 (T-4): catatan mentor
+// wajar berupa beberapa kalimat, bukan dokumen; batas atas mencegah payload
+// tak wajar tanpa mengganggu pemakaian normal.
 export const validateReviewRequestSchema = z.object({
   approve: z.boolean(),
-  mentor_note: z.string().optional(),
+  mentor_note: z.string().max(2000).optional(),
 });
 export type ValidateReviewRequest = z.infer<typeof validateReviewRequestSchema>;
 

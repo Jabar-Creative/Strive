@@ -8,7 +8,7 @@ import { cursorPaginatedSchema, isoDateTimeSchema, localDateSchema, uuidSchema }
  */
 export const attemptAnswerRequestSchema = z.object({
   card_id: uuidSchema,
-  answer: z.union([z.string(), z.boolean()]),
+  answer: z.union([z.string().max(200), z.boolean()]),
   ms: z.number().int().nonnegative(),
 });
 export type AttemptAnswerRequest = z.infer<typeof attemptAnswerRequestSchema>;
@@ -18,10 +18,15 @@ export type AttemptAnswerRequest = z.infer<typeof attemptAnswerRequestSchema>;
  * attempt+streak+koin+quest+poin squad+outbox (LE-6). Kasus tepi LE (client
  * kirim jawaban parsial) divalidasi di server, BUKAN di sini — skema ini
  * hanya memastikan minimal satu jawaban dikirim.
+ *
+ * `.max(5)` — koreksi audit F-08 (T-4): PRD LE-1 mengunci 3-5 kartu per
+ * lesson, jadi satu attempt tidak pernah butuh jawaban lebih dari itu. Tanpa
+ * batas atas, satu request bisa membawa jutaan elemen langsung ke transaksi
+ * enam-langkah `POST /attempts` (CLAUDE.md "Pola wajib").
  */
 export const createAttemptRequestSchema = z.object({
   lesson_id: uuidSchema,
-  answers: z.array(attemptAnswerRequestSchema).min(1),
+  answers: z.array(attemptAnswerRequestSchema).min(1).max(5),
   duration_ms: z.number().int().nonnegative(),
 });
 export type CreateAttemptRequest = z.infer<typeof createAttemptRequestSchema>;

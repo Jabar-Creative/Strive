@@ -7,16 +7,27 @@ import { isoDateTimeSchema, uuidSchema } from '../common';
  *
  * ASUMSI (perlu dikonfirmasi ke Dev A/PM): endpoint ini sinkron menerima
  * JSON berisi `target_role`+`language`+pilihan sumber. Kalau `source='upload'`,
- * `document_key` mengacu ke file yang SUDAH diunggah lebih dulu lewat alur
+ * `upload_id` mengacu ke file yang SUDAH diunggah lebih dulu lewat alur
  * upload terpisah (pola sama seperti `POST /scans`, yang multipart) — F-08
  * tidak memodelkan multipart untuk endpoint ini karena PRD tidak menyebutnya
  * secara eksplisit sebagai multipart di §10.3.
+ *
+ * KOREKSI KEAMANAN (audit F-08, temuan T-1): draf pertama memakai
+ * `document_key: z.string()` — menerima KEY STORAGE MENTAH langsung dari
+ * client. Itu IDOR: kepemilikan file jadi ditentukan input pengguna, bukan
+ * kepemilikan sungguhan. Pengguna A bisa menebak/memperoleh key milik
+ * pengguna B lalu memakainya di sini untuk membuat CV dari dokumen B — isi
+ * dokumen (nama, riwayat kerja, kontak) berpindah tangan, dibiayai koin A.
+ * Diganti `upload_id` (UUID buram) yang di-resolve SERVER dengan mengecek
+ * kepemilikan (`SELECT storage_key FROM uploads WHERE id=? AND owner_id=
+ * actor.id`, pola `owns.*` — CLAUDE.md §Guard vs kepemilikan) — client
+ * tidak pernah melihat atau mengontrol key storage sungguhan.
  */
 export const cvGenerateRequestSchema = z.object({
-  target_role: z.string().min(1),
+  target_role: z.string().min(1).max(200),
   language: z.enum(['id', 'en']),
   source: z.enum(['profile', 'upload']),
-  document_key: z.string().optional(),
+  upload_id: uuidSchema.optional(),
 });
 export type CvGenerateRequest = z.infer<typeof cvGenerateRequestSchema>;
 

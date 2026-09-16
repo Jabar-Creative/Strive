@@ -38,16 +38,25 @@ export const masteryInterviewResponseSchema = z.object({
 });
 export type MasteryInterviewResponse = z.infer<typeof masteryInterviewResponseSchema>;
 
-/** POST /mastery/interview/:id/submit — docs/PRD.md §10.3 ("Kirim jawaban → feedback LLM"). */
+/**
+ * POST /mastery/interview/:id/submit — docs/PRD.md §10.3 ("Kirim jawaban → feedback LLM").
+ *
+ * Batas `.max()` — koreksi audit F-08 (T-4): bank soal MT-3 cuma 5 pertanyaan
+ * statis per sesi, jadi array jawaban tidak pernah butuh lebih dari itu;
+ * `.max(10)` diberi sedikit ruang tapi tetap menutup kemungkinan mengirim
+ * ribuan jawaban fiktif ke jalur feedback LLM berbayar. `answer.max(5000)`
+ * mencegah satu jawaban raksasa membebani biaya token LLM tanpa batas.
+ */
 export const masteryInterviewSubmitRequestSchema = z.object({
   answers: z
     .array(
       z.object({
         index: z.number().int().nonnegative(),
-        answer: z.string().min(1),
+        answer: z.string().min(1).max(5000),
       }),
     )
-    .min(1),
+    .min(1)
+    .max(10),
 });
 export type MasteryInterviewSubmitRequest = z.infer<typeof masteryInterviewSubmitRequestSchema>;
 
@@ -64,10 +73,16 @@ export const masteryInterviewSubmitResponseSchema = z.object({
 });
 export type MasteryInterviewSubmitResponse = z.infer<typeof masteryInterviewSubmitResponseSchema>;
 
-/** POST /mastery/statement — docs/PRD.md §7 E12 MT-4. */
+/**
+ * POST /mastery/statement — docs/PRD.md §7 E12 MT-4.
+ * `.max(20000)` pada draft — koreksi audit F-08 (T-4): personal statement
+ * wajar di kisaran 500-1000 kata (~5000 karakter); 20.000 karakter memberi
+ * ruang lebih dari cukup sambil tetap menutup biaya LLM tak terbatas dari
+ * draft yang sengaja dibuat raksasa.
+ */
 export const masteryStatementRequestSchema = z.object({
   target: masteryProgramSchema,
-  draft: z.string().min(1),
+  draft: z.string().min(1).max(20_000),
 });
 export type MasteryStatementRequest = z.infer<typeof masteryStatementRequestSchema>;
 
