@@ -188,6 +188,14 @@ jobs:
 
       # Kalau skema berubah tapi `pnpm db:types` lupa dijalankan, tipe di repo
       # jadi bohong dan tidak ada yang tahu sampai ada bug aneh di runtime.
+      # Jalur uang WAJIB punya test integrasi dengan database NYATA
+      # (CLAUDE.md §Test). Job inilah satu-satunya yang punya PostgreSQL, jadi
+      # di sinilah test itu dijalankan — bukan dilewati diam-diam di job `node`.
+      - name: Test integrasi jalur uang
+        env:
+          DATABASE_URL: postgres://strive:strive_ci@localhost:5432/strive_ci
+        run: pnpm --filter @strive/api test:integration
+
       - name: Tipe Kysely harus sinkron dengan skema
         env:
           DATABASE_URL: postgres://strive:strive_ci@localhost:5432/strive_ci

@@ -50,9 +50,9 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-15 | PR #13 ter-merge & di-review. 12/12 rute HTTP 200, nol referensi menggantung ke backlog/PRD. Nol baris kode baru — memang hasil yang benar. |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `todo` | — | — | — |
 | `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `todo` | — | — | Dibuat dari isu #14. PRD §9.3 mewajibkannya tapi tidak ada item-nya — terlewat saat perencanaan. Partisi habis 2027-03-01 dan insert di luar rentang GAGAL. |
-| `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 0,5 | `todo` | — | — | Isu #18 DIPUTUSKAN: jalan 1 — pakai skema Better-Auth, PRD §9 menyesuaikan. AU-5 (deteksi pemakaian ulang token) DIKORBANKAN, dicatat sebagai risiko diterima. Tidak lagi blocked. |
-| `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | Menunggu A-01 (isu #18 sudah diputuskan). Tidak lagi blocked. |
-| `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `todo` | — | — | — |
+| `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 0,5 | `todo` | — | — | — |
+| `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
+| `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `review` | `2a154ff` | 2026-09-15 | 13 test integrasi DB nyata hijau; kelima test WAJIB catatan risiko terbukti. Menunggu review @kemalzaki. |
 | `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `todo` | — | — | — |
 | `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `todo` | — | — | — |
 | `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
@@ -121,10 +121,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 74 | 73,0 |
 | `done` | 7 | 6,0 |
-| `review` | 0 | 0,0 |
+| `review` | 1 | 2,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 66 | 65,5 |
+| `todo` | 65 | 63,5 |
 
 ---
 ## Ringkasan per epik
