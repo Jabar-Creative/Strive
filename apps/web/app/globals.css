@@ -3,53 +3,123 @@
 @tailwind utilities;
 
 /*
- * Variabel DEFAULT shadcn/ui (slate). Netral dan sementara.
- * Palet Strive + mode gelap adalah item F-06 (Dev B) — docs/PRD.md §14.1.
+ * Slot semantik shadcn/ui dipetakan ke token Strive — item F-07 (Dev B),
+ * docs/PRD.md §14.1. Sebelumnya nilai default shadcn (slate, HSL literal)
+ * dibiarkan sengaja sampai keputusan warna varian komponen diambil di sesi
+ * ini; sekarang setiap slot MENUNJUK ke custom property `--color-*` yang
+ * sudah ada di bawah (F-06) — tidak ada nilai warna baru yang ditambahkan.
+ *
+ * Pemetaan (alasan singkat, makna token dari tabel PRD §14.1):
+ *   --background/--foreground   paper / ink-900   — "Latar aplikasi" / "Teks utama", makna persis cocok
+ *   --card, --popover           surface           — "Latar kartu", makna persis cocok
+ *   --secondary, --muted        surface           — tidak ada token abu-abu netral lain; secondary dapat
+ *                                                    `border-line` eksplisit di Button supaya tetap kelihatan
+ *                                                    di atas `paper` (keduanya nyaris putih di mode terang)
+ *   --accent                    line               — "Garis pemisah", dipakai sebagai wash hover yang lebih
+ *                                                    terlihat daripada `surface`
+ *   --primary, --ring           indigo-600         — makna token: "Aksi utama, tautan, FOKUS" — mencakup ring
+ *   --destructive                rose-500           — makna token: persis "destruktif"
+ *   --success (BUKAN slot shadcn standar, tambahan F-07) mint-500 — makna token: "Benar, selesai, tervalidasi";
+ *                                                    dipakai LessonCard untuk aksi "Benar" (lihat komentar di sana)
+ *   --border, --input           line               — "Garis pemisah"
+ *
+ * `--primary-foreground` = paper: dihitung ulang (rumus WCAG, sama seperti
+ * /_specimen) — indigo-600 di atas paper 6,38:1 (terang) / 5,62:1 (gelap),
+ * KEBALIKANNYA (paper di atas indigo-600 sebagai teks) rasionya SAMA karena
+ * rumus kontras simetris — jadi paper valid dipakai sebagai teks di atas
+ * tombol primary di kedua mode.
+ *
+ * `--destructive-foreground` dan `--success-foreground` TIDAK bisa dipetakan
+ * ke `paper` seperti primary: rose-500 (~3,9:1 terang / ~3,0:1 gelap) dan
+ * mint-500 (~2,5:1 kedua mode) sebagai LATAR dengan teks paper/putih GAGAL
+ * AA — kedua token itu cukup terang sehingga butuh teks GELAP, bukan
+ * terang, supaya kontras. Solusinya `--ink-on-accent`: nilai ink-900 mode
+ * TERANG (`#14122B`, disalin persis dari docs/PRD.md §14.1, BUKAN warna
+ * baru) yang SENGAJA dipatok — tidak ikut berganti nilai di `.dark` seperti
+ * `--color-ink-900` lainnya — karena dihitung ulang teks gelap tetap yang
+ * memberi kontras terbaik di kedua mode untuk kedua latar terang ini:
+ *   ink-900(terang) di atas rose-500  : 5,06:1 (terang bg) / 6,71:1 (gelap bg) — lolos
+ *   ink-900(terang) di atas mint-500  : 7,17:1 (terang bg) / 8,81:1 (gelap bg) — lolos
+ * dibanding paper/putih di atas rose-500 (3,92:1 / 2,95:1) atau mint-500
+ * (2,55:1 / kedua mode) yang GAGAL AA 4,5:1. Didokumentasikan di sini supaya
+ * tidak terlihat seperti salah ketik saat ditinjau ulang.
+ *
+ * CATATAN TEKNIS (koreksi, ditemukan lewat smoke test DevTools sungguhan di
+ * /_kit mode gelap — Card/Button/Badge tetap terang sementara teksnya ikut
+ * gelap, nyaris tidak terbaca): slot di bawah DIDUPLIKASI secara eksplisit
+ * di `.dark`, BUKAN dibiarkan hanya `:root` seperti draf pertama sesi ini.
+ * Asumsi awal ("var(--primary) otomatis ikut .dark milik --color-indigo-600
+ * tanpa perlu ditulis ulang") KELIRU: custom property CSS dihitung SEKALI di
+ * elemen tempat ia dideklarasikan (di sini `:root`, yaitu elemen <html>),
+ * lalu nilai HASIL hitungnya (bukan referensi var()-nya) yang diwariskan ke
+ * elemen turunan. Toggle mode gelap di halaman ini (`ModeToggle`/
+ * `ModePreview`) memasang class `.dark` di DIV LOKAL di dalam <html>, bukan
+ * di <html> itu sendiri (sengaja, lihat komentar di kedua komponen itu) —
+ * jadi `--primary` yang sudah terhitung di `:root` (nilai terang) tetap
+ * diwariskan apa adanya ke dalam div `.dark` itu, tidak pernah dihitung
+ * ulang. Token `--color-*` tepat di bawah TIDAK kena bug ini karena memang
+ * sudah diduplikasi literal di `.dark` sejak F-06 — pola yang sama sekarang
+ * dipakai di sini. `--ink-on-accent` AMAN tanpa duplikasi karena nilainya
+ * literal (bukan `var()`) dan sengaja identik di kedua mode.
  */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --background: var(--color-paper);
+    --foreground: var(--color-ink-900);
+    --card: var(--color-surface);
+    --card-foreground: var(--color-ink-900);
+    --popover: var(--color-surface);
+    --popover-foreground: var(--color-ink-900);
+    --primary: var(--color-indigo-600);
+    --primary-foreground: var(--color-paper);
+    --secondary: var(--color-surface);
+    --secondary-foreground: var(--color-ink-900);
+    --muted: var(--color-surface);
+    --muted-foreground: var(--color-ink-500);
+    --accent: var(--color-line);
+    --accent-foreground: var(--color-ink-900);
+    /* Dipatok, TIDAK ikut ganti nilai di .dark — lihat penjelasan panjang di atas. */
+    --ink-on-accent: #14122b;
+    --destructive: var(--color-rose-500);
+    --destructive-foreground: var(--ink-on-accent);
+    --success: var(--color-mint-500);
+    --success-foreground: var(--ink-on-accent);
+    --border: var(--color-line);
+    --input: var(--color-line);
+    --ring: var(--color-indigo-600);
     --radius: 0.5rem;
   }
 
+  /*
+   * Duplikasi wajib slot di atas — lihat "CATATAN TEKNIS" di komentar berkas.
+   * Karena blok ini dideklarasikan LANGSUNG di `.dark` (bukan diwariskan dari
+   * `:root`), setiap `var(--color-*)` di sini dihitung ulang di elemen yang
+   * sama, memakai nilai `--color-*` versi gelap tepat di bawah — benar di
+   * <html class="dark"> (kalau/ketika mode gelap sungguhan dipasang di sana)
+   * MAUPUN di div `.dark` lokal seperti `/_kit` dan `/_specimen`.
+   */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --background: var(--color-paper);
+    --foreground: var(--color-ink-900);
+    --card: var(--color-surface);
+    --card-foreground: var(--color-ink-900);
+    --popover: var(--color-surface);
+    --popover-foreground: var(--color-ink-900);
+    --primary: var(--color-indigo-600);
+    --primary-foreground: var(--color-paper);
+    --secondary: var(--color-surface);
+    --secondary-foreground: var(--color-ink-900);
+    --muted: var(--color-surface);
+    --muted-foreground: var(--color-ink-500);
+    --accent: var(--color-line);
+    --accent-foreground: var(--color-ink-900);
+    --destructive: var(--color-rose-500);
+    --destructive-foreground: var(--ink-on-accent);
+    --success: var(--color-mint-500);
+    --success-foreground: var(--ink-on-accent);
+    --border: var(--color-line);
+    --input: var(--color-line);
+    --ring: var(--color-indigo-600);
   }
 
   /*
@@ -62,11 +132,10 @@
    * Mode gelap BUKAN inversi: setiap variabel di bawah `.dark` ditulis
    * dengan nilainya sendiri. Tidak ada filter, tidak ada color-mix().
    *
-   * Sengaja TIDAK dipetakan ke slot semantik shadcn (--primary, --ring,
-   * --destructive, dst di atas) pada sesi ini. Memutuskan mis. "--ring pakai
-   * indigo-600" atau "--destructive pakai rose-500" adalah keputusan desain
-   * komponen yang termasuk lingkup F-07 (Dev B, sesi terpisah) — F-06 hanya
-   * menyediakan tokennya, bukan memasangnya ke komponen.
+   * Slot semantik shadcn (--primary, --ring, --destructive, dst di atas)
+   * SEKARANG sudah dipetakan ke token-token di bawah ini — keputusan desain
+   * komponen item F-07 (Dev B), lihat komentar di atas blok shadcn. F-06
+   * (blok ini) hanya menyediakan tokennya; F-07 yang memasangnya ke slot.
    */
   :root {
     --color-indigo-600: #4f3de8;

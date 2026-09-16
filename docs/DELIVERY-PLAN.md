@@ -2,7 +2,7 @@
 
 > **Versi:** 2.0 · semua fitur · 2 developer · 8 minggu
 > **Diturunkan dari:** `BACKLOG.md` (sumber kebenaran estimasi) dan `PRD.md` (sumber kebenaran perilaku)
-> **Beban:** 72,5 dev-hari terhadap 68 tersedia — **107% terisi, tanpa cadangan**
+> **Beban:** 73,0 dev-hari terhadap 68 tersedia — **107% terisi, tanpa cadangan**
 
 ---
 
@@ -24,7 +24,7 @@ Seluruh 17 epik masuk dalam 8 minggu untuk 2 developer — tapi hanya pada **ked
 | Setelah membeli komponen (§2 tuas 2) | **72,5** | −16,5 hari — **rencana ini** |
 | **Selisih** | **+4,5** | Kelebihan beban. Tidak ada cadangan. |
 
-Per developer: Dev A **37,25** hari terhadap 34 tersedia (110%), Dev B **35,25** terhadap 34 (104%).
+Per developer: Dev A **37,75** hari terhadap 34 tersedia (111%), Dev B **35,25** terhadap 34 (104%).
 
 > **Keduanya di atas 100%, dan itu bukan kesalahan pembagian.** 72,5 hari dibagi dua orang menghasilkan 36,25 masing-masing terhadap 34 yang tersedia. Tidak ada susunan tugas yang menurunkan angka ini di bawah 100% — yang bisa hanya menambah waktu, menambah orang, atau mengurangi fitur.
 
@@ -93,7 +93,7 @@ Produk ini menahan saldo koin yang dibeli dengan rupiah, memanggil vendor berbay
 
 Dibagi per **alur vertikal**, bukan per lapisan. Masing-masing memiliki fitur dari skema database sampai layar, sehingga tidak ada yang menunggu API orang lain selesai.
 
-### Dev A — Core transaksional & integrasi · 37,25 hari
+### Dev A — Core transaksional & integrasi · 37,75 hari
 
 - Infra, CI, migrasi, deploy staging
 - Integrasi auth + RolesGuard + matriks akses

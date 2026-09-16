@@ -3,19 +3,19 @@ import type { NotificationKind } from '@strive/contracts';
 import type { Selectable } from 'kysely';
 /**
  * `infra/kysely` bukan modul domain (tidak dimiliki fitur mana pun, dipasang
- * @Global() di app.module.ts). Aturan batas modul di eslint.config.mjs
- * dimaksudkan mencegah kopling ANTAR modul domain (mis.
- * `../wallet/coin-ledger.service`), bukan akses ke infrastruktur bersama
- * lewat barrel publiknya (index.ts, yang hanya meng-ekspor ulang modul + tipe
- * DB + token DI, tanpa membuka file internal). Alias `@/*` di tsconfig.json
- * akan menghindari pola ini sama sekali, tapi vitest.config.mts belum
- * mengenalnya (dicoba: `Failed to load url @/infra/kysely` — vite tidak
- * membaca `paths` tsconfig tanpa plugin `vite-tsconfig-paths`). Menambahkan
- * plugin itu menyentuh config bersama semua modul, jadi sengaja TIDAK
- * dilakukan di sini — dilaporkan sebagai gap di laporan PR N-01, bukan
- * diputuskan sepihak.
+ * @Global() di app.module.ts) — mengimpor barrel publiknya (`index.ts`, yang
+ * hanya meng-ekspor ulang modul + tipe DB + token DI, tanpa membuka file
+ * internal) bukan pelanggaran batas modul. Aturan `no-restricted-imports` di
+ * eslint.config.mjs sudah tidak menolak pola ini sejak diperbaiki C-01 (lihat
+ * komentar di file itu) — TIDAK butuh `eslint-disable` di sini lagi.
+ *
+ * Alias `@/*` di tsconfig.json akan menghindari path relatif ini sama
+ * sekali, tapi vitest.config.mts belum mengenalnya (dicoba: `Failed to load
+ * url @/infra/kysely` — vite tidak membaca `paths` tsconfig tanpa plugin
+ * `vite-tsconfig-paths`). Menambahkan plugin itu menyentuh config bersama
+ * semua modul, jadi sengaja TIDAK dilakukan di sini — dilaporkan sebagai gap
+ * di laporan PR N-01, bukan diputuskan sepihak.
  */
-// eslint-disable-next-line no-restricted-imports -- lihat komentar di atas
 import { DATABASE, type DB, type Database, type Json } from '../../infra/kysely';
 import { ResendMailerService } from './resend-mailer.service';
 import { buildListUnsubscribeHeader, renderNotificationEmail } from './notification-templates.util';

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 // Sama seperti notifications.service.ts: `infra/kysely` bukan modul domain,
-// lihat komentar lengkap di sana.
-// eslint-disable-next-line no-restricted-imports
+// lihat komentar lengkap di sana. Tidak butuh eslint-disable sejak C-01.
 import type { Database } from '../../infra/kysely';
 import {
   NotificationCursorError,
