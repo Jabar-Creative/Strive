@@ -38,6 +38,9 @@ export const API_ERROR_CODES = [
   'DOCUMENT_TOO_LONG',
   'SOURCE_TOO_SHORT',
   'RATE_LIMITED',
+  // N-01 — notifikasi. Tambahan aditif (union string), tidak mengubah kode yang sudah ada.
+  'NOTIFICATION_NOT_FOUND',
+  'INVALID_CURSOR',
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
