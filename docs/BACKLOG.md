@@ -47,7 +47,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `todo` | — | — | — |
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `todo` | — | — | — |
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `review` | `438cc1b` | 2026-09-15 | Nol baris kode baru: stub sudah ada, yang kurang buktinya. 12/12 rute 200 + navigasi diklik. 14 stub divalidasi: nol referensi item/PRD menggantung. Bukti: docs/reports/F-09/ |
-| `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `todo` | — | — | — |
+| `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `review` | `ca763e0` | 2026-09-16 | PR #41 dibuka. AC terbukti di database nyata: idempotensi diverifikasi ulang independen (track_id + jumlah baris identik run 1 vs run 2). Audit keamanan bersih, 1 perbaikan Low (crash koneksi DB) sebelum PR dibuka. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 0,5 | `todo` | — | — | — |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `todo` | — | — | — |
@@ -114,15 +114,21 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 ### Ringkasan progres
 
 > Agent memperbarui tabel ini setiap kali sebuah item jadi `done`.
+>
+> **Catatan rekonsiliasi (2026-09-16):** angka di bawah HANYA mencerminkan F-11 pindah dari
+> `todo` ke `review` di branch ini. Branch ini bercabang dari `origin/main` sebelum beberapa
+> PR lain (#20/#30/#31/#36/#40/#42/#43) merge — siapa pun yang merge PR ini belakangan dari
+> tumpukan itu: hitung ulang seluruh tabel dari baris item di `main` terkini (AGENTS.md
+> aturan 11), JANGAN pilih salah satu sisi angka di bawah.
 
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 73 | 72,5 |
 | `done` | 5 | 4,5 |
-| `review` | 2 | 1,5 |
+| `review` | 3 | 2,0 |
 | `in_progress` | 0 | 0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 65 | 65,0 |
+| `todo` | 64 | 64,5 |
 
 ---
 ## Ringkasan per epik
