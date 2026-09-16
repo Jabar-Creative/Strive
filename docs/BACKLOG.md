@@ -1,8 +1,9 @@
 # BACKLOG — Strive Academy
 
 > **Versi:** 2.0 · semua fitur · kedalaman v0.1  
-> **Total:** 73 item · 72,5 dev-hari · Dev A 37,25 · Dev B 35,25  
+> **Total:** 74 item · 73,0 dev-hari · Dev A 37,75 · Dev B 35,25  
 > **Kapasitas:** 68 dev-hari efektif (2 dev × 8 minggu × 5 hari − 15% overhead) → **107% terisi**  
+> **`F-12` menambah 0,5 hari Dev A di W8** (isu #14) — W8 sudah minggu paling berat, dan ini memperberatnya. Pemotongan scope di checkpoint W5 jadi lebih menentukan, bukan kurang.  
 > **Sumber kebenaran estimasi.** `DELIVERY-PLAN.md` diturunkan dari file ini, bukan sebaliknya.
 
 Setiap item punya ID stabil. **Jangan pernah mengubah ID** — ID dipakai di nama branch, pesan commit, judul PR, dan rujukan lintas dokumen.
@@ -40,32 +41,33 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-01` | Monorepo pnpm, TypeScript strict, ESLint, Prettie… | A | W1 | 1 | `done` | `3836fed` | 2026-09-15 | PR #4 ter-merge. 4 AC terbukti + penegakan versi Python (keputusan 1 PR #3), 5 jalur diuji. |
 | `F-03` | CI: lint, typecheck, unit test, build, migrasi ke… | A | W1 | 1 | `done` | `973d7cf` | 2026-09-15 | PR #11 ter-merge. PR merah dibuktikan lewat PR #7 sungguhan, CI 77 dtk, migrasi terhadap DB kosong + verifikasi 31 tabel & trigger. |
 | `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | A | W1 | 1,5 | `done` | `9aa3037` | 2026-09-15 | PR #5 ter-merge. 31 tabel cocok PRD §9.1 (nol hilang, nol berlebih). Trigger append-only, partisi attempt_date, PK surrogate squad_members terbukti. BELUM di-review Dev B. |
-| `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `blocked` | — | 2026-09-15 | TERBLOKIR: butuh domain + akun cloud (belum ada pemiliknya). Memilih penyedia = vendor di luar PRD §12 → keputusan manusia. Keputusan 2 & 5 dari PR #3 sudah dikerjakan terpisah. |
+| `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `blocked` | — | 2026-09-15 | DITUNDA atas keputusan Dev A (isu #29), bukan menggantung tanpa pemilik. Staging tidak diadakan sampai Dev A mengumumkan siap. DoD dilonggarkan sementara: baris "ter-deploy ke staging" dinonaktifkan (CLAUDE.md). Menahan 20 item hilir. |
 | `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
-| `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `review` | `a551052` | 2026-09-15 | AC terbukti di browser: /_specimen 200, token berganti di mode gelap, 375px tanpa scroll horizontal, konsol bersih. TEMUAN: ink-500 mode terang 4,14:1 di bawah AA, perlu keputusan desain. Bukti: docs/reports/F-06/ |
-| `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `todo` | — | — | — |
+| `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `done` | `b060129` | 2026-09-15 | PR #12 ter-merge & di-review. 10/10 token cocok PRD §14.1, kontras teks utama 15,68-18,24:1 di kedua mode. Bukti hidup: /_specimen. Menutup isu #16. |
+| `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `done` | #36 | 2026-09-16 | Ter-merge lewat #36, di-review Dev A (isu #34). DoD: staging dikecualikan (isu #29). |
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `todo` | — | — | — |
-| `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `review` | `438cc1b` | 2026-09-15 | Nol baris kode baru: stub sudah ada, yang kurang buktinya. 12/12 rute 200 + navigasi diklik. 14 stub divalidasi: nol referensi item/PRD menggantung. Bukti: docs/reports/F-09/ |
+| `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-15 | PR #13 ter-merge & di-review. 12/12 rute HTTP 200, nol referensi menggantung ke backlog/PRD. Nol baris kode baru — memang hasil yang benar. |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `review` | `ca763e0` | 2026-09-16 | PR #41 dibuka. AC terbukti di database nyata: idempotensi diverifikasi ulang independen (track_id + jumlah baris identik run 1 vs run 2). Audit keamanan bersih, 1 perbaikan Low (crash koneksi DB) sebelum PR dibuka. |
+| `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `todo` | — | — | Dibuat dari isu #14. PRD §9.3 mewajibkannya tapi tidak ada item-nya — terlewat saat perencanaan. Partisi habis 2027-03-01 dan insert di luar rentang GAGAL. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 0,5 | `todo` | — | — | — |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
-| `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `todo` | — | — | — |
-| `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `todo` | — | — | — |
+| `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
+| `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `done` | #22 | 2026-09-16 | Ter-merge lewat #22. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `todo` | — | — | — |
 | `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
 | `L-02` | GradingService — penilaian sepenuhnya di server | B | W2 | 1 | `todo` | — | — | — |
 | `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `todo` | — | — | — |
 | `C-02` | GET /wallet + GET /wallet/ledger (cursor-paginated) | A | W3 | 0,5 | `todo` | — | — | — |
 | `L-03` | POST /attempts: attempt + streak + koin + outbox … | A | W3 | 2 | `todo` | — | — | — |
-| `S-01` | StreakService timezone-aware + kredit freeze | A | W3 | 1,5 | `todo` | — | — | — |
+| `S-01` | StreakService timezone-aware + kredit freeze | A | W3 | 1,5 | `done` | #23 | 2026-09-16 | Ter-merge lewat #23. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `S-02` | GET /hub agregat: streak, quest, peringkat, saldo… | A | W3 | 1 | `todo` | — | — | — |
 | `AI-01` | FastAPI skeleton + auth service-to-service + conf… | B | W3 | 1 | `todo` | — | — | — |
 | `C-03` | UI dompet: saldo, riwayat, penjelasan tiap jenis … | B | W3 | 1 | `todo` | — | — | — |
 | `L-05` | Layar daftar track & progres | B | W3 | 1 | `todo` | — | — | — |
 | `S-03` | UI Hub + streak chip 4 status + quest harian | B | W3 | 1,5 | `todo` | — | — | — |
 | `C-04` | Job rekonsiliasi harian + alert selisih | A | W4 | 0,5 | `todo` | — | — | — |
-| `Q-01` | Pembentukan squad otomatis (8-12 anggota) + gabun… | A | W4 | 0,5 | `todo` | — | — | — |
+| `Q-01` | Pembentukan squad otomatis (8-12 anggota) + gabun… | A | W4 | 0,5 | `done` | #24 | 2026-09-16 | Ter-merge lewat #24. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `Q-02` | LeaderboardService: ZSET, rotasi kunci musim, reb… | A | W4 | 1,5 | `todo` | — | — | — |
 | `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINC… | A | W4 | 1 | `todo` | — | — | — |
 | `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `todo` | — | — | — |
@@ -115,27 +117,26 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 > Agent memperbarui tabel ini setiap kali sebuah item jadi `done`.
 >
-> **Catatan rekonsiliasi (2026-09-16):** angka di bawah HANYA mencerminkan F-11 pindah dari
-> `todo` ke `review` di branch ini. Branch ini bercabang dari `origin/main` sebelum beberapa
-> PR lain (#20/#30/#31/#36/#40/#42/#43) merge — siapa pun yang merge PR ini belakangan dari
-> tumpukan itu: hitung ulang seluruh tabel dari baris item di `main` terkini (AGENTS.md
-> aturan 11), JANGAN pilih salah satu sisi angka di bawah.
+> **Rekonsiliasi (2026-09-16):** branch ini di-merge dengan `main` (yang sudah bergerak jauh
+> lewat PR #20/#30/#31/#36/#20-24) SEBELUM PR ini dibuka, mengikuti AGENTS.md aturan 11 —
+> tabel di bawah dihitung ulang dari seluruh baris item di file ini, bukan memilih salah satu
+> sisi konflik.
 
 | | Jumlah | Dev-hari |
 |---|---:|---:|
-| Total | 73 | 72,5 |
-| `done` | 5 | 4,5 |
-| `review` | 3 | 2,0 |
-| `in_progress` | 0 | 0 |
+| Total | 74 | 73,0 |
+| `done` | 12 | 12,5 |
+| `review` | 1 | 0,5 |
+| `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 64 | 64,5 |
+| `todo` | 60 | 58,5 |
 
 ---
 ## Ringkasan per epik
 
 | Epik | Nama | Hari | Item |
 |---|---|---:|---:|
-| `E0` | Fondasi & Setup | 10 | 11 |
+| `E0` | Fondasi & Setup | 10,5 | 12 |
 | `E1` | Auth & RBAC | 2,5 | 4 |
 | `E4` | Coin & Wallet | 4 | 4 |
 | `E2` | Learning Engine | 7,5 | 5 |
@@ -152,7 +153,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 |
 | `E9` | Panel Superadmin | 2 | 4 |
 | `E10` | Pengerasan & Rilis | 6 | 5 |
-| | **Total** | **72,5** | **73** |
+| | **Total** | **73,0** | **74** |
 
 ---
 
@@ -225,6 +226,14 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 **0,5 hari** · Dev **B** · Minggu **W1** · Butuh: `F-04`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Konten masuk lewat `pnpm seed:content <file>`, bukan diketik manual ke DB. Impor ulang bersifat idempoten.
+
+### `F-12` — Job bulanan pembuat partisi `lesson_attempts` + alarm partisi menipis
+
+**0,5 hari** · Dev **A** · Minggu **W8** · Butuh: `F-04`
+
+**Status:** lihat papan status di atas · **Selesai berarti:** Partisi bulan berjalan + satu bulan ke depan dibuat otomatis, idempoten (`CREATE TABLE IF NOT EXISTS … PARTITION OF`, dijalankan dua kali tidak error). Alarm menyala kalau partisi terjauh tinggal < 30 hari. Dibuktikan dengan memajukan tanggal di database uji, bukan dengan membaca kode.
+
+> **Kenapa item ini ada.** `docs/PRD.md` §9.3 mewajibkannya satu kalimat, tapi tidak ada satu pun dari 73 item awal yang mengerjakannya — terlewat saat perencanaan (isu #14). `lesson_attempts` **tidak punya partisi DEFAULT**, dan itu disengaja: partisi default membuat penambahan partisi baru harus memindai seluruh isinya. Konsekuensinya, `INSERT` dengan `attempt_date >= 2027-03-01` **gagal**, bukan jatuh ke mana pun. `POST /attempts` adalah jantung sistem; kalau insert-nya gagal, pengguna berhenti bisa belajar sama sekali — bukan degradasi, tapi berhenti total, tanpa petunjuk ke penyebabnya.
 
 ## E1 · Auth & RBAC
 
@@ -685,10 +694,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | W5 | 5 | 4 | 9 | **Checkpoint scope** di akhir minggu |
 | W6 | 4 | 4 | 8 |  |
 | W7 | 3,5 | 4,5 | 8 | Feature freeze kecuali Mastery Track |
-| W8 | 5 | 5,5 | 10,5 | **Kelebihan beban** — fitur + pengerasan bersamaan |
-| | **37,25** | **35,25** | **72,5** | terhadap 68 tersedia |
+| W8 | 5,5 | 5,5 | 11 | **Kelebihan beban** — fitur + pengerasan + `F-12` bersamaan |
+| | **37,75** | **35,25** | **73,0** | terhadap 68 tersedia |
 
-> Batas sehat adalah 5 hari per orang per minggu. W1 (Dev A 5,25) dan W8 (Dev B 5,5) melewatinya — lihat `DELIVERY-PLAN.md` §7.
+> Batas sehat adalah 5 hari per orang per minggu. W1 (Dev A 5,25) dan W8 (**keduanya** 5,5) melewatinya — lihat `DELIVERY-PLAN.md` §7.
 
 ---
 
