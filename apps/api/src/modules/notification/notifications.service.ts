@@ -62,6 +62,12 @@ function decodeCursor(raw: string): CursorPayload {
       typeof parsed === 'object' &&
       parsed !== null &&
       typeof (parsed as CursorPayload).createdAt === 'string' &&
+      // `Number.isNaN(Date.parse(...))` — koreksi audit N-01: tanpa ini,
+      // createdAt yang bertipe string tapi bukan tanggal sah (mis. "x")
+      // lolos ke `new Date(...)` di listForUser, jadi Invalid Date, lalu
+      // Postgres menolaknya dengan kode error (22007) yang TIDAK ditangkap
+      // di sini — hasilnya 500 mentah, bukan 400 INVALID_CURSOR yang rapi.
+      !Number.isNaN(Date.parse((parsed as CursorPayload).createdAt)) &&
       typeof (parsed as CursorPayload).id === 'string'
     ) {
       return parsed as CursorPayload;

@@ -85,7 +85,7 @@ function layout(preheader: string, contentHtml: string, unsubscribeUrl: string):
               <td style="padding:16px 24px;background-color:#f9fafb;border-top:1px solid #e5e7eb;">
                 <p style="margin:0;color:#6b7280;font-size:12px;line-height:1.5;">
                   Anda menerima email ini karena terdaftar di Strive Academy.
-                  <a href="${unsubscribeUrl}" style="color:#6b7280;">Berhenti berlangganan</a>.
+                  <a href="${escapeHtml(unsubscribeUrl)}" style="color:#6b7280;">Berhenti berlangganan</a>.
                 </p>
               </td>
             </tr>
@@ -106,7 +106,7 @@ export function renderStreakWarningEmail(input: EmailTemplateInput): string {
     <table role="presentation" cellpadding="0" cellspacing="0">
       <tr>
         <td style="border-radius:6px;background-color:#ea580c;">
-          <a href="${appUrl}/hub"
+          <a href="${escapeHtml(appUrl)}/hub"
              style="display:inline-block;padding:10px 20px;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;">
             Lanjutkan streak sekarang
           </a>
