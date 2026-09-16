@@ -45,7 +45,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
 | `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `done` | `b060129` | 2026-09-15 | PR #12 ter-merge & di-review. 10/10 token cocok PRD §14.1, kontras teks utama 15,68-18,24:1 di kedua mode. Bukti hidup: /_specimen. Menutup isu #16. |
-| `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `todo` | — | — | — |
+| `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `review` | `8651533` | 2026-09-16 | PR #36 dibuka. AC terbukti: 7 komponen dipakai di /_kit + /hub + /learn (screenshot terang/gelap/375px), nol warna hardcoded di luar token (kecuali gradien LeagueBadge, dikecualikan sengaja). Bug ditemukan+diperbaiki saat smoke test: slot shadcn tidak ikut `.dark` nested (root cause CSS custom property, bukan asumsi). typecheck+build+lint hijau, agent-security bersih (4 catatan Low). |
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `todo` | — | — | — |
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-15 | PR #13 ter-merge & di-review. 12/12 rute HTTP 200, nol referensi menggantung ke backlog/PRD. Nol baris kode baru — memang hasil yang benar. |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `todo` | — | — | — |
@@ -121,10 +121,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 74 | 73,0 |
 | `done` | 11 | 11,5 |
-| `review` | 0 | 0,0 |
+| `review` | 1 | 1,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 62 | 60,0 |
+| `todo` | 61 | 59,0 |
 
 ---
 ## Ringkasan per epik

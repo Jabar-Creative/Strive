@@ -17,8 +17,13 @@ import animate from 'tailwindcss-animate';
  * otomatis mengikuti mode dan profil tanpa perlu varian `dark:` manual.
  *
  * Slot semantik shadcn (primary/secondary/muted/accent/destructive/dst di
- * atas) SENGAJA belum dipetakan ke token Strive — itu keputusan desain
- * komponen, lingkup F-07.
+ * atas) SUDAH dipetakan ke token Strive — keputusan desain komponen item
+ * F-07, lihat komentar lengkap di app/globals.css tepat di atas blok
+ * `:root` shadcn. Nilai custom property-nya sekarang HEX (`var(--color-*)`),
+ * bukan lagi triplet HSL shadcn default (`222.2 84% 4.9%`) — makanya setiap
+ * slot di bawah dibungkus `var(--x)` polos, BUKAN `hsl(var(--x))` seperti
+ * template shadcn standar (hsl() akan invalid kalau argumennya sudah berupa
+ * string hex).
  */
 const config: Config = {
   darkMode: ['class'],
@@ -36,38 +41,46 @@ const config: Config = {
     },
     extend: {
       colors: {
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        border: 'var(--border)',
+        input: 'var(--input)',
+        ring: 'var(--ring)',
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
+          DEFAULT: 'var(--primary)',
+          foreground: 'var(--primary-foreground)',
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
+          DEFAULT: 'var(--secondary)',
+          foreground: 'var(--secondary-foreground)',
         },
         destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
+          DEFAULT: 'var(--destructive)',
+          foreground: 'var(--destructive-foreground)',
+        },
+        // `success` BUKAN slot bawaan shadcn — tambahan F-07 (docs/PRD.md
+        // §14.1, mint-500 = "Benar, selesai, tervalidasi"). Lihat komentar
+        // panjang di app/globals.css soal kenapa perlu `--ink-on-accent`
+        // sebagai foreground-nya, bukan `paper`.
+        success: {
+          DEFAULT: 'var(--success)',
+          foreground: 'var(--success-foreground)',
         },
         muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
+          DEFAULT: 'var(--muted)',
+          foreground: 'var(--muted-foreground)',
         },
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
+          DEFAULT: 'var(--accent)',
+          foreground: 'var(--accent-foreground)',
         },
         popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
+          DEFAULT: 'var(--popover)',
+          foreground: 'var(--popover-foreground)',
         },
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
+          DEFAULT: 'var(--card)',
+          foreground: 'var(--card-foreground)',
         },
 
         // ── Token Strive — docs/PRD.md §14.1 ──────────────────────────────
