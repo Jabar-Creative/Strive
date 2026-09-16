@@ -232,7 +232,7 @@ export interface PeerReviews {
   /**
    * Isu #15. Bagian dari FK majemuk ke lesson_attempts (id, attempt_date). WAJIB diambil dari baris lesson_attempts itu sendiri, TIDAK PERNAH dibentuk di Node: ini tanggal LOKAL pengguna, dan Date milik proses Node akan meleset satu hari untuk sebagian pengguna.
    */
-  attempt_date: Timestamp;
+  attempt_date: string;
   attempt_id: string;
   author_id: string;
   comment: string | null;

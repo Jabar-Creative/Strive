@@ -462,12 +462,13 @@ Jangan bangun ulang; baca dulu.
    jatuh ke partisi default. Job bulanan pembuatnya sekarang punya item: **`F-12`** (isu #14).
    Diverifikasi bahwa FK baru di `peer_reviews` **tidak** menghalangi `CREATE TABLE … PARTITION OF`
    maupun `DETACH PARTITION`.
-4. **`database.d.ts` BERBOHONG soal kolom `date`.** Ia menyebut kelimanya `Timestamp`
-   (= `ColumnType<Date, …>`), padahal runtime-nya **string** `'YYYY-MM-DD'` — `database.ts`
-   memasang `setTypeParser(1082)` tapi `scripts/db-types.mjs` **tidak** meneruskan
-   `--date-parser string` ke codegen. Akibatnya `attempt_date.getFullYear()` lolos `tsc`
-   lalu meledak saat dijalankan. Isu **#32**, sengaja ditunda sampai PR bertumpuk bersih —
-   memperbaikinya mengubah tipe yang dipakai empat PR terbuka.
+4. **Kolom `date` bertipe `string`, bukan `Date`** — dan itu memang disengaja.
+   `database.ts` memasang `setTypeParser(1082)` supaya tanggal kalender tidak berubah
+   jadi `Date` pada tengah malam zona waktu proses Node, dan `scripts/db-types.mjs`
+   meneruskan `--date-parser string` supaya tipenya ikut tahu (keduanya dari `S-01`).
+   Kalau salah satu dilepas, yang lain jadi berbohong: tipe bilang `Date`, runtime
+   memberi `'YYYY-MM-DD'`, dan `attempt_date.getFullYear()` lolos `tsc` lalu meledak
+   saat dijalankan. **Jangan cabut salah satunya sendirian.**
 
 **Dua batas yang ditegakkan di tingkat berbeda — jangan disamakan.**
 
