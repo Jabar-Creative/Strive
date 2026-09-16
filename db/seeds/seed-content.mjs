@@ -627,8 +627,8 @@ async function main() {
   }
 
   const client = new pg.Client({ connectionString: url });
-  await client.connect();
   try {
+    await client.connect();
     const summary = await insertContent(client, content);
     process.stdout.write(
       `[seed:content] ${sourceLabel} -> track "${summary.trackSlug}" (${summary.trackId})\n` +
@@ -646,4 +646,14 @@ async function main() {
 // "±90 kartu"), jadi seluruh file dibaca sekaligus (fs.readFile) — bukan
 // streaming. Kalau nanti perlu menampung file jauh lebih besar, parser CSV
 // di atas perlu ditulis ulang jadi streaming-friendly.
-main();
+//
+// `.catch()` di sini — koreksi audit F-11 (F11-L1): tanpa ini, kegagalan
+// yang lolos dari try/catch di dalam main() (mis. koneksi database ditolak
+// sebelum sempat masuk try) membuat proses crash dengan stack trace Node
+// mentah alih-alih pesan `[seed:content] ...` yang konsisten dengan error
+// lain di script ini. Kredensial tetap aman baik dengan maupun tanpa ini —
+// pg tidak pernah menyertakan connection string di pesan error koneksi.
+main().catch((error) => {
+  process.stderr.write(`[seed:content] gagal: ${error.message}\n`);
+  process.exitCode = 1;
+});
