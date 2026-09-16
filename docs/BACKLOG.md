@@ -49,6 +49,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `todo` | — | — | — |
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-15 | PR #13 ter-merge & di-review. 12/12 rute HTTP 200, nol referensi menggantung ke backlog/PRD. Nol baris kode baru — memang hasil yang benar. |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `todo` | — | — | — |
+| `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `todo` | — | — | Dibuat dari isu #14. PRD §9.3 mewajibkannya tapi tidak ada item-nya — terlewat saat perencanaan. Partisi habis 2027-03-01 dan insert di luar rentang GAGAL. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 0,5 | `todo` | — | — | — |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `review` | `2a154ff` | 2026-09-15 | 13 test integrasi DB nyata hijau; kelima test WAJIB catatan risiko terbukti. Menunggu review @kemalzaki. |
@@ -118,12 +119,12 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 | | Jumlah | Dev-hari |
 |---|---:|---:|
-| Total | 73 | 72,5 |
+| Total | 74 | 73,0 |
 | `done` | 7 | 6,0 |
 | `review` | 1 | 2,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 64 | 63,0 |
+| `todo` | 65 | 63,5 |
 
 ---
 ## Ringkasan per epik
