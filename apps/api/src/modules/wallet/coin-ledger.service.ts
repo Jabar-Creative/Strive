@@ -251,6 +251,24 @@ export class CoinLedgerService {
   async release(trx: Trx, params: ReleaseParams): Promise<LedgerEntry | null> {
     const { userId, refType, refId, reason, actorId } = params;
 
+    // Kunci baris users DULU, sebelum memeriksa apa pun.
+    //
+    // Urutannya menentukan, dan versi pertama salah: pemeriksaan `settled` ada
+    // SEBELUM kunci diambil (kuncinya baru muncul di dalam `write()`). Kalau
+    // `settle` commit di sela itu, release tidak melihatnya dan tetap
+    // mengembalikan koin — hold jadi permanen MENURUT AUDIT sekaligus kembali
+    // ke saldo. Itu koin gratis, dan jalurnya nyata: reaper melepas hold
+    // menggantung > 30 menit persis saat worker-nya menyetel hold yang sama.
+    //
+    // `settle` sudah mengunci lebih dulu; sekarang keduanya memakai titik
+    // serialisasi yang sama, jadi yang kalah melihat hasil yang menang.
+    await trx
+      .selectFrom('users')
+      .select('id')
+      .where('id', '=', userId)
+      .forUpdate()
+      .executeTakeFirst();
+
     const holdEntry = await trx
       .selectFrom('coin_ledger')
       .selectAll()

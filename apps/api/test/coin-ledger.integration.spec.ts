@@ -25,6 +25,8 @@ const URL_DEV = 'postgres://strive:strive_dev_only@localhost:55432/strive';
 const url = process.env['DATABASE_URL_TEST'] ?? process.env['DATABASE_URL'] ?? URL_DEV;
 
 let db: Kysely<DB>;
+/** Koneksi kedua, pool terpisah — menahan kunci tanpa berebut koneksi. */
+let dbPenahan: Kysely<DB>;
 let coins: CoinLedgerService;
 let reachable = false;
 
@@ -64,6 +66,9 @@ beforeAll(async () => {
   db = new Kysely<DB>({
     dialect: new PostgresDialect({ pool: new Pool({ connectionString: url }) }),
   });
+  dbPenahan = new Kysely<DB>({
+    dialect: new PostgresDialect({ pool: new Pool({ connectionString: url }) }),
+  });
   coins = new CoinLedgerService();
   try {
     await db.selectFrom('coin_ledger').select('id').limit(1).execute();
@@ -75,6 +80,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (db) await db.destroy();
+  if (dbPenahan) await dbPenahan.destroy();
 });
 
 beforeEach(async () => {
@@ -255,6 +261,71 @@ describe('CoinLedgerService (database nyata)', () => {
         .transaction()
         .execute((trx) => coins.write(trx, { userId: USER_A, entryType: 'adjust', amount: -1 })),
     ).rejects.toBeInstanceOf(InsufficientCoinsError);
+  });
+
+  it('CO-7: settle dan release BERSAMAAN → koin tidak boleh permanen SEKALIGUS kembali', async () => {
+    if (!reachable) return;
+    const refId = '00000000-0000-4000-8000-00000000cafe';
+
+    await db
+      .transaction()
+      .execute((trx) => coins.hold(trx, { userId: USER_A, amount: 100, refType: 'scan', refId }));
+    expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(0);
+
+    // Skenario nyata, bukan karangan: reaper melepas hold yang menggantung
+    // > 30 menit persis saat worker-nya menyetel hold yang sama.
+    //
+    // Gerbang membuat interleaving-nya deterministik. `settle` mengantre kunci
+    // baris users lebih dulu; `release` datang belakangan dan melakukan
+    // pemeriksaan `settled`-nya SEKARANG — saat settle masih tertahan dan
+    // belum menulis apa pun ke audit_log.
+    let lepas!: () => void;
+    const gerbang = new Promise<void>((r) => {
+      lepas = r;
+    });
+    const penahan = dbPenahan.transaction().execute(async (trx) => {
+      await sql`SELECT id FROM users WHERE id = ${USER_A} FOR UPDATE`.execute(trx);
+      await gerbang;
+    });
+    await new Promise((r) => setTimeout(r, 150));
+
+    const pSettle = db
+      .transaction()
+      .execute((trx) => coins.settle(trx, { userId: USER_A, refType: 'scan', refId }));
+    await new Promise((r) => setTimeout(r, 150));
+
+    const pRelease = db
+      .transaction()
+      .execute((trx) =>
+        coins.release(trx, { userId: USER_A, refType: 'scan', refId, reason: 'reaper' }),
+      );
+    await new Promise((r) => setTimeout(r, 300));
+
+    lepas();
+    await penahan;
+    await Promise.allSettled([pSettle, pRelease]);
+
+    // Yang menentukan bukan berapa promise yang fulfilled, tapi UANGNYA.
+    // Kalau keduanya lolos: audit bilang potongan permanen, sementara
+    // koinnya sudah kembali ke saldo pengguna. Itu koin gratis.
+    const saldo = await db.transaction().execute((t) => coins.trueBalance(t, USER_A));
+    const disetel = await db
+      .selectFrom('audit_log')
+      .select('id')
+      .where('action', '=', 'coin.settle')
+      .where('subject_id', '=', refId)
+      .executeTakeFirst();
+    const dilepas = await db
+      .selectFrom('coin_ledger')
+      .select('id')
+      .where('ref_id', '=', refId)
+      .where('entry_type', '=', 'release')
+      .executeTakeFirst();
+
+    expect(
+      Boolean(disetel) && Boolean(dilepas),
+      `hold di-settle DAN di-release sekaligus; saldo ledger ${saldo}`,
+    ).toBe(false);
   });
 
   // ── Tambahan: semantik settle ─────────────────────────────────────────
