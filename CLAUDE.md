@@ -112,7 +112,8 @@ strive-academy/
 │  └─ ui/                      token design system + primitif Shadcn
 ├─ db/
 │  ├─ migrations/              SQL murni, berurut, forward-only
-│  │                           001_init.sql = 31 tabel (F-04, selesai)
+│  │                           001 = 31 tabel · 002 = trigger kapasitas squad
+│  │                           003 = peer_reviews.attempt_date + FK
 │  └─ seeds/                   KOSONG — item F-11
 ├─ scripts/                    perkakas lintas-OS, Node murni, nol dependensi
 │                              dev-web · dev-api · dev-ai · db-migrate · db-types
@@ -336,13 +337,38 @@ Jangan pernah parsing `message` di client. Selalu cabang pada `code`.
 
 Item belum selesai sampai **semua** baris ini benar:
 
-- [ ] Ter-merge ke `main` dan ter-deploy ke staging
-- [ ] Di-review orang satunya — setiap PR punya reviewer, tanpa pengecualian
+> **DILONGGARKAN SEMENTARA — 2026-09-15.** Baris "ter-deploy ke staging" **dinonaktifkan**
+> atas keputusan Dev A (isu #29). `F-05` ditunda sampai Dev A mengumumkan staging siap;
+> sampai saat itu, tidak ada staging untuk di-deploy, dan DoD yang mensyaratkannya membuat
+> **nol item bisa `done`** — termasuk item yang sudah ter-merge dan ter-review.
+>
+> **Saat Dev A bilang "staging ready": kembalikan baris pertama menjadi**
+> `Ter-merge ke `main` **dan ter-deploy ke staging**`, hapus blok catatan ini, lalu
+> periksa ulang item yang sudah `done` — sebagian mungkin belum pernah menyentuh staging.
+
+- [ ] Ter-merge ke `main` ~~dan ter-deploy ke staging~~ *(staging ditunda — lihat catatan di atas)*
+- [ ] **PR dari Dev B** di-review Dev A. **PR dari Dev A tidak butuh reviewer** — Dev A pemilik kode dan pemutus (keputusan Dev A, 2026-09-16, isu #34)
 - [ ] Acceptance criteria di `docs/BACKLOG.md` **terbukti**, bukan diasumsikan
 - [ ] Ada test untuk jalur yang bisa gagal: uang, idempotensi, otorisasi, batas tanggal
 - [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm build` hijau
 - [ ] Tidak menambah peringatan TypeScript atau lint baru
 - [ ] Kalau menyentuh uang atau skema: ada catatan di PR tentang apa yang bisa rusak
+
+> **Kenapa reviewnya satu arah, dan apa yang hilang karenanya.**
+>
+> Proyek ini dua orang. Aturan "setiap PR punya reviewer" berarti satu orang yang tidak
+> sempat review menghentikan seluruh pekerjaan berikutnya — bukan memperlambat,
+> **menghentikan**: delapan PR menumpuk dan nomor migrasi mengunci setiap item skema
+> di belakangnya. Dev A memutuskan arus lebih penting daripada simetri.
+>
+> **Yang hilang nyata:** PR Dev A tidak lagi punya mata kedua, termasuk yang menyentuh
+> `coin_ledger` dan migrasi. Gantinya cuma tiga: CI yang menolak lebih dulu, test
+> integrasi terhadap database sungguhan, dan kebiasaan membaca ulang PR sendiri secara
+> bermusuhan sebelum merge. Ketiganya lebih lemah daripada manusia kedua. Itu harga
+> yang sudah diketahui, bukan yang terlewat.
+>
+> **PR bertumpuk tidak perlu approval berlapis.** Approval di puncak stack berlaku untuk
+> seluruh isinya; jangan mengulang approval tiap lapis dibongkar.
 
 ---
 
@@ -391,8 +417,12 @@ Daftar ini dikumpulkan dari analisis rancangan. Semuanya sudah pernah hampir ter
 
 ### Yang benar-benar terjadi, W1 2026
 
-Delapan di bawah ini bukan analisis rancangan — semuanya **sudah terjadi di repo ini**
-dan memakan waktu nyata. Jangan diulang.
+Yang di bawah ini bukan analisis rancangan — semuanya **sudah terjadi di repo ini** dan
+memakan waktu nyata. Jangan diulang.
+
+> Daftarnya bertambah, jadi **jangan menulis jumlahnya di sini** — angka yang ditulis tangan
+> akan meleset diam-diam, dan daftar jebakan yang isinya sendiri sudah salah adalah lelucon
+> yang buruk.
 
 | Jebakan | Akibat | Pencegahan |
 |---|---|---|
@@ -403,6 +433,8 @@ dan memakan waktu nyata. Jangan diulang.
 | Menguji trigger `FOR EACH ROW` pada tabel **kosong** | `UPDATE` menyentuh nol baris, trigger tidak menyala, perintah keluar 0 — **test lulus karena salah** | Sisipkan baris sungguhan dulu, verifikasi jumlahnya, baru coba UPDATE/DELETE |
 | `pull_request: branches: [main]` di CI | PR bertumpuk **tidak mendapat status check sama sekali** — bukan merah, tapi kosong, dan tetap terlihat bisa di-merge | `pull_request:` tanpa filter |
 | Port compose ditulis `'55432:5432'` | Bind ke `0.0.0.0` — siapa pun satu Wi-Fi bisa menyambung ke DB dev, dan passwordnya ada di repo publik | Selalu `'127.0.0.1:55432:5432'` |
+| `date - $1` di SQL dengan parameter bind | PostgreSQL punya `date - int → date` DAN `date - date → int`; parameter tanpa tipe membuatnya memilih **yang kedua**, lalu menolak hasilnya dengan `column is of type date but expression is of type integer` | Selalu cast eksplisit: `- ${sql.lit(n)}::int` |
+| Berkas test integrasi yang mengandaikan database kosong | `formSquads` memang membaca SELURUH pengguna aktif tanpa squad — itu perilakunya sebagai job mingguan. Sisa pengguna dari tiga berkas test lain ikut terbentuk jadi squad, dan hitungannya meleset tepat +9 | Berkas yang menguji operasi berlingkup-global **wajib** `TRUNCATE` di `beforeEach`. Aman karena `fileParallelism: false` |
 | Nilai contoh yang bisa dipakai di `.env.example` | `AUTH_SECRET` contoh lolos ambang 32 byte, jadi pengecekan panjang naif meloloskannya | Kunci dan token **dikosongkan**, bukan diisi contoh |
 
 ---
@@ -414,10 +446,11 @@ Jangan bangun ulang; baca dulu.
 | Perkakas | Di mana | Aturan yang dijaganya |
 |---|---|---|
 | Runner migrasi | `scripts/db-migrate.mjs` | Forward-only, satu transaksi per file. **Checksum diperiksa** — mengubah migrasi yang sudah jalan ditolak |
-| Codegen tipe | `scripts/db-types.mjs` | Tipe diturunkan dari skema sungguhan, lalu diformat prettier. **SQL sumber kebenaran, TypeScript turunannya** |
+| Codegen tipe | `scripts/db-types.mjs` | Tipe diturunkan dari skema sungguhan, lalu diformat prettier. **SQL sumber kebenaran, TypeScript turunannya.** Satu cacat diketahui: kolom `date` — lihat poin 4 di bawah |
+| Test integrasi | `pnpm --filter @strive/api test:integration` | Berjalan terhadap **PostgreSQL sungguhan** lewat `vitest.integration.config.mts`, `fileParallelism: false`. Dipanggil job CI `migrasi kering`, BUKAN job `node` — job itu tidak punya database |
 | Pembungkus dev | `scripts/dev-{web,api,ai}.mjs` | Lintas-OS, `spawn` tanpa `shell: true`, port divalidasi angka |
 
-**Tiga hal yang mudah salah dipahami soal skema:**
+**Empat hal yang mudah salah dipahami soal skema:**
 
 1. **`public` memuat tepat 31 tabel domain.** Ledger migrasi tinggal di skema
    `strive_meta`, dan `pnpm db:types` mengecualikannya. CI menolak kalau jumlahnya bukan 31.
@@ -426,10 +459,34 @@ Jangan bangun ulang; baca dulu.
    CI menjalankan ulang codegen lalu `git diff --exit-code` — ubah skema tanpa
    `pnpm db:types` = PR merah.
 3. **Partisi `lesson_attempts` habis 2027-03-01.** Insert di luar rentang **gagal**, bukan
-   jatuh ke partisi default. Job bulanan pembuat partisi belum punya item di backlog.
+   jatuh ke partisi default. Job bulanan pembuatnya sekarang punya item: **`F-12`** (isu #14).
+   Diverifikasi bahwa FK baru di `peer_reviews` **tidak** menghalangi `CREATE TABLE … PARTITION OF`
+   maupun `DETACH PARTITION`.
+4. **`database.d.ts` BERBOHONG soal kolom `date`.** Ia menyebut kelimanya `Timestamp`
+   (= `ColumnType<Date, …>`), padahal runtime-nya **string** `'YYYY-MM-DD'` — `database.ts`
+   memasang `setTypeParser(1082)` tapi `scripts/db-types.mjs` **tidak** meneruskan
+   `--date-parser string` ke codegen. Akibatnya `attempt_date.getFullYear()` lolos `tsc`
+   lalu meledak saat dijalankan. Isu **#32**, sengaja ditunda sampai PR bertumpuk bersih —
+   memperbaikinya mengubah tipe yang dipakai empat PR terbuka.
 
-**Satu penyimpangan dari PRD §9 yang menunggu keputusan manusia:** `peer_reviews` tidak
-punya foreign key ke `lesson_attempts`. PostgreSQL mewajibkan FK menunjuk seluruh primary
-key, dan PK-nya `(id, attempt_date)` karena terpartisi. Menambah kolom `attempt_date`
-berarti menambah kolom di luar PRD §9. Integritasnya ditegakkan di service sampai
-diputuskan.
+**Dua batas yang ditegakkan di tingkat berbeda — jangan disamakan.**
+
+| Batas | Ditegakkan oleh | Artinya |
+|---|---|---|
+| Satu squad aktif per pengguna | Partial unique index `squad_members_one_active` | Aman dari **jalur mana pun** — Retool, psql manual, skrip perbaikan data |
+| Anggota squad <= `max_members` | Trigger `squad_members_capacity` (migrasi 002) | Aman dari jalur mana pun **sejak isu #26**. Sebelumnya hanya dijaga `SquadService.join()` |
+
+`squads_max_members_range` **tidak** menjaga apa yang namanya janjikan: ia membatasi
+**nilai kolom** `max_members` ke 8–12, bukan jumlah anggota sungguhan. PostgreSQL tidak
+bisa menyatakan "jumlah baris terkait <= nilai kolom" sebagai CHECK. Constraint itu
+dipertahankan karena tetap berguna untuk apa yang memang dijaganya — bukan karena ia
+menjaga kapasitas.
+
+**`peer_reviews` sekarang punya FK ke `lesson_attempts`** — `(attempt_id, attempt_date)`,
+`ON DELETE CASCADE` (isu #15, migrasi 003). FK pada `attempt_id` saja mustahil: PK-nya
+`(id, attempt_date)` karena terpartisi, dan PostgreSQL mewajibkan FK menunjuk seluruh PK.
+
+`attempt_date` **WAJIB diambil dari baris `lesson_attempts` itu sendiri**, tidak pernah
+dibentuk di Node — itu tanggal LOKAL pengguna (aturan 5), dan `Date` milik proses Node
+akan meleset satu hari untuk sebagian pengguna. FK-nya akan menolak dengan pesan yang
+tidak menunjuk ke penyebab sebenarnya.
