@@ -44,7 +44,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
 | `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `done` | `b060129` | 2026-09-16 | koreksi otomatis 2026-09-16: papan menampilkan `review` padahal PR #12 sudah MERGED ke main (verifikasi `git log origin/main`). AC terbukti di browser: /_specimen 200, token berganti di mode gelap, 375px tanpa scroll horizontal, konsol bersih. TEMUAN belum tuntas: ink-500 mode terang 4,14:1 di bawah AA, perlu keputusan desain — dibawa ke F-07. Bukti: docs/reports/F-06/ |
-| `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `in_progress` | — | 2026-09-16 | — |
+| `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `review` | `8651533` | 2026-09-16 | PR #36 dibuka. AC terbukti: 7 komponen dipakai di /_kit + /hub + /learn (screenshot terang/gelap/375px), nol warna hardcoded di luar token (kecuali gradien LeagueBadge, dikecualikan sengaja). Bug ditemukan+diperbaiki saat smoke test: slot shadcn tidak ikut `.dark` nested (root cause CSS custom property, bukan asumsi). typecheck+build+lint hijau, agent-security bersih (4 catatan Low). |
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `todo` | — | — | — |
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-16 | koreksi otomatis 2026-09-16: papan menampilkan `review` padahal PR #13 sudah MERGED ke main (verifikasi `git log origin/main`). 12/12 rute 200 + navigasi diklik. 14 stub divalidasi: nol referensi item/PRD menggantung. Bukti: docs/reports/F-09/ |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `todo` | — | — | — |
@@ -119,8 +119,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 73 | 72,5 |
 | `done` | 7 | 6,0 |
-| `review` | 0 | 0 |
-| `in_progress` | 1 | 1 |
+| `review` | 1 | 1 |
+| `in_progress` | 0 | 0 |
 | `blocked` | 1 | 1,5 |
 | `todo` | 64 | 64,0 |
 
