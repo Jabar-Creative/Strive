@@ -172,12 +172,26 @@ for st in ['done', 'review', 'in_progress', 'blocked', 'todo']:
     blok.append(f'| `{st}` | {n[st]} | {f(hari[st])} |')
 awal = s.index('| | Jumlah | Dev-hari |'); akhir = s.index('\n\n', awal)
 p.write_text(s[:awal] + '\n'.join(blok) + s[akhir:])
+# INI yang menangkap baris item yang hilang saat resolusi konflik — bukan mata.
+assert sum(n.values()) == 74, f'jumlah item {sum(n.values())}, harus 74'
 print('\n'.join(blok))
 EOF
 ```
 
-Total harus tetap **74 item / 73,0 dev-hari** — kalau berubah, ada baris item yang
-ikut hilang atau terduplikasi saat merge.
+Total harus tetap **74 item / 73,0 dev-hari**. `assert` di skrip itu bukan hiasan:
+saat merge `main` ke `c-01` (16 Sep), resolusi konflik **menjatuhkan baris papan `F-12`**
+— bagian detailnya dan catatan rencananya selamat, barisnya tidak. Yang menangkapnya
+angka 74, bukan mata. Kalau assert-nya gagal, bandingkan daftar ID terhadap `main`:
+
+```bash
+python3 - <<'EOF'
+import subprocess, re, pathlib
+ids = lambda t: re.findall(r'^\| `([A-Z]+-\d+)` \|(?:[^|]*\|){8}$', t, re.M)
+main = subprocess.run(['git','show','origin/main:docs/BACKLOG.md'], capture_output=True, text=True).stdout
+cur = pathlib.Path('docs/BACKLOG.md').read_text()
+print('hilang:', [x for x in ids(main) if x not in ids(cur)])
+EOF
+```
 
 Aturan penulisan papan:
 

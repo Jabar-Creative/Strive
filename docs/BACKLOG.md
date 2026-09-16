@@ -52,22 +52,22 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `todo` | — | — | Dibuat dari isu #14. PRD §9.3 mewajibkannya tapi tidak ada item-nya — terlewat saat perencanaan. Partisi habis 2027-03-01 dan insert di luar rentang GAGAL. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 0,5 | `todo` | — | — | — |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
-| `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `review` | `2a154ff` | 2026-09-15 | 13 test integrasi DB nyata hijau; kelima test WAJIB catatan risiko terbukti. Menunggu review @kemalzaki. |
-| `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `review` | `ecc2a80` | 2026-09-15 | 19 test (6 unit serializer + 13 integrasi DB nyata). JSON mentah nol `correct`/`why`, dibuktikan sebagai teks. Menunggu review @kemalzaki. |
+| `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
+| `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `done` | #22 | 2026-09-16 | Ter-merge lewat #22. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `todo` | — | — | — |
 | `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
 | `L-02` | GradingService — penilaian sepenuhnya di server | B | W2 | 1 | `todo` | — | — | — |
 | `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `todo` | — | — | — |
 | `C-02` | GET /wallet + GET /wallet/ledger (cursor-paginated) | A | W3 | 0,5 | `todo` | — | — | — |
 | `L-03` | POST /attempts: attempt + streak + koin + outbox … | A | W3 | 2 | `todo` | — | — | — |
-| `S-01` | StreakService timezone-aware + kredit freeze | A | W3 | 1,5 | `review` | `474a8ca` | 2026-09-15 | 13 test lintas 3 zona waktu, kelima test WAJIB hijau, stabil 4x berturut. Menemukan bug parser DATE driver pg. Menunggu review @kemalzaki. |
+| `S-01` | StreakService timezone-aware + kredit freeze | A | W3 | 1,5 | `done` | #23 | 2026-09-16 | Ter-merge lewat #23. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `S-02` | GET /hub agregat: streak, quest, peringkat, saldo… | A | W3 | 1 | `todo` | — | — | — |
 | `AI-01` | FastAPI skeleton + auth service-to-service + conf… | B | W3 | 1 | `todo` | — | — | — |
 | `C-03` | UI dompet: saldo, riwayat, penjelasan tiap jenis … | B | W3 | 1 | `todo` | — | — | — |
 | `L-05` | Layar daftar track & progres | B | W3 | 1 | `todo` | — | — | — |
 | `S-03` | UI Hub + streak chip 4 status + quest harian | B | W3 | 1,5 | `todo` | — | — | — |
 | `C-04` | Job rekonsiliasi harian + alert selisih | A | W4 | 0,5 | `todo` | — | — | — |
-| `Q-01` | Pembentukan squad otomatis (8-12 anggota) + gabun… | A | W4 | 0,5 | `review` | — | 2026-09-15 | `8aa37e6` |
+| `Q-01` | Pembentukan squad otomatis (8-12 anggota) + gabun… | A | W4 | 0,5 | `done` | #24 | 2026-09-16 | Ter-merge lewat #24. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `Q-02` | LeaderboardService: ZSET, rotasi kunci musim, reb… | A | W4 | 1,5 | `todo` | — | — | — |
 | `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINC… | A | W4 | 1 | `todo` | — | — | — |
 | `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `todo` | — | — | — |
@@ -120,8 +120,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 74 | 73,0 |
-| `done` | 7 | 6,0 |
-| `review` | 5 | 6,5 |
+| `done` | 11 | 11,5 |
+| `review` | 1 | 1,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
 | `todo` | 61 | 59,0 |
