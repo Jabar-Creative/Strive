@@ -1,8 +1,7 @@
-import { Kysely, PostgresDialect, sql } from 'kysely';
-import { Pool } from 'pg';
+import { Kysely, sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { DB } from '../src/infra/kysely';
+import { createDatabase, type DB } from '../src/infra/kysely';
 import { CoinLedgerService, InsufficientCoinsError } from '../src/modules/wallet';
 
 /**
@@ -63,12 +62,8 @@ async function seedUser(id: string, balance: number, email: string) {
 }
 
 beforeAll(async () => {
-  db = new Kysely<DB>({
-    dialect: new PostgresDialect({ pool: new Pool({ connectionString: url }) }),
-  });
-  dbPenahan = new Kysely<DB>({
-    dialect: new PostgresDialect({ pool: new Pool({ connectionString: url }) }),
-  });
+  db = createDatabase(url);
+  dbPenahan = createDatabase(url);
   coins = new CoinLedgerService();
   try {
     await db.selectFrom('coin_ledger').select('id').limit(1).execute();

@@ -105,7 +105,7 @@ export interface CvDocuments {
 export interface DailyQuests {
   completed_at: Timestamp | null;
   done_tasks: Generated<number>;
-  quest_date: Timestamp;
+  quest_date: string;
   target_tasks: Generated<number>;
   user_id: string;
 }
@@ -129,7 +129,7 @@ export interface LeagueStandings {
 }
 
 export interface LessonAttempts {
-  attempt_date: Timestamp;
+  attempt_date: string;
   card_results: Json;
   coins: number;
   completed_at: Generated<Timestamp>;
@@ -232,7 +232,7 @@ export interface PeerReviews {
   /**
    * Isu #15. Bagian dari FK majemuk ke lesson_attempts (id, attempt_date). WAJIB diambil dari baris lesson_attempts itu sendiri, TIDAK PERNAH dibentuk di Node: ini tanggal LOKAL pengguna, dan Date milik proses Node akan meleset satu hari untuk sebagian pengguna.
    */
-  attempt_date: Timestamp;
+  attempt_date: string;
   attempt_id: string;
   author_id: string;
   comment: string | null;
@@ -371,8 +371,8 @@ export interface Streaks {
   current_streak: Generated<number>;
   freeze_credits: Generated<number>;
   freeze_purchased_month: string | null;
-  freeze_used_date: Timestamp | null;
-  last_activity_date: Timestamp | null;
+  freeze_used_date: string | null;
+  last_activity_date: string | null;
   longest_streak: Generated<number>;
   timezone: Generated<string>;
   updated_at: Generated<Timestamp>;
