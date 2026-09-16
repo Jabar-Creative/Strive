@@ -71,7 +71,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `todo` | — | — | — |
 | `AI-02` | Ekstraksi PDF/DOCX + penyusunan dari profil pengguna | B | W4 | 1 | `todo` | — | — | — |
 | `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `todo` | — | — | — |
-| `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `todo` | — | — | — |
+| `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `review` | `f9acea2` | 2026-09-16 | PR #42 dibuka. AC terbukti test integrasi DB nyata: publish v2 tidak mengubah baris v1, current version pindah, race 2 publish bersamaan aman (advisory lock). Angka 3 paket dari PRD §6.3, bukan placeholder. Audit keamanan: 3 temuan Low diperbaiki (termasuk regresi lint dari eslint.config.mjs milik PR ini sendiri) sebelum PR dibuka. CATATAN untuk SA-02: publishNewVersion() sengaja tanpa guard sendiri, WAJIB @Roles('superadmin') di endpoint publish. |
 | `Q-05` | UI squad + leaderboard (WS + fallback polling 30 … | B | W4 | 1,5 | `todo` | — | — | — |
 | `P-02` | POST /payments/checkout — Midtrans Snap, QRIS | A | W5 | 1 | `todo` | — | — | — |
 | `P-03` | Webhook: verifikasi signature, idempotensi, entri… | A | W5 | 1,5 | `todo` | — | — | — |
@@ -114,15 +114,21 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 ### Ringkasan progres
 
 > Agent memperbarui tabel ini setiap kali sebuah item jadi `done`.
+>
+> **Catatan rekonsiliasi (2026-09-16):** angka di bawah HANYA mencerminkan P-01 pindah dari
+> `todo` ke `review` di branch ini. Branch ini bercabang dari `origin/main` sebelum beberapa
+> PR lain (#20/#30/#31/#36/#40/#41/#43) merge — siapa pun yang merge PR ini belakangan dari
+> tumpukan itu: hitung ulang seluruh tabel dari baris item di `main` terkini (AGENTS.md
+> aturan 11), JANGAN pilih salah satu sisi angka di bawah.
 
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 73 | 72,5 |
 | `done` | 5 | 4,5 |
-| `review` | 2 | 1,5 |
+| `review` | 3 | 2,0 |
 | `in_progress` | 0 | 0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 65 | 65,0 |
+| `todo` | 64 | 64,5 |
 
 ---
 ## Ringkasan per epik
