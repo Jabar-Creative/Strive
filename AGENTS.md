@@ -249,6 +249,7 @@ BERIKUTNYA
 | 10 | **Jangan ubah estimasi, ID, atau urutan minggu di backlog** | Itu keputusan manusia, bukan agent |
 | 11 | **Konflik di tabel Ringkasan progres TIDAK PERNAH diselesaikan dengan memilih satu sisi** | Memilih satu sisi menghasilkan file yang ter-merge bersih, lulus CI, dan **angkanya salah** — lihat langkah 8 |
 | 12 | **PR bertumpuk: jangan `--delete-branch` sampai seluruh stack ter-merge** | Menghapus branch dasar **menutup otomatis** PR di atasnya, dan PR tertutup tidak bisa dibuka ulang |
+| 13 | **PR Dev A di-merge tanpa reviewer; PR Dev B di-review Dev A** | Dua orang, satu arah review. Keputusan Dev A 2026-09-16 (isu #34) — lihat catatan di `CLAUDE.md` Definition of Done soal apa yang hilang |
 
 ---
 
