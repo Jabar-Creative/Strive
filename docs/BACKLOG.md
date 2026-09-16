@@ -70,7 +70,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINC… | A | W4 | 1 | `todo` | — | — | — |
 | `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `todo` | — | — | — |
 | `AI-02` | Ekstraksi PDF/DOCX + penyusunan dari profil pengguna | B | W4 | 1 | `todo` | — | — | — |
-| `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `todo` | — | — | — |
+| `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `review` | `cf3d7b9` | 2026-09-16 | PR #43 dibuka. AC retry terbukti end-to-end lawan Resend API sungguhan (401, retry 3x nyata, audit_log benar). AC template "lulus uji Gmail/Outlook" BELUM diverifikasi visual (tidak ada alat pratinjau di sesi ini) — ditulis jujur, jangan dianggap selesai untuk bagian itu. Audit keamanan bersih, 2 Low diperbaiki. TEMUAN FONDASI PENTING: @strive/contracts crash node dist/main.js kalau ada import NILAI (bukan tipe) - lihat PR untuk detail, mempengaruhi F-08 juga. |
 | `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `todo` | — | — | — |
 | `Q-05` | UI squad + leaderboard (WS + fallback polling 30 … | B | W4 | 1,5 | `todo` | — | — | — |
 | `P-02` | POST /payments/checkout — Midtrans Snap, QRIS | A | W5 | 1 | `todo` | — | — | — |
@@ -114,15 +114,21 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 ### Ringkasan progres
 
 > Agent memperbarui tabel ini setiap kali sebuah item jadi `done`.
+>
+> **Catatan rekonsiliasi (2026-09-16):** angka di bawah HANYA mencerminkan N-01 pindah dari
+> `todo` ke `review` di branch ini. Branch ini bercabang dari `origin/main` sebelum beberapa
+> PR lain (#20/#30/#31/#36/#40/#41/#42) merge — siapa pun yang merge PR ini belakangan dari
+> tumpukan itu: hitung ulang seluruh tabel dari baris item di `main` terkini (AGENTS.md
+> aturan 11), JANGAN pilih salah satu sisi angka di bawah.
 
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 73 | 72,5 |
 | `done` | 5 | 4,5 |
-| `review` | 2 | 1,5 |
+| `review` | 3 | 2,5 |
 | `in_progress` | 0 | 0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 65 | 65,0 |
+| `todo` | 64 | 64,0 |
 
 ---
 ## Ringkasan per epik
