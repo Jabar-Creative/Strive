@@ -18,5 +18,15 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./test/setup.ts'],
     include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
+    // Test integrasi butuh PostgreSQL yang sudah dimigrasi, jadi TIDAK ikut
+    // `pnpm test`. Ia dijalankan `pnpm test:integration`, dan di CI oleh job
+    // `migrasi kering` yang memang punya database.
+    //
+    // Dipisah setelah CI merah: job `node` tidak punya Postgres, dan test
+    // jalur uang yang dilewati diam-diam sama tidak bergunanya dengan tidak
+    // ada. CLAUDE.md menuntut setiap jalur uang punya test integrasi dengan
+    // database NYATA — jadi yang diperbaiki tempat menjalankannya, bukan
+    // assertion-nya.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/*.integration.spec.ts'],
   },
 });

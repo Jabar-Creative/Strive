@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| **Versi** | 2.1 |
-| **Tanggal** | 14 September 2026 |
+| **Versi** | 2.2 |
+| **Tanggal** | 15 September 2026 |
 | **Status** | Siap implementasi — **§5 TERKUNCI 14 September 2026** |
 | **Scope** | B2C murni. Tanpa multi-tenancy, tanpa Web3, tanpa hardware NFC. |
 | **Dokumen terkait** | `BACKLOG.md` (estimasi) · `DELIVERY-PLAN.md` (jadwal) · `CLAUDE.md` (konvensi kode) |
@@ -405,6 +405,27 @@ Prefiks aturan per epik: `AU` auth · `LE` learning · `SK` streak · `CO` coin 
 
 **Implementasi:** Better-Auth dengan adapter PostgreSQL. Jangan menulis logika auth sendiri.
 
+> **Keputusan isu #18 — skema mengikuti Better-Auth, bukan sebaliknya (jalan 1).**
+>
+> §9 versi awal mendefinisikan skema untuk auth **yang ditulis sendiri**, dan itu bertentangan
+> dengan kalimat di atas. Pertentangannya nyata, bukan soal penamaan: Better-Auth 1.7.5
+> menyimpan password di tabel **`account`** (`providerId: "credential"`), bukan di
+> `users.password_hash`. Beda tabel tidak bisa dipetakan lewat konfigurasi.
+>
+> **Yang berubah di `A-01`:**
+> - Tabel baru **`account`** dan **`verification`** → jumlah tabel domain **31 → 33**
+> - Kolom **`session.token`** ditambahkan
+> - **`users.password_hash` jadi NULLABLE** dan berhenti dipakai. Sekarang ia `NOT NULL`;
+>   Better-Auth tidak akan mengisinya, jadi insert pengguna baru **gagal** kalau ini terlewat
+> - **`refresh_tokens` dipertahankan tapi tidak dipakai**, dibuang di migrasi terpisah setelah
+>   `A-01` stabil (forward-only, expand/contract)
+> - Pemetaan field yang perlu diselesaikan di `A-01`: `name → display_name`,
+>   `image → avatar_url`, dan **`emailVerified` (boolean) → `email_verified_at` (timestamptz)** —
+>   yang terakhir bukan penggantian nama, melainkan beda tipe
+>
+> **Harga yang dibayar: AU-5 hilang.** Dijelaskan di bawah.
+
+
 #### Aturan bisnis
 
 | # | Aturan |
@@ -412,12 +433,33 @@ Prefiks aturan per epik: `AU` auth · `LE` learning · `SK` streak · `CO` coin 
 | AU-1 | Registrasi butuh email + password. Email disimpan `citext` (case-insensitive unique). |
 | AU-2 | Password minimal 10 karakter. Tidak ada aturan komposisi (huruf besar/simbol) — panjang lebih efektif dan aturan komposisi membuat orang memakai `Password1!`. |
 | AU-3 | Password di-hash **Argon2id**. Tidak pernah dicatat di log, tidak pernah dikirim balik. |
-| AU-4 | Access token JWT masa berlaku **15 menit**. Refresh token **30 hari**, **dirotasi setiap dipakai**. |
-| AU-5 | Refresh token yang dipakai ulang (sudah dirotasi) **mencabut seluruh rantai sesi turunannya** dan mencatat ke `audit_log`. Ini deteksi pencurian token. |
+| AU-4 | ~~Access token JWT 15 menit, refresh token 30 hari dirotasi setiap dipakai.~~ **DIUBAH isu #18:** sesi Better-Auth di sisi server — token buram di tabel `session`, masa berlaku **30 hari**, dicabut dengan menghapus barisnya. Tidak ada JWT, tidak ada rotasi. |
+| AU-5 | ~~Refresh token yang dipakai ulang mencabut seluruh rantai sesi turunannya. Ini deteksi pencurian token.~~ **DIBUANG isu #18 — risiko diterima secara sadar.** Lihat catatan di bawah. |
 | AU-6 | Registrasi membuat baris `streaks` dan `reviewer_weights` sekaligus dalam transaksi yang sama. |
 | AU-7 | Zona waktu diambil dari body registrasi, divalidasi terhadap daftar IANA, fallback `Asia/Jakarta`. |
 | AU-8 | Verifikasi email **tidak memblokir** pemakaian, tapi **memblokir top-up**. Pengguna belum terverifikasi boleh belajar, tidak boleh beli koin. |
 | AU-9 | Peran default `student`. Hanya Superadmin yang bisa mengubah peran, lewat Retool, dan tercatat di `audit_log`. |
+
+> **Apa yang sebenarnya hilang bersama AU-5, ditulis terang supaya tidak dilupakan.**
+>
+> AU-5 adalah deteksi pencurian token: token yang sudah dirotasi lalu dipakai lagi berarti
+> **ada dua pihak memegangnya**, dan itu satu-satunya sinyal otomatis yang kita punya bahwa
+> sebuah sesi dicuri. Better-Auth tidak merotasi token sesi, jadi sinyal itu tidak ada
+> padanannya — membangunnya sendiri di atas Better-Auth berarti "menulis logika auth sendiri"
+> lewat pintu belakang, yang justru dilarang kalimat pembuka E1.
+>
+> **Akibat konkretnya:** token sesi yang dicuri berlaku sampai kedaluwarsa atau sampai
+> seseorang mencabutnya manual. Tidak ada yang tahu ia dicuri.
+>
+> **Yang menggantikannya sebagian, dan wajib ada di `A-01`:**
+> - Setiap pembuatan sesi tercatat di `audit_log` dengan `ip` dan `user_agent`, sehingga
+>   sesi ganda dari lokasi berbeda masih bisa dilihat manusia — meski tidak otomatis
+> - Ganti password **mencabut seluruh sesi** pengguna itu
+> - Superadmin bisa mencabut sesi seseorang lewat Retool
+>
+> Ketiganya mengurangi dampak, **tidak menggantikan deteksinya**. Ini pelemahan keamanan
+> yang disengaja, diputuskan Dev A pada 2026-09-15, dan pantas ditinjau ulang di checkpoint
+> scope W5 — bukan diturunkan jadi catatan kaki.
 
 #### Acceptance criteria
 
@@ -592,7 +634,7 @@ AC-SK-5
 | CO-3 | `users.coin_balance` adalah **cache**. Kebenarannya `SUM(coin_ledger.amount)`. |
 | CO-4 | Setiap penulisan mengunci baris `users` dengan `SELECT … FOR UPDATE` — titik serialisasi per pengguna. |
 | CO-5 | Idempotensi dijamin dua lapis: `idempotency_key UNIQUE` dan partial unique index `(ref_type, ref_id, entry_type)`. |
-| CO-6 | Saldo tidak boleh negatif, kecuali `entry_type='adjust'` oleh Superadmin. |
+| CO-6 | Saldo **tidak pernah** negatif — termasuk untuk `entry_type='adjust'`. Koreksi Superadmin dibatasi sebesar saldo yang tersedia; kelebihannya ditolak `INSUFFICIENT_COINS`. Ditegakkan dua lapis: `CoinLedgerService` dan CHECK `users_coin_balance_non_negative`. |
 | CO-7 | Pola **hold → settle \| release** wajib untuk semua pekerjaan yang bisa gagal setelah saldo dipotong. Tidak pernah "debit lalu refund manual". |
 | CO-8 | `settle` **tidak menulis entri ledger** — hold sudah memotong saldo. Settle adalah perubahan status, jejaknya di `audit_log`. |
 | CO-9 | `release` mengembalikan jumlah penuh hold dan bersifat idempoten. |
@@ -1252,7 +1294,7 @@ AC-NO-3
 
 | Domain | Tabel |
 |---|---|
-| Identitas | `users` · `sessions` · `refresh_tokens` · `push_tokens` |
+| Identitas | `users` · `sessions` · `account` · `verification` · ~~`refresh_tokens`~~ · `push_tokens` |
 | Pembelajaran | `tracks` · `modules` · `lessons` · `lesson_cards` · `lesson_attempts` |
 | Gamifikasi | `streaks` · `daily_quests` · `squads` · `squad_members` · `league_seasons` · `league_standings` |
 | Ekonomi | `coin_ledger` · `pricing_config` · `orders` · `payments` · `store_items` · `store_purchases` |
@@ -1450,7 +1492,7 @@ Worker mengambil batch dengan `FOR UPDATE SKIP LOCKED` agar banyak instance aman
 | `payments` | `id, order_id, provider, event_type, raw_payload jsonb, signature_ok, received_at` |
 | `store_items` | `id, slug UNIQUE, title, kind, price_coins, asset_key, is_active` |
 | `store_purchases` | `id, user_id, item_id, price_coins, ledger_id` — UNIQUE `(user_id, item_id)` |
-| `peer_reviews` | `id, attempt_id, reviewer_id, author_id, rubric_scores jsonb, comment, weighted_points, mentor_checked, mentor_delta` — UNIQUE `(attempt_id, reviewer_id)`, CHECK `reviewer_id <> author_id` |
+| `peer_reviews` | `id, attempt_id, **attempt_date**, reviewer_id, author_id, rubric_scores jsonb, comment, weighted_points, mentor_checked, mentor_delta` — UNIQUE `(attempt_id, reviewer_id)`, CHECK `reviewer_id <> author_id`, FK `(attempt_id, attempt_date) → lesson_attempts (id, attempt_date)` |
 | `reviewer_weights` | `user_id PK, weight numeric(3,2) DEFAULT 1.00 CHECK (0.50–1.50), samples, avg_deviation` |
 | `ai_jobs` | `id, user_id, kind, status, input jsonb, output jsonb, model, prompt_version, input_tokens, output_tokens, cost_usd numeric(10,6), error_message, completed_at` |
 | `cv_documents` | `id, user_id, job_id, structured jsonb, ats_score smallint, ats_findings jsonb, pdf_key` |
@@ -1458,6 +1500,22 @@ Worker mengambil batch dengan `FOR UPDATE SKIP LOCKED` agar banyak instance aman
 | `mastery_sessions` | `id, user_id, kind ('interview'\|'statement'), target, turns jsonb, feedback jsonb, mentor_id, mentor_note, status` |
 | `notifications` | `id, user_id, kind, title, body, data jsonb, read_at, sent_at` |
 | `audit_log` | `id bigserial, actor_id, action, subject_type, subject_id, before jsonb, after jsonb, ip inet, created_at` |
+
+> **`peer_reviews.attempt_date` — kolom yang ditambahkan setelah §9 ditulis (isu #15).**
+>
+> `lesson_attempts` terpartisi, jadi primary key-nya `(id, attempt_date)`. PostgreSQL
+> **mewajibkan foreign key menunjuk seluruh primary key**, sehingga FK pada `attempt_id`
+> saja mustahil secara teknis — bukan kelalaian.
+>
+> Tanpa kolom ini, integritas `peer_reviews → lesson_attempts` hanya dijaga disiplin kode.
+> Itu tidak cukup: `PR-02` menghitung poin liga berbobot dari review, jadi review yang
+> menunjuk attempt fantom = **poin fantom**, dan poin fantom adalah manipulasi skor yang
+> tidak meninggalkan jejak.
+>
+> **`attempt_date` WAJIB diambil dari baris `lesson_attempts` itu sendiri, tidak pernah
+> dibentuk di Node.** Itu tanggal LOKAL pengguna (aturan 5); membentuknya dari `Date`
+> proses Node akan meleset satu hari untuk sebagian pengguna, dan FK-nya akan menolak
+> dengan pesan yang tidak menunjuk ke penyebab sebenarnya.
 
 ### 9.4 Peta kunci Redis
 
@@ -1515,6 +1573,19 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 | `DOCUMENT_TOO_LONG` | 422 | > 15.000 kata |
 | `SOURCE_TOO_SHORT` | 422 | Sumber CV < 120 karakter |
 | `RATE_LIMITED` | 429 | Melewati 120 req/menit |
+| `NOT_FOUND` | 404 | Sumber daya tidak ada. Dipakai untuk track, modul, lesson, squad, dan baris streak yang hilang |
+| `SQUAD_FULL` | 409 | Squad sudah mencapai `max_members`. `details: {squadId, members, max}` |
+| `ALREADY_IN_SQUAD` | 409 | Pengguna sudah aktif di squad lain — satu squad aktif per pengguna |
+| `SQUAD_MOVE_LIMIT` | 409 | Sudah memakai jatah 1 perpindahan squad musim ini (§5 Q5) |
+
+> **Daftar ini TERTUTUP.** Kode yang tidak ada di sini tidak boleh dikirim API, karena
+> `packages/contracts` diturunkan dari tabel ini dan klien diminta bercabang pada `code`,
+> bukan mem-parsing `message`. Butuh kode baru → tambahkan di sini lebih dulu, lewat PR
+> tersendiri (isu #25).
+>
+> Empat kode terakhir ditambahkan **setelah** dipakai di kode — urutan yang terbalik, dan
+> justru itu sebabnya catatan "tertutup" ini ada.
+
 
 ### 10.3 Endpoint
 
@@ -2234,6 +2305,10 @@ Ditulis eksplisit agar tidak diam-diam masuk kembali.
 | 14 Sep 2026 | 2.0.1 | **§19.2** menambah `MODE`, `WEB_PORT`, `API_PORT`, `AI_SERVICE_PORT`. `MODE=api\|worker` sudah jadi keputusan arsitektur di §8.1 tapi tidak pernah tercantum sebagai variabel environment. | sesi fondasi repo |
 | 14 Sep 2026 | 2.0.1 | **§5** ditegaskan memblokir `F-04`. Tidak ada angka keputusan yang diubah. | sesi fondasi repo |
 | 14 Sep 2026 | **2.1** | **§5 DIKUNCI: USULAN → TERKUNCI.** Kedelapan keputusan disetujui apa adanya; **nol angka berubah**. `F-04` tidak lagi terblokir dari sisi keputusan. Dua kewajiban dicatat eksplisit sebagai TIDAK ikut terkunci dan tetap memblokir pembukaan top-up: konsultasi hukum (Q2) dan harga kontrak Copyleaks (Q7). | **Fatih Maulana** |
+| 15 Sep 2026 | **2.2** | **§7 E1 + §9 — skema auth mengikuti Better-Auth (isu #18, jalan 1).** `account` dan `verification` ditambahkan (31 → **33** tabel), `session.token` ditambahkan, `users.password_hash` jadi nullable dan berhenti dipakai, `refresh_tokens` dipertahankan tapi tidak dipakai. **AU-4 diubah** (sesi server, bukan JWT + rotasi) dan **AU-5 DIBUANG** — deteksi pemakaian ulang token tidak punya padanan di Better-Auth. Pelemahan keamanan yang disengaja, dengan tiga penggantinya dicatat sebagai kewajiban `A-01`. | **Fatih Maulana** |
+| 15 Sep 2026 | 2.2 | **§9.3 — `peer_reviews.attempt_date` ditambahkan** beserta FK `(attempt_id, attempt_date) → lesson_attempts` (isu #15). Tanpa kolom ini FK mustahil: PK `lesson_attempts` adalah `(id, attempt_date)` karena terpartisi, dan PostgreSQL mewajibkan FK menunjuk seluruh PK. Poin liga berbobot dihitung dari tabel ini, jadi review yang menunjuk attempt fantom = poin fantom. | **Fatih Maulana** |
+| 15 Sep 2026 | 2.2 | **§10.2 — 4 kode error ditambahkan** (`NOT_FOUND`, `SQUAD_FULL`, `ALREADY_IN_SQUAD`, `SQUAD_MOVE_LIMIT`) dan daftarnya **dinyatakan tertutup** (isu #25). Keempatnya sudah dipakai di kode sebelum ada di sini — urutan terbalik yang justru jadi alasan catatan "tertutup" itu ditulis. | **Fatih Maulana** |
+| 15 Sep 2026 | 2.2 | **§9 CO-6 ditulis ulang** (isu #27). Teks lama menjanjikan pengecualian saldo negatif untuk `entry_type='adjust'` yang **database-nya tidak punya** — CHECK `users_coin_balance_non_negative` tidak mengenal pengecualian, jadi setengah CO-6 tidak pernah bisa dijalankan. Sekarang: saldo tidak pernah negatif, koreksi Superadmin dibatasi saldo tersedia. | **Fatih Maulana** |
 | | | _Isi baris baru setiap kali ada keputusan yang mengubah dokumen ini._ | |
 
 ---
