@@ -10,6 +10,23 @@ import { z } from 'zod';
  * F-08 ("packages/contracts: skema zod SELURUH endpoint MVP") masih `todo` di
  * docs/BACKLOG.md — skema di sini HANYA mencakup dua endpoint N-01
  * (`GET /notifications`, `PATCH /notifications/:id/read`), bukan seluruh MVP.
+ *
+ * KOORDINASI (orchestrator, setelah kedua item selesai): F-08 dikerjakan
+ * paralel di worktree lain dari commit `origin/main` yang sama, dan sudah
+ * memindahkan skema di file ini (notificationSchema, notificationKindSchema,
+ * listNotificationsQuerySchema, listNotificationsResponseSchema,
+ * markNotificationReadResponseSchema) ke `packages/contracts/src/notification
+ * /notification.ts` miliknya — SECARA SEMANTIK identik, cuma memakai
+ * `uuidSchema`/`isoDateTimeSchema`/`cursorPaginatedSchema` yang konsisten
+ * dengan 15 domain lain, bukan literal `z.string().uuid()`/`.datetime()`.
+ * PR ini dan PR F-08 akan SAMA-SAMA mengubah file ini dan
+ * `common/error.ts` (2 kode error: NOTIFICATION_NOT_FOUND, INVALID_CURSOR).
+ * Siapa pun yang merge belakangan: git akan menandai conflict yang sah di
+ * kedua file — resolusinya pakai versi F-08, buang duplikat di sini. Kode
+ * NestJS di `apps/api/src/modules/notification/` TIDAK terdampak resolusi
+ * ini: validasi query sungguhan sudah dipindah ke `list-query.util.ts`
+ * (lihat komentar di sana soal ERR_UNSUPPORTED_DIR_IMPORT), jadi skema zod
+ * di sini murni referensi tipe untuk N-02 nanti, bukan jalur validasi aktif.
  */
 
 // docs/PRD.md §7 E16 NO-1 — kolom `notifications.kind` bertipe `text` polos di
