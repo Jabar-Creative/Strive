@@ -116,7 +116,18 @@ export default tseslint.config(
                 'streak',
                 'users',
                 'wallet',
-              ].flatMap((name) => [`../${name}/*`, `../../${name}/*`]),
+              ]
+                .flatMap((name) => [`../${name}/*`, `../../${name}/*`])
+                // Koreksi audit P-01 (T-2): enumerasi di atas menutup
+                // `../wallet/x` dan `../../wallet/x`, tapi TIDAK menutup
+                // `../../modules/wallet/x` atau `../../../modules/wallet/x`
+                // — bentuk path yang sebelumnya (sebelum perbaikan `infra`)
+                // ikut tertutup wildcard generik `../*/*`/`../../*/*`. Tanpa
+                // dua pola ini, siapa pun bisa menembus barrel modul lain
+                // hanya dengan menulis path lewat `modules/` secara eksplisit
+                // — dibuktikan lewat ESLint Linter API repo ini sebelum
+                // pola ini ditambahkan (lint lolos untuk path itu).
+                .concat(['../../modules/*/*', '../../../modules/*/*']),
               message:
                 'Batas modul: impor dari modul lain hanya lewat barrel file (contoh: `../wallet`), bukan file di dalamnya.',
             },

@@ -55,11 +55,16 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
+// Kolomnya `integer` (int4) di db/migrations/001_init.sql — batas atas eksplisit
+// mencegah angka yang lolos validasi tapi ditolak PostgreSQL sebagai
+// "integer out of range" (koreksi audit P-01, T-4).
+const MAX_INT4 = 2_147_483_647;
+
 function assertPositiveInteger(value: number, field: string): void {
-  if (!Number.isInteger(value) || value <= 0) {
+  if (!Number.isInteger(value) || value <= 0 || value > MAX_INT4) {
     throw new BadRequestException({
       code: 'INVALID_PRICING_PAYLOAD',
-      message: `Field "${field}" harus bilangan bulat positif`,
+      message: `Field "${field}" harus bilangan bulat positif, maksimal ${MAX_INT4}`,
       details: { field, value },
     });
   }
