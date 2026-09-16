@@ -37,6 +37,15 @@ const result = spawnSync(
     process.env.DATABASE_URL,
     '--schema',
     'public',
+    // Kolom DATE dipetakan ke STRING, bukan objek Date.
+    //
+    // `attempt_date`, `quest_date`, `last_activity_date`, dan
+    // `freeze_used_date` adalah TANGGAL KALENDER — tidak punya zona waktu.
+    // Objek Date punya, dan itu mengundang konversi zona pada nilai yang tidak
+    // boleh dikonversi: persis kelas bug yang CLAUDE.md aturan 5 ada untuk
+    // mencegahnya. Runtime-nya diselaraskan di infra/kysely/database.ts.
+    '--date-parser',
+    'string',
     // Ledger migrasi adalah perkakas, bukan domain — jangan sampai muncul di
     // tipe yang dipakai kode aplikasi.
     '--exclude-pattern',

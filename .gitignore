@@ -43,6 +43,11 @@ Thumbs.db
 !.vscode/extensions.json
 *.stackdump
 
+# ── Agent lokal ────────────────────────────────────────────────────────────
+# Memori/scratch subagent (mis. agent-security) — lokal per sesi, bukan
+# artefak proyek. Ditemukan bocor saat verifikasi F-07 (repo ini publik).
+.claude/
+
 # ── Log ────────────────────────────────────────────────────────────────────
 *.log
 npm-debug.log*

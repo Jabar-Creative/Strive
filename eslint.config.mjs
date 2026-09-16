@@ -78,19 +78,24 @@ export default tseslint.config(
   // jaringan. Impor lintas modul HANYA lewat barrel file (`../wallet`), tidak
   // pernah menembus ke file di dalamnya (`../wallet/coin-ledger.service`).
   //
-  // Nama modul domain dienumerasi eksplisit (disinkronkan dengan
-  // apps/api/src/app.module.ts dan CLAUDE.md "Struktur repo") alih-alih
-  // wildcard `../*/*` generik. Wildcard generik ikut menangkap
-  // `../../infra/kysely` — infra BUKAN modul domain (di situlah
-  // `KyselyModule`, dan setiap modul yang butuh `@Inject(DATABASE)` wajib
-  // mengimpornya) — dan memblokir SEMUA modul yang butuh Kysely, bukan cuma
-  // satu modul. (Percobaan pertama pakai negasi gitignore-style
-  // `!../../infra/**` — TERNYATA tidak didukung `no-restricted-imports` versi
-  // ESLint di repo ini, jadi diganti enumerasi presisi.) Ditemukan &
-  // diperbaiki saat mengerjakan P-01 (modul `payment` butuh Kysely untuk
-  // pertama kalinya).
+  // Nama modul DISEBUT SATU PER SATU, bukan pola `../*/*`.
   //
-  // Kalau menambah modul domain baru: tambahkan namanya juga di sini.
+  // Alasannya ketahuan dari kegagalan nyata: ESLint mencocokkan
+  // pola ini dengan semantik gitignore, yang cocok di posisi MANA
+  // PUN — jadi `../*/*` ikut menolak `../../infra/kysely`, padahal
+  // itu BARREL infra dan justru cara yang benar. Versi pertama
+  // aturan ini memblokir impor yang benar, ketahuan saat C-01
+  // mengimpor tipe database (dan lagi, terpisah, saat P-01 butuh
+  // hal yang sama untuk `@Inject(DATABASE)` — dua item menemukan
+  // bug yang sama, diperbaiki di sini sekali).
+  //
+  // Daftar eksplisit tidak punya masalah itu: `infra`, `common`,
+  // `realtime`, dan `workers` bukan nama modul, jadi barrel-nya
+  // lolos sementara menembus ke dalam modul tetap ditolak.
+  //
+  // HARGA YANG DIBAYAR: menambah modul baru berarti menambah satu
+  // baris di sini. Itu disengaja — menambah modul adalah tindakan
+  // yang pantas terasa.
   {
     files: ['apps/api/src/modules/**/*.ts'],
     rules: {
@@ -100,34 +105,30 @@ export default tseslint.config(
           patterns: [
             {
               group: [
-                'admin',
-                'auth',
-                'career',
-                'health',
-                'league',
-                'learning',
-                'mastery',
-                'mentor',
-                'notification',
-                'payment',
-                'scan',
-                'squad',
-                'store',
-                'streak',
-                'users',
-                'wallet',
-              ]
-                .flatMap((name) => [`../${name}/*`, `../../${name}/*`])
-                // Koreksi audit P-01 (T-2): enumerasi di atas menutup
-                // `../wallet/x` dan `../../wallet/x`, tapi TIDAK menutup
-                // `../../modules/wallet/x` atau `../../../modules/wallet/x`
-                // — bentuk path yang sebelumnya (sebelum perbaikan `infra`)
-                // ikut tertutup wildcard generik `../*/*`/`../../*/*`. Tanpa
-                // dua pola ini, siapa pun bisa menembus barrel modul lain
-                // hanya dengan menulis path lewat `modules/` secara eksplisit
-                // — dibuktikan lewat ESLint Linter API repo ini sebelum
-                // pola ini ditambahkan (lint lolos untuk path itu).
-                .concat(['../../modules/*/*', '../../../modules/*/*']),
+                '../admin/*',
+                '../auth/*',
+                '../career/*',
+                '../health/*',
+                '../league/*',
+                '../learning/*',
+                '../mastery/*',
+                '../mentor/*',
+                '../notification/*',
+                '../payment/*',
+                '../scan/*',
+                '../squad/*',
+                '../store/*',
+                '../streak/*',
+                '../users/*',
+                '../wallet/*',
+                // Infra dan common bukan modul, tapi menembus ke DALAM
+                // barrel-nya tetap salah. Segmennya tetap (`infra`, `common`,
+                // dst) jadi pola ini tidak ikut menolak barrel-nya sendiri.
+                '../../infra/*/*',
+                '../../common/*/*',
+                '../../realtime/*/*',
+                '../../workers/*/*',
+              ],
               message:
                 'Batas modul: impor dari modul lain hanya lewat barrel file (contoh: `../wallet`), bukan file di dalamnya.',
             },
