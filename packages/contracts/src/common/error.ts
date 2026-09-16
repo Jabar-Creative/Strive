@@ -38,6 +38,10 @@ export const API_ERROR_CODES = [
   'DOCUMENT_TOO_LONG',
   'SOURCE_TOO_SHORT',
   'RATE_LIMITED',
+  // Ditambah rekonsiliasi dengan N-01 (dikerjakan paralel, worktree lain):
+  // GET /notifications, PATCH /notifications/:id/read.
+  'NOTIFICATION_NOT_FOUND',
+  'INVALID_CURSOR',
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
