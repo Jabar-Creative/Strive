@@ -46,11 +46,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
 | `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `done` | `b060129` | 2026-09-15 | PR #12 ter-merge & di-review. 10/10 token cocok PRD §14.1, kontras teks utama 15,68-18,24:1 di kedua mode. Bukti hidup: /_specimen. Menutup isu #16. |
 | `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `done` | #36 | 2026-09-16 | Ter-merge lewat #36, di-review Dev A (isu #34). DoD: staging dikecualikan (isu #29). |
-| `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `review` | `b66b33f` | 2026-09-16 | PR #40 dibuka. AC terbukti: tipe di-import web+api tanpa error, snapshot test menolak kebocoran correct/why (diverifikasi uji mutasi). Audit keamanan: 2 temuan (IDOR document_key, field tanpa batas atas) diperbaiki sebelum PR dibuka. Rekonsiliasi skema notification dengan PR N-01 (#43, dikerjakan paralel) — lihat catatan koordinasi di PR. |
+| `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `done` | #40 | 2026-09-17 | Ter-merge lewat #40. Review Dev A: INVALID_CURSOR masuk PRD §10.2, NOTIFICATION_NOT_FOUND dibuang (daftar §10.2 TERTUTUP). |
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-15 | PR #13 ter-merge & di-review. 12/12 rute HTTP 200, nol referensi menggantung ke backlog/PRD. Nol baris kode baru — memang hasil yang benar. |
-| `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `review` | `ca763e0` | 2026-09-16 | PR #41 dibuka. AC terbukti di database nyata: idempotensi diverifikasi ulang independen (track_id + jumlah baris identik run 1 vs run 2). Audit keamanan bersih, 1 perbaikan Low (crash koneksi DB) sebelum PR dibuka. |
+| `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `done` | #41 | 2026-09-17 | Ter-merge lewat #41. Review Dev A: batas idempotensi saat lesson sudah dikerjakan dicatat di README. |
 | `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `todo` | — | — | Dibuat dari isu #14. PRD §9.3 mewajibkannya tapi tidak ada item-nya — terlewat saat perencanaan. Partisi habis 2027-03-01 dan insert di luar rentang GAGAL. |
-| `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 2 | `review` | — | 2026-09-17 | Estimasi 0,5 -> 2 hari (isu #35). Migrasi 004 (33 tabel) + 005 (trigger AU-6). AU-3 Argon2id menimpa scrypt bawaan. AC-AU-2 ditulis ulang: versi lama menuntut AU-5 yang dibuang isu #18. |
+| `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 2 | `done` | #45 | 2026-09-17 | Ter-merge lewat #45. Migrasi 004 (33 tabel) + 005 (trigger AU-6). AC-AU-2 ditulis ulang. |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `done` | #22 | 2026-09-16 | Ter-merge lewat #22. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
@@ -72,8 +72,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINC… | A | W4 | 1 | `todo` | — | — | — |
 | `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `todo` | — | — | — |
 | `AI-02` | Ekstraksi PDF/DOCX + penyusunan dari profil pengguna | B | W4 | 1 | `todo` | — | — | — |
-| `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `review` | `cf3d7b9` | 2026-09-16 | PR #43 dibuka. AC retry terbukti end-to-end lawan Resend API sungguhan (401, retry 3x nyata, audit_log benar). AC template "lulus uji Gmail/Outlook" BELUM diverifikasi visual (tidak ada alat pratinjau di sesi ini) — ditulis jujur, jangan dianggap selesai untuk bagian itu. Audit keamanan bersih, 2 Low diperbaiki. TEMUAN FONDASI PENTING: @strive/contracts crash node dist/main.js kalau ada import NILAI (bukan tipe) - lihat PR untuk detail, mempengaruhi F-08 juga. |
-| `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `todo` | — | — | — |
+| `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `done` | #43 | 2026-09-17 | Ter-merge lewat #43. Review Dev A: guard JWT diganti guard sesi — A-01 menghapus JWT setelah item ini mulai. |
+| `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `done` | #42 | 2026-09-17 | Ter-merge lewat #42. Review Dev A: uang integer, append-only terbukti, advisory lock bernama. |
 | `Q-05` | UI squad + leaderboard (WS + fallback polling 30 … | B | W4 | 1,5 | `todo` | — | — | — |
 | `P-02` | POST /payments/checkout — Midtrans Snap, QRIS | A | W5 | 1 | `todo` | — | — | — |
 | `P-03` | Webhook: verifikasi signature, idempotensi, entri… | A | W5 | 1,5 | `todo` | — | — | — |
@@ -125,11 +125,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 74 | 74,5 |
-| `done` | 12 | 12,5 |
-| `review` | 4 | 4,5 |
+| `done` | 17 | 17,5 |
+| `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 57 | 56,0 |
+| `todo` | 56 | 55,5 |
 
 ---
 ## Ringkasan per epik
