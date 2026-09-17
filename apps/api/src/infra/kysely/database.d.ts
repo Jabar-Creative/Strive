@@ -49,6 +49,46 @@ export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export type UserRole = 'mentor' | 'student' | 'superadmin';
 
+export interface AdminAudit {
+  action: string | null;
+  actor_email: string | null;
+  actor_id: string | null;
+  actor_role: UserRole | null;
+  after: Json | null;
+  before: Json | null;
+  created_at: Timestamp | null;
+  id: Int8 | null;
+  ip: string | null;
+  subject_id: string | null;
+  subject_type: string | null;
+}
+
+export interface AdminTransactions {
+  amount_idr: number | null;
+  coins_ordered: number | null;
+  display_name: string | null;
+  email: string | null;
+  ledger_amount: number | null;
+  ledger_balance_after: number | null;
+  ledger_created_at: Timestamp | null;
+  ledger_entry_type: CoinEntry | null;
+  ledger_id: Int8 | null;
+  order_created_at: Timestamp | null;
+  order_id: string | null;
+  order_status: string | null;
+  paid_at: Timestamp | null;
+  paid_without_ledger: boolean | null;
+  payment_event_type: string | null;
+  payment_id: string | null;
+  payment_payload: Json | null;
+  payment_received_at: Timestamp | null;
+  payment_signature_ok: boolean | null;
+  pricing_version: number | null;
+  provider: string | null;
+  provider_ref: string | null;
+  user_id: string | null;
+}
+
 export interface AiJobs {
   completed_at: Timestamp | null;
   cost_usd: Numeric | null;
@@ -443,6 +483,8 @@ export interface Users {
 }
 
 export interface DB {
+  admin_audit: AdminAudit;
+  admin_transactions: AdminTransactions;
   ai_jobs: AiJobs;
   audit_log: AuditLog;
   auth_accounts: AuthAccounts;
