@@ -113,7 +113,8 @@ strive-academy/
 ├─ db/
 │  ├─ migrations/              SQL murni, berurut, forward-only
 │  │                           001 = 31 tabel · 002 = trigger kapasitas squad
-│  │                           003 = peer_reviews.attempt_date + FK
+│  │                           003 = peer_reviews FK · 004 = Better-Auth (33)
+│  │                           005 = trigger AU-6
 │  └─ seeds/                   KOSONG — item F-11
 ├─ scripts/                    perkakas lintas-OS, Node murni, nol dependensi
 │                              dev-web · dev-api · dev-ai · db-migrate · db-types
@@ -463,6 +464,10 @@ memakan waktu nyata. Jangan diulang.
 | `pull_request: branches: [main]` di CI | PR bertumpuk **tidak mendapat status check sama sekali** — bukan merah, tapi kosong, dan tetap terlihat bisa di-merge | `pull_request:` tanpa filter |
 | Port compose ditulis `'55432:5432'` | Bind ke `0.0.0.0` — siapa pun satu Wi-Fi bisa menyambung ke DB dev, dan passwordnya ada di repo publik | Selalu `'127.0.0.1:55432:5432'` |
 | `date - $1` di SQL dengan parameter bind | PostgreSQL punya `date - int → date` DAN `date - date → int`; parameter tanpa tipe membuatnya memilih **yang kedua**, lalu menolak hasilnya dengan `column is of type date but expression is of type integer` | Selalu cast eksplisit: `- ${sql.lit(n)}::int` |
+| `advanced.database.generateId: false` di Better-Auth | Terasa seperti "biar database yang bikin lewat DEFAULT gen_random_uuid()". Resolvernya mengembalikan `false`, tapi pemanggilnya menulis `generateId(...) \|\| generateId()` — jadi ia **jatuh kembali ke id base62 32 karakter** tanpa error, dan itu tidak muat di kolom `uuid` | Hanya `'uuid'` yang benar-benar memanggil `crypto.randomUUID()` |
+| Mengandaikan Better-Auth memakai Argon2id | Bawaannya **scrypt**. AU-3 mewajibkan Argon2id, dan yang membuktikannya bentuk hash tersimpan, bukan konfigurasinya | `emailAndPassword.password.hash/verify` ditimpa `@node-rs/argon2`. Diuji dengan mencocokkan `^\$argon2id\$` di kolomnya |
+| Mengandalkan hook `after` Better-Auth untuk AU-6 | Hook berjalan SETELAH transaksinya commit, jadi tidak bisa memenuhi "dalam transaksi yang sama". Registrasi berhasil, `streaks` nol baris | Trigger `users_registration_rows` (migrasi 005). Berlaku untuk siapa pun yang meng-INSERT, bukan cuma satu jalur kode |
+| Kolom `inet` untuk alamat dari header request | `X-Forwarded-For` boleh berisi rantai: `'1.2.3.4, 5.6.7.8'::inet` ditolak. Pengguna di belakang proxy berantai **gagal login**, dan pesannya menunjuk ke tipe kolom | `sessions.ip` dilebarkan ke `text` (004). `audit_log.ip` tetap `inet`, jadi alamat dari request masuk ke `after` jsonb |
 | Berkas test integrasi yang mengandaikan database kosong | `formSquads` memang membaca SELURUH pengguna aktif tanpa squad — itu perilakunya sebagai job mingguan. Sisa pengguna dari tiga berkas test lain ikut terbentuk jadi squad, dan hitungannya meleset tepat +9 | Berkas yang menguji operasi berlingkup-global **wajib** `TRUNCATE` di `beforeEach`. Aman karena `fileParallelism: false` |
 | Menembak N operasi sekaligus lalu menyebutnya "test konkurensi" | Tiap koneksi baru berdiri pada waktu berbeda, jadi transaksinya praktis **berurutan** — test AC-2 squad lulus bahkan setelah `SELECT … FOR UPDATE` dicabut dari service | Paksa tumpang tindihnya: transaksi lain menahan kunci barisnya, para penantang menumpuk, baru dilepas bersamaan. Lalu **cabut penjaganya dan pastikan test merah** |
 | Nilai contoh yang bisa dipakai di `.env.example` | `AUTH_SECRET` contoh lolos ambang 32 byte, jadi pengecekan panjang naif meloloskannya | Kunci dan token **dikosongkan**, bukan diisi contoh |
@@ -483,8 +488,8 @@ Jangan bangun ulang; baca dulu.
 
 **Empat hal yang mudah salah dipahami soal skema:**
 
-1. **`public` memuat tepat 31 tabel domain.** Ledger migrasi tinggal di skema
-   `strive_meta`, dan `pnpm db:types` mengecualikannya. CI menolak kalau jumlahnya bukan 31.
+1. **`public` memuat tepat 33 tabel domain.** Ledger migrasi tinggal di skema
+   `strive_meta`, dan `pnpm db:types` mengecualikannya. CI menolak kalau jumlahnya bukan 33.
 2. **`apps/api/src/infra/kysely/database.d.ts` ikut di-commit** dan **tidak boleh diedit tangan**.
    Job CI `node` tidak punya PostgreSQL, jadi typecheck butuh berkas itu ada di repo.
    CI menjalankan ulang codegen lalu `git diff --exit-code` — ubah skema tanpa
