@@ -75,7 +75,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `done` | #43 | 2026-09-17 | Ter-merge lewat #43. Review Dev A: guard JWT diganti guard sesi — A-01 menghapus JWT setelah item ini mulai. |
 | `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `done` | #42 | 2026-09-17 | Ter-merge lewat #42. Review Dev A: uang integer, append-only terbukti, advisory lock bernama. |
 | `Q-05` | UI squad + leaderboard (WS + fallback polling 30 … | B | W4 | 1,5 | `todo` | — | — | — |
-| `P-02` | POST /payments/checkout — Midtrans Snap, QRIS | A | W5 | 1 | `todo` | — | — | — |
+| `P-02` | POST /payments/checkout — Midtrans Snap, QRIS | A | W5 | 1 | `blocked` | — | 2026-09-17 | Kode selesai & ter-merge, TAPI setengah AC tidak bisa dibuktikan: 'token Snap dan redirect_url yang VALID' menuntut panggilan Midtrans sungguhan, dan MIDTRANS_SERVER_KEY kosong. Idempotensi & PA-5 & PA-10 terbukti. Menunggu kredensial vendor — sama seperti F-05 menunggu akun cloud. |
 | `P-03` | Webhook: verifikasi signature, idempotensi, entri… | A | W5 | 1,5 | `todo` | — | — | — |
 | `PR-01` | Alokasi 2 reviewer lintas squad, identitas disemb… | A | W5 | 1 | `todo` | — | — | — |
 | `RT-01` | WS gateway + Redis pub/sub adapter, kanal squad:{id} | A | W5 | 1,5 | `todo` | — | — | — |
@@ -128,8 +128,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `done` | 17 | 17,5 |
 | `review` | 6 | 5,5 |
 | `in_progress` | 0 | 0,0 |
-| `blocked` | 1 | 1,5 |
-| `todo` | 50 | 50,0 |
+| `blocked` | 2 | 2,5 |
+| `todo` | 49 | 49,0 |
 
 ---
 ## Ringkasan per epik

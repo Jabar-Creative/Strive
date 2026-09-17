@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { CheckoutService } from './checkout.service';
+import { SnapClient } from './snap.client';
 import { PricingConfigService } from './pricing-config.service';
 import { PricingController } from './pricing.controller';
 
@@ -20,7 +22,7 @@ import { PricingController } from './pricing.controller';
  */
 @Module({
   controllers: [PricingController],
-  providers: [PricingConfigService],
-  exports: [PricingConfigService],
+  providers: [PricingConfigService, CheckoutService, SnapClient],
+  exports: [PricingConfigService, CheckoutService],
 })
 export class PaymentModule {}
