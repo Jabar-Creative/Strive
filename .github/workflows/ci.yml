@@ -89,6 +89,16 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U strive -d strive_ci"
           --health-interval 5s --health-timeout 5s --health-retries 10
+      # Redis ditambahkan di Q-02. Test leaderboard menguji AC yang berbunyi
+      # "Redis di-FLUSHALL lalu papan pulih otomatis" — itu tidak bisa
+      # dibuktikan dengan mock: mock akan selalu "pulih", karena datanya
+      # memang tidak pernah benar-benar hilang.
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -106,6 +116,7 @@ jobs:
       - name: Jalankan migrasi terhadap DB kosong
         env:
           DATABASE_URL: postgres://strive:strive_ci@localhost:5432/strive_ci
+          REDIS_URL: redis://localhost:6379
         run: pnpm db:migrate
 
       # Migrasi yang "tidak error" belum membuktikan skemanya benar. Tiga hal
@@ -194,11 +205,13 @@ jobs:
       - name: Test integrasi jalur uang
         env:
           DATABASE_URL: postgres://strive:strive_ci@localhost:5432/strive_ci
+          REDIS_URL: redis://localhost:6379
         run: pnpm --filter @strive/api test:integration
 
       - name: Tipe Kysely harus sinkron dengan skema
         env:
           DATABASE_URL: postgres://strive:strive_ci@localhost:5432/strive_ci
+          REDIS_URL: redis://localhost:6379
         run: |
           pnpm db:types
           git diff --exit-code -- apps/api/src/infra/kysely/database.d.ts \
