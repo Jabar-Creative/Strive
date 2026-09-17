@@ -66,7 +66,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `C-03` | UI dompet: saldo, riwayat, penjelasan tiap jenis … | B | W3 | 1 | `todo` | — | — | — |
 | `L-05` | Layar daftar track & progres | B | W3 | 1 | `todo` | — | — | — |
 | `S-03` | UI Hub + streak chip 4 status + quest harian | B | W3 | 1,5 | `todo` | — | — | — |
-| `C-04` | Job rekonsiliasi harian + alert selisih | A | W4 | 0,5 | `todo` | — | — | — |
+| `C-04` | Job rekonsiliasi harian + alert selisih | A | W4 | 0,5 | `review` | — | 2026-09-17 | Job hanya MEMBACA — tidak memperbaiki apa pun, karena menambal angkanya menghapus bukti penyebabnya. Baris audit ditulis meski nol selisih. Diuji dengan sengaja menulis coin_balance langsung, satu-satunya tempat di repo yang melakukannya. |
 | `Q-01` | Pembentukan squad otomatis (8-12 anggota) + gabun… | A | W4 | 0,5 | `done` | #24 | 2026-09-16 | Ter-merge lewat #24. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `Q-02` | LeaderboardService: ZSET, rotasi kunci musim, reb… | A | W4 | 1,5 | `todo` | — | — | — |
 | `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINC… | A | W4 | 1 | `todo` | — | — | — |
@@ -126,10 +126,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 74 | 74,5 |
 | `done` | 17 | 17,5 |
-| `review` | 3 | 2,5 |
+| `review` | 4 | 3,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 53 | 53,0 |
+| `todo` | 52 | 52,5 |
 
 ---
 ## Ringkasan per epik

@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 
+import { WalletModule } from '../modules/wallet';
+import { ReconcileBalanceService } from './reconcile-balance.service';
+
 /**
  * Pool worker (MODE=worker). Satu pool, banyak queue dengan prioritas —
  * bukan satu deployment per jenis job (docs/PRD.md §8.2).
@@ -15,6 +18,15 @@ import { Module } from '@nestjs/common';
  *
  * Semua konsumen outbox WAJIB idempoten — pengantaran at-least-once
  * (docs/PRD.md §8.3 aturan 3).
+ * `ReconcileBalanceService` (C-04) sengaja TIDAK dijadwalkan di sini.
+ * Penjadwalnya adalah bagian dari deploy, dan staging ditunda (isu #29).
+ * Sampai itu ada, job-nya dipanggil manual atau dari test — yang penting
+ * logikanya sudah berdiri dan terbukti, bukan menunggu penjadwal.
  */
-@Module({})
+@Module({
+  imports: [WalletModule],
+  providers: [ReconcileBalanceService],
+  exports: [ReconcileBalanceService],
+})
 export class WorkerModule {}
+export * from './reconcile-balance.service';
