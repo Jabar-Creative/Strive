@@ -1,11 +1,15 @@
 import { Module } from '@nestjs/common';
 
+import { MasteryService } from './mastery.service';
+
 /**
- * E12 · Mastery Track — docs/PRD.md §7 E12
+ * E12 · Mastery Track — PRD §7 E12.
  *
- * KERANGKA KOSONG. Controller & service menyusul di item: MT-01.
- *
- * PROXY TIPIS ke AI service. Biaya dipotong dengan pola hold/settle (MT-7).
+ * Node TIDAK memanggil LLM langsung (aturan 8). Umpan balik AI datang lewat
+ * `ai_jobs` + AI service, dan itu item `MT-02`.
  */
-@Module({})
+@Module({
+  providers: [MasteryService],
+  exports: [MasteryService],
+})
 export class MasteryModule {}
