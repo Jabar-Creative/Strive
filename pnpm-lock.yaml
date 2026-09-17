@@ -126,6 +126,9 @@ importers:
       '@strive/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      better-auth:
+        specifier: ^1.7.5
+        version: 1.7.5(next@15.5.25(@types/node@22.20.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(pg@8.23.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@2.1.9(@types/node@22.20.2)(terser@5.51.2))
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -166,6 +169,9 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.2)(terser@5.51.2)
 
   packages/contracts:
     dependencies:

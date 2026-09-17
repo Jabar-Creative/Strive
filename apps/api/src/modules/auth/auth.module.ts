@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 
 import { AuthService } from './auth.service';
+import { AuthHttpController } from './auth-http.controller';
+import { createAuthFromEnv } from './auth-http.provider';
+import { AUTH } from './auth.types';
 
 /**
  * E1 · Auth & RBAC — docs/PRD.md §7 E1
@@ -10,9 +13,20 @@ import { AuthService } from './auth.service';
  *
  * `AuthService` di sini BUKAN auth — ia tiga kewajiban pengganti AU-5 yang
  * dibuang isu #18. Guard & matriks akses menyusul di `A-02`.
+ *
+ * Handler HTTP (`AuthHttpController`) dipasang di A-03: A-01 memang hanya
+ * membuktikan instance lewat `auth.api`; layar web membutuhkan endpoint
+ * sungguhan di `/api/v1/auth/*`.
  */
 @Module({
-  providers: [AuthService],
+  controllers: [AuthHttpController],
+  providers: [
+    AuthService,
+    {
+      provide: AUTH,
+      useFactory: createAuthFromEnv,
+    },
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}
