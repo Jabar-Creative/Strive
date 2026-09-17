@@ -11,7 +11,7 @@
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:types": "node scripts/db-types.mjs",
     "seed": "node scripts/not-implemented.mjs seed F-04",
-    "seed:content": "node scripts/not-implemented.mjs seed:content F-11",
+    "seed:content": "node db/seeds/seed-content.mjs",
     "dev": "concurrently -k -n web,api,ai -c cyan,magenta,yellow \"pnpm dev:web\" \"pnpm dev:api\" \"pnpm dev:ai\"",
     "dev:web": "pnpm --filter @strive/web dev",
     "dev:api": "pnpm --filter @strive/api dev",

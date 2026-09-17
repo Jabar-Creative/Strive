@@ -48,7 +48,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `done` | #36 | 2026-09-16 | Ter-merge lewat #36, di-review Dev A (isu #34). DoD: staging dikecualikan (isu #29). |
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `review` | `b66b33f` | 2026-09-16 | PR #40 dibuka. AC terbukti: tipe di-import web+api tanpa error, snapshot test menolak kebocoran correct/why (diverifikasi uji mutasi). Audit keamanan: 2 temuan (IDOR document_key, field tanpa batas atas) diperbaiki sebelum PR dibuka. Rekonsiliasi skema notification dengan PR N-01 (#43, dikerjakan paralel) — lihat catatan koordinasi di PR. |
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-15 | PR #13 ter-merge & di-review. 12/12 rute HTTP 200, nol referensi menggantung ke backlog/PRD. Nol baris kode baru — memang hasil yang benar. |
-| `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `todo` | — | — | — |
+| `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `review` | `ca763e0` | 2026-09-16 | PR #41 dibuka. AC terbukti di database nyata: idempotensi diverifikasi ulang independen (track_id + jumlah baris identik run 1 vs run 2). Audit keamanan bersih, 1 perbaikan Low (crash koneksi DB) sebelum PR dibuka. |
 | `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `todo` | — | — | Dibuat dari isu #14. PRD §9.3 mewajibkannya tapi tidak ada item-nya — terlewat saat perencanaan. Partisi habis 2027-03-01 dan insert di luar rentang GAGAL. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 2 | `review` | — | 2026-09-17 | Estimasi 0,5 -> 2 hari (isu #35). Migrasi 004 (33 tabel) + 005 (trigger AU-6). AU-3 Argon2id menimpa scrypt bawaan. AC-AU-2 ditulis ulang: versi lama menuntut AU-5 yang dibuang isu #18. |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
@@ -126,10 +126,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 74 | 74,5 |
 | `done` | 12 | 12,5 |
-| `review` | 2 | 3,0 |
+| `review` | 3 | 3,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 59 | 57,5 |
+| `todo` | 58 | 57,0 |
 
 ---
 ## Ringkasan per epik
