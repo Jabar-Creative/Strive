@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 
 import { WalletModule } from '../modules/wallet';
+import { NotificationModule } from '../modules/notification';
 import { ReconcileBalanceService } from './reconcile-balance.service';
+import { StreakWarningService } from './streak-warning.service';
 
 /**
  * Pool worker (MODE=worker). Satu pool, banyak queue dengan prioritas —
@@ -24,9 +26,10 @@ import { ReconcileBalanceService } from './reconcile-balance.service';
  * logikanya sudah berdiri dan terbukti, bukan menunggu penjadwal.
  */
 @Module({
-  imports: [WalletModule],
-  providers: [ReconcileBalanceService],
-  exports: [ReconcileBalanceService],
+  imports: [WalletModule, NotificationModule],
+  providers: [ReconcileBalanceService, StreakWarningService],
+  exports: [ReconcileBalanceService, StreakWarningService],
 })
 export class WorkerModule {}
 export * from './reconcile-balance.service';
+export * from './streak-warning.service';
