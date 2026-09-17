@@ -1,2 +1,2 @@
-// Skema zod domain `squad` — item F-08 (Dev B). Belum ada endpoint sungguhan.
-export {};
+// Skema zod domain `squad` — docs/PRD.md §10.3 "Squad & liga" + §7 E5.
+export * from './squad';

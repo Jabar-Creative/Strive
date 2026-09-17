@@ -63,10 +63,13 @@ export class NotificationsController {
   ): Promise<ListNotificationsResponse> {
     const parsed = parseListNotificationsQuery(query);
     if (!parsed.ok) {
+      // PRD §10.1: badan error SELALU dibungkus `error`.
       throw new BadRequestException({
-        code: 'INVALID_CURSOR',
-        message: 'Parameter query tidak valid',
-        details: parsed.details,
+        error: {
+          code: 'INVALID_CURSOR',
+          message: 'Parameter query tidak valid',
+          details: parsed.details,
+        },
       });
     }
 
@@ -76,9 +79,11 @@ export class NotificationsController {
     } catch (error) {
       if (error instanceof NotificationCursorError) {
         throw new BadRequestException({
-          code: 'INVALID_CURSOR',
-          message: 'Cursor tidak valid',
-          details: { cursor: error.rawCursor },
+          error: {
+            code: 'INVALID_CURSOR',
+            message: 'Cursor tidak valid',
+            details: { cursor: error.rawCursor },
+          },
         });
       }
       throw error;
@@ -96,10 +101,15 @@ export class NotificationsController {
       return { id: updated.id, read_at: updated.read_at!.toISOString() };
     } catch (error) {
       if (error instanceof NotificationOwnershipError) {
+        // `NOT_FOUND` generik, bukan varian per-sumber-daya: ia sudah jadi
+        // konvensi di track, lesson, squad, dan streak. Identitas sumber
+        // dayanya masuk `details`. PRD §10.2 daftar TERTUTUP (isu #25).
         throw new NotFoundException({
-          code: 'NOTIFICATION_NOT_FOUND',
-          message: 'Notifikasi tidak ditemukan',
-          details: { id: error.notificationId },
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Notifikasi tidak ditemukan',
+            details: { notificationId: error.notificationId },
+          },
         });
       }
       throw error;

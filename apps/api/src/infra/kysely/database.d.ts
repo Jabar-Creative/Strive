@@ -78,6 +78,31 @@ export interface AuditLog {
   subject_type: string | null;
 }
 
+export interface AuthAccounts {
+  access_token: string | null;
+  access_token_expires_at: Timestamp | null;
+  account_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  id_token: string | null;
+  password: string | null;
+  provider_id: string;
+  refresh_token: string | null;
+  refresh_token_expires_at: Timestamp | null;
+  scope: string | null;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface AuthVerifications {
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  identifier: string;
+  updated_at: Generated<Timestamp>;
+  value: string;
+}
+
 export interface CoinLedger {
   amount: number;
   balance_after: number;
@@ -323,7 +348,12 @@ export interface Sessions {
   created_at: Generated<Timestamp>;
   expires_at: Timestamp;
   id: Generated<string>;
+  /**
+   * text, bukan inet: Better-Auth meneruskan X-Forwarded-For apa adanya dan rantai proxy bukan inet yang sah.
+   */
   ip: string | null;
+  token: string;
+  updated_at: Generated<Timestamp>;
   user_agent: string | null;
   user_id: string;
 }
@@ -396,9 +426,16 @@ export interface Users {
   created_at: Generated<Timestamp>;
   display_name: string;
   email: string;
+  /**
+   * AU-8: false memblokir top-up. Ditulis Better-Auth. Menggantikan email_verified_at (isu #35 opsi 1) yang dibuang di migrasi contract.
+   */
+  email_verified: Generated<boolean>;
   email_verified_at: Timestamp | null;
   id: Generated<string>;
-  password_hash: string;
+  /**
+   * USANG sejak 004. Password ada di auth_accounts.password. Dibuang di migrasi contract.
+   */
+  password_hash: string | null;
   role: Generated<UserRole>;
   status: Generated<string>;
   timezone: Generated<string>;
@@ -408,6 +445,8 @@ export interface Users {
 export interface DB {
   ai_jobs: AiJobs;
   audit_log: AuditLog;
+  auth_accounts: AuthAccounts;
+  auth_verifications: AuthVerifications;
   coin_ledger: CoinLedger;
   cv_documents: CvDocuments;
   daily_quests: DailyQuests;

@@ -1,0 +1,306 @@
+{
+  "track": {
+    "slug": "content-writing-dasar",
+    "title": "Content Writing Dasar",
+    "description": "Fondasi menulis konten yang jelas, ringkas, dan enak dibaca untuk media sosial dan blog.",
+    "category": "Content",
+    "isPublished": true,
+    "sortOrder": 1
+  },
+  "modules": [
+    {
+      "title": "Riset & Ide",
+      "sortOrder": 1,
+      "lessons": [
+        {
+          "title": "Menemukan Sudut Pandang dari Data",
+          "estSeconds": 150,
+          "basePoints": 10,
+          "baseCoins": 20,
+          "sortOrder": 1,
+          "cards": [
+            {
+              "kind": "multiple_choice",
+              "prompt": "Apa langkah pertama yang paling tepat sebelum menulis konten edukasi?",
+              "sortOrder": 1,
+              "options": [
+                {
+                  "id": "a",
+                  "text": "Riset kebutuhan dan pertanyaan audiens",
+                  "correct": true,
+                  "why": "Konten yang relevan lahir dari masalah nyata audiens, bukan tebakan penulis."
+                },
+                {
+                  "id": "b",
+                  "text": "Langsung menulis judul yang catchy",
+                  "correct": false,
+                  "why": "Judul menarik tidak berguna kalau isinya tidak menjawab kebutuhan pembaca."
+                },
+                {
+                  "id": "c",
+                  "text": "Menentukan target jumlah share",
+                  "correct": false,
+                  "why": "Target distribusi itu metrik hasil, bukan titik awal proses menulis."
+                }
+              ]
+            },
+            {
+              "kind": "swipe_binary",
+              "prompt": "Pernyataan: Ide konten sebaiknya datang dari asumsi penulis, bukan data audiens.",
+              "sortOrder": 2,
+              "options": [
+                {
+                  "id": "true",
+                  "text": "Benar",
+                  "correct": false,
+                  "why": "Asumsi tanpa validasi data sering meleset dari kebutuhan audiens sebenarnya."
+                },
+                {
+                  "id": "false",
+                  "text": "Salah",
+                  "correct": true,
+                  "why": "Data (riset kata kunci, pertanyaan komunitas, komentar) memvalidasi ide sebelum ditulis."
+                }
+              ]
+            },
+            {
+              "kind": "multiple_choice",
+              "prompt": "Sumber ide konten mana yang paling murah dan cepat untuk pemula?",
+              "sortOrder": 3,
+              "options": [
+                {
+                  "id": "a",
+                  "text": "Pertanyaan yang sering muncul di kolom komentar/DM",
+                  "correct": true,
+                  "why": "Sudah ada bukti minat nyata, tinggal dijawab lebih lengkap dalam bentuk konten."
+                },
+                {
+                  "id": "b",
+                  "text": "Survei berbayar ke agensi riset",
+                  "correct": false,
+                  "why": "Valid, tapi mahal dan lambat untuk konten harian."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Menyusun Outline yang Fokus",
+          "estSeconds": 160,
+          "basePoints": 10,
+          "baseCoins": 20,
+          "sortOrder": 2,
+          "cards": [
+            {
+              "kind": "multiple_choice",
+              "prompt": "Fungsi utama outline sebelum menulis draf adalah?",
+              "sortOrder": 1,
+              "options": [
+                {
+                  "id": "a",
+                  "text": "Memastikan alur argumen runtut sebelum menulis kalimat penuh",
+                  "correct": true,
+                  "why": "Outline mencegah tulisan melebar ke topik yang tidak relevan."
+                },
+                {
+                  "id": "b",
+                  "text": "Menambah jumlah kata agar terlihat lebih lengkap",
+                  "correct": false,
+                  "why": "Panjang bukan tujuan; relevansi dan kejelasan yang diutamakan."
+                }
+              ]
+            },
+            {
+              "kind": "swipe_binary",
+              "prompt": "Pernyataan: Satu outline boleh memuat lebih dari satu ide utama sekaligus.",
+              "sortOrder": 2,
+              "options": [
+                {
+                  "id": "true",
+                  "text": "Benar",
+                  "correct": false,
+                  "why": "Banyak ide utama sekaligus membuat pembaca kehilangan fokus argumen."
+                },
+                {
+                  "id": "false",
+                  "text": "Salah",
+                  "correct": true,
+                  "why": "Satu konten sebaiknya membawa satu ide utama yang jelas."
+                }
+              ]
+            },
+            {
+              "kind": "multiple_choice",
+              "prompt": "Bagian mana yang paling penting ditulis lebih dulu di outline?",
+              "sortOrder": 3,
+              "options": [
+                {
+                  "id": "a",
+                  "text": "Kesimpulan atau poin aksi untuk pembaca",
+                  "correct": true,
+                  "why": "Menulis tujuan akhir lebih dulu membuat setiap bagian lain mengarah ke sana."
+                },
+                {
+                  "id": "b",
+                  "text": "Daftar hashtag yang akan dipakai",
+                  "correct": false,
+                  "why": "Hashtag itu urusan distribusi, bukan struktur argumen."
+                },
+                {
+                  "id": "c",
+                  "text": "Jumlah paragraf yang diinginkan",
+                  "correct": false,
+                  "why": "Jumlah paragraf ideal mengikuti kebutuhan isi, bukan ditentukan di awal."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Menulis & Menyunting",
+      "sortOrder": 2,
+      "lessons": [
+        {
+          "title": "Kalimat Aktif vs Pasif",
+          "estSeconds": 150,
+          "basePoints": 10,
+          "baseCoins": 20,
+          "sortOrder": 1,
+          "cards": [
+            {
+              "kind": "multiple_choice",
+              "prompt": "Mana kalimat yang memakai bentuk aktif dan lebih mudah dibaca?",
+              "sortOrder": 1,
+              "options": [
+                {
+                  "id": "a",
+                  "text": "\"Tim menyelesaikan laporan sebelum tenggat.\"",
+                  "correct": true,
+                  "why": "Subjek melakukan aksi secara langsung, lebih ringkas dan jelas."
+                },
+                {
+                  "id": "b",
+                  "text": "\"Laporan telah diselesaikan oleh tim sebelum tenggat.\"",
+                  "correct": false,
+                  "why": "Bentuk pasif menambah kata tanpa menambah kejelasan di sini."
+                }
+              ]
+            },
+            {
+              "kind": "swipe_binary",
+              "prompt": "Pernyataan: Kalimat pasif selalu salah dan harus dihindari total.",
+              "sortOrder": 2,
+              "options": [
+                {
+                  "id": "true",
+                  "text": "Benar",
+                  "correct": false,
+                  "why": "Pasif tetap berguna saat pelaku aksi tidak penting atau tidak diketahui."
+                },
+                {
+                  "id": "false",
+                  "text": "Salah",
+                  "correct": true,
+                  "why": "Aktif dianjurkan sebagai default, bukan aturan mutlak tanpa pengecualian."
+                }
+              ]
+            },
+            {
+              "kind": "multiple_choice",
+              "prompt": "Kapan kalimat pasif justru lebih tepat dipakai?",
+              "sortOrder": 3,
+              "options": [
+                {
+                  "id": "a",
+                  "text": "Saat pelaku aksi tidak diketahui atau tidak relevan disebut",
+                  "correct": true,
+                  "why": "Contoh: \"Data pengguna dienkripsi sebelum disimpan\" — siapa yang mengenkripsi tidak penting bagi pembaca."
+                },
+                {
+                  "id": "b",
+                  "text": "Saat ingin tulisan terlihat lebih formal walau membingungkan",
+                  "correct": false,
+                  "why": "Kejelasan tidak boleh dikorbankan demi kesan formal."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Self-Editing dalam 5 Menit",
+          "estSeconds": 170,
+          "basePoints": 10,
+          "baseCoins": 20,
+          "sortOrder": 2,
+          "cards": [
+            {
+              "kind": "multiple_choice",
+              "prompt": "Langkah self-editing paling efektif untuk draf pendek adalah?",
+              "sortOrder": 1,
+              "options": [
+                {
+                  "id": "a",
+                  "text": "Membaca draf dengan suara keras untuk menangkap kalimat yang janggal",
+                  "correct": true,
+                  "why": "Kejanggalan ritme dan kalimat berbelit lebih mudah terdengar daripada terbaca."
+                },
+                {
+                  "id": "b",
+                  "text": "Langsung publikasi lalu edit setelah ada komentar pembaca",
+                  "correct": false,
+                  "why": "Menunda editing ke publik berarti kesalahan mendasar sudah terlanjur terbaca."
+                }
+              ]
+            },
+            {
+              "kind": "swipe_binary",
+              "prompt": "Pernyataan: Menghapus kalimat yang tidak menambah informasi baru membuat tulisan lebih kuat.",
+              "sortOrder": 2,
+              "options": [
+                {
+                  "id": "true",
+                  "text": "Benar",
+                  "correct": true,
+                  "why": "Setiap kalimat idealnya membawa informasi atau progres argumen baru."
+                },
+                {
+                  "id": "false",
+                  "text": "Salah",
+                  "correct": false,
+                  "why": "Kalimat filler justru mengaburkan poin utama dan memperlambat pembaca."
+                }
+              ]
+            },
+            {
+              "kind": "multiple_choice",
+              "prompt": "Apa tanda paling umum kalimat perlu dipotong jadi dua?",
+              "sortOrder": 3,
+              "options": [
+                {
+                  "id": "a",
+                  "text": "Kalimat memuat lebih dari satu ide yang dihubungkan paksa dengan \"dan\"/\"yang\"",
+                  "correct": true,
+                  "why": "Satu kalimat satu ide membuat draf lebih mudah dipindai pembaca."
+                },
+                {
+                  "id": "b",
+                  "text": "Kalimat memakai kata yang jarang dipakai sehari-hari",
+                  "correct": false,
+                  "why": "Kata jarang bukan indikator panjang kalimat, melainkan soal pemilihan diksi."
+                },
+                {
+                  "id": "c",
+                  "text": "Kalimat ditulis dalam bentuk pertanyaan",
+                  "correct": false,
+                  "why": "Bentuk pertanyaan tidak berkaitan dengan kebutuhan memecah kalimat."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,2 +1,2 @@
-// Skema zod domain `streak` — item F-08 (Dev B). Belum ada endpoint sungguhan.
-export {};
+// Skema zod domain `streak` — docs/PRD.md §10.3 "Streak" + §7 E3.
+export * from './streak';
