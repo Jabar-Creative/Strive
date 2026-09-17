@@ -41,6 +41,7 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+*.stackdump
 
 # ── Agent lokal ────────────────────────────────────────────────────────────
 # Memori/scratch subagent (mis. agent-security) — lokal per sesi, bukan

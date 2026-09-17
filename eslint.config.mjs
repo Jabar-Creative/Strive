@@ -77,6 +77,25 @@ export default tseslint.config(
   // CLAUDE.md + PRD §8.2: batas antar-modul ditegakkan lewat lint, bukan lewat
   // jaringan. Impor lintas modul HANYA lewat barrel file (`../wallet`), tidak
   // pernah menembus ke file di dalamnya (`../wallet/coin-ledger.service`).
+  //
+  // Nama modul DISEBUT SATU PER SATU, bukan pola `../*/*`.
+  //
+  // Alasannya ketahuan dari kegagalan nyata: ESLint mencocokkan
+  // pola ini dengan semantik gitignore, yang cocok di posisi MANA
+  // PUN — jadi `../*/*` ikut menolak `../../infra/kysely`, padahal
+  // itu BARREL infra dan justru cara yang benar. Versi pertama
+  // aturan ini memblokir impor yang benar, ketahuan saat C-01
+  // mengimpor tipe database (dan lagi, terpisah, saat P-01 butuh
+  // hal yang sama untuk `@Inject(DATABASE)` — dua item menemukan
+  // bug yang sama, diperbaiki di sini sekali).
+  //
+  // Daftar eksplisit tidak punya masalah itu: `infra`, `common`,
+  // `realtime`, dan `workers` bukan nama modul, jadi barrel-nya
+  // lolos sementara menembus ke dalam modul tetap ditolak.
+  //
+  // HARGA YANG DIBAYAR: menambah modul baru berarti menambah satu
+  // baris di sini. Itu disengaja — menambah modul adalah tindakan
+  // yang pantas terasa.
   {
     files: ['apps/api/src/modules/**/*.ts'],
     rules: {
@@ -85,22 +104,6 @@ export default tseslint.config(
         {
           patterns: [
             {
-              // Nama modul DISEBUT SATU PER SATU, bukan pola `../*/*`.
-              //
-              // Alasannya ketahuan dari kegagalan nyata: ESLint mencocokkan
-              // pola ini dengan semantik gitignore, yang cocok di posisi MANA
-              // PUN — jadi `../*/*` ikut menolak `../../infra/kysely`, padahal
-              // itu BARREL infra dan justru cara yang benar. Versi pertama
-              // aturan ini memblokir impor yang benar, ketahuan saat C-01
-              // mengimpor tipe database.
-              //
-              // Daftar eksplisit tidak punya masalah itu: `infra`, `common`,
-              // `realtime`, dan `workers` bukan nama modul, jadi barrel-nya
-              // lolos sementara menembus ke dalam modul tetap ditolak.
-              //
-              // HARGA YANG DIBAYAR: menambah modul baru berarti menambah satu
-              // baris di sini. Itu disengaja — menambah modul adalah tindakan
-              // yang pantas terasa.
               group: [
                 '../admin/*',
                 '../auth/*',
