@@ -49,35 +49,35 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `done` | #40 | 2026-09-17 | Ter-merge lewat #40. Review Dev A: INVALID_CURSOR masuk PRD §10.2, NOTIFICATION_NOT_FOUND dibuang (daftar §10.2 TERTUTUP). |
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-15 | PR #13 ter-merge & di-review. 12/12 rute HTTP 200, nol referensi menggantung ke backlog/PRD. Nol baris kode baru — memang hasil yang benar. |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `done` | #41 | 2026-09-17 | Ter-merge lewat #41. Review Dev A: batas idempotensi saat lesson sudah dikerjakan dicatat di README. |
-| `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `review` | — | 2026-09-17 | Batas bulan dihitung POSTGRES (date_trunc), bukan aritmetika bulan JavaScript yang salah di akhir bulan. Batas partisi dibaca dari EKSPRESI partisinya, bukan ditebak dari namanya. Diuji dengan insert sungguhan ke partisi bulan depan — partisi yang terdaftar tapi batasnya salah tetap menolak insert. |
+| `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `done` | #62 | 2026-09-17 | Batas bulan dihitung POSTGRES (date_trunc), bukan aritmetika bulan JavaScript yang salah di akhir bulan. Batas partisi dibaca dari EKSPRESI partisinya, bukan ditebak dari namanya. Diuji dengan insert sungguhan ke partisi bulan depan — partisi yang terdaftar tapi batasnya salah tetap menolak insert. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 2 | `done` | #45 | 2026-09-17 | Ter-merge lewat #45. Migrasi 004 (33 tabel) + 005 (trigger AU-6). AC-AU-2 ditulis ulang. |
-| `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `review` | — | 2026-09-17 | ACCESS_MATRIX 31 rute, 91 test unit menjalankan hasil kali silang penuh (rute x peran). Dinamai SessionGuard, bukan JwtGuard: tidak ada JWT sejak isu #18. Guard sementara N-01 dipensiunkan. |
+| `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `done` | #49 | 2026-09-17 | ACCESS_MATRIX 31 rute, 91 test unit menjalankan hasil kali silang penuh (rute x peran). Dinamai SessionGuard, bukan JwtGuard: tidak ada JWT sejak isu #18. Guard sementara N-01 dipensiunkan. |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `done` | #22 | 2026-09-16 | Ter-merge lewat #22. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `todo` | — | — | — |
 | `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
 | `L-02` | GradingService — penilaian sepenuhnya di server | B | W2 | 1 | `todo` | — | — | — |
 | `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `todo` | — | — | — |
-| `C-02` | GET /wallet + GET /wallet/ledger (cursor-paginated) | A | W3 | 0,5 | `review` | — | 2026-09-17 | Cursor buram berprefiks cl: — cursor dari endpoint lain ditolak, bukan diam-diam dipakai sebagai id. AC 'telusur sampai entri pertama' diuji dengan menelusuri 47 entri penuh dan mencocokkannya dengan isi tabel. |
+| `C-02` | GET /wallet + GET /wallet/ledger (cursor-paginated) | A | W3 | 0,5 | `done` | #50 | 2026-09-17 | Cursor buram berprefiks cl: — cursor dari endpoint lain ditolak, bukan diam-diam dipakai sebagai id. AC 'telusur sampai entri pertama' diuji dengan menelusuri 47 entri penuh dan mencocokkannya dengan isi tabel. |
 | `L-03` | POST /attempts: attempt + streak + koin + outbox … | A | W3 | 2 | `todo` | — | — | — |
 | `S-01` | StreakService timezone-aware + kredit freeze | A | W3 | 1,5 | `done` | #23 | 2026-09-16 | Ter-merge lewat #23. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
-| `S-02` | GET /hub agregat: streak, quest, peringkat, saldo… | A | W3 | 1 | `review` | — | 2026-09-17 | Lima bagian dalam satu request, dijalankan bersamaan lewat Promise.all. Seluruh tanggal dihitung di SQL. AC p95<250ms diuji dengan menyemai 1.000 attempt sungguhan. Tipe respons masih lokal: /hub TIDAK ADA di packages/contracts. |
+| `S-02` | GET /hub agregat: streak, quest, peringkat, saldo… | A | W3 | 1 | `done` | #51 | 2026-09-17 | Lima bagian dalam satu request, dijalankan bersamaan lewat Promise.all. Seluruh tanggal dihitung di SQL. AC p95<250ms diuji dengan menyemai 1.000 attempt sungguhan. Tipe respons masih lokal: /hub TIDAK ADA di packages/contracts. |
 | `AI-01` | FastAPI skeleton + auth service-to-service + conf… | B | W3 | 1 | `todo` | — | — | — |
 | `C-03` | UI dompet: saldo, riwayat, penjelasan tiap jenis … | B | W3 | 1 | `todo` | — | — | — |
 | `L-05` | Layar daftar track & progres | B | W3 | 1 | `todo` | — | — | — |
 | `S-03` | UI Hub + streak chip 4 status + quest harian | B | W3 | 1,5 | `todo` | — | — | — |
-| `C-04` | Job rekonsiliasi harian + alert selisih | A | W4 | 0,5 | `review` | — | 2026-09-17 | Job hanya MEMBACA — tidak memperbaiki apa pun, karena menambal angkanya menghapus bukti penyebabnya. Baris audit ditulis meski nol selisih. Diuji dengan sengaja menulis coin_balance langsung, satu-satunya tempat di repo yang melakukannya. |
+| `C-04` | Job rekonsiliasi harian + alert selisih | A | W4 | 0,5 | `done` | #53 | 2026-09-17 | Job hanya MEMBACA — tidak memperbaiki apa pun, karena menambal angkanya menghapus bukti penyebabnya. Baris audit ditulis meski nol selisih. Diuji dengan sengaja menulis coin_balance langsung, satu-satunya tempat di repo yang melakukannya. |
 | `Q-01` | Pembentukan squad otomatis (8-12 anggota) + gabun… | A | W4 | 0,5 | `done` | #24 | 2026-09-16 | Ter-merge lewat #24. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
-| `Q-02` | LeaderboardService: ZSET, rotasi kunci musim, reb… | A | W4 | 1,5 | `review` | — | 2026-09-17 | Redis melayani, Postgres memiliki. AC 'FLUSHALL lalu pulih dengan angka identik' diuji dengan FLUSHALL sungguhan — mock akan selalu pulih karena datanya tidak pernah benar-benar hilang. Service redis ditambahkan ke CI. |
+| `Q-02` | LeaderboardService: ZSET, rotasi kunci musim, reb… | A | W4 | 1,5 | `done` | #54 | 2026-09-17 | Redis melayani, Postgres memiliki. AC 'FLUSHALL lalu pulih dengan angka identik' diuji dengan FLUSHALL sungguhan — mock akan selalu pulih karena datanya tidak pernah benar-benar hilang. Service redis ditambahkan ke CI. |
 | `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINC… | A | W4 | 1 | `todo` | — | — | — |
-| `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `review` | — | 2026-09-17 | Job jalan tiap jam, memilih pengguna yang SAAT ITU pukul 20.00 di zonanya sendiri — perbandingan jam di dalam SQL. Idempoten per hari lokal. IS DISTINCT FROM, bukan <>: pengguna yang belum pernah aktif justru yang paling butuh diingatkan. |
+| `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `done` | #55 | 2026-09-17 | Job jalan tiap jam, memilih pengguna yang SAAT ITU pukul 20.00 di zonanya sendiri — perbandingan jam di dalam SQL. Idempoten per hari lokal. IS DISTINCT FROM, bukan <>: pengguna yang belum pernah aktif justru yang paling butuh diingatkan. |
 | `AI-02` | Ekstraksi PDF/DOCX + penyusunan dari profil pengguna | B | W4 | 1 | `todo` | — | — | — |
 | `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `done` | #43 | 2026-09-17 | Ter-merge lewat #43. Review Dev A: guard JWT diganti guard sesi — A-01 menghapus JWT setelah item ini mulai. |
 | `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `done` | #42 | 2026-09-17 | Ter-merge lewat #42. Review Dev A: uang integer, append-only terbukti, advisory lock bernama. |
 | `Q-05` | UI squad + leaderboard (WS + fallback polling 30 … | B | W4 | 1,5 | `todo` | — | — | — |
 | `P-02` | POST /payments/checkout — Midtrans Snap, QRIS | A | W5 | 1 | `blocked` | — | 2026-09-17 | Kode selesai & ter-merge, TAPI setengah AC tidak bisa dibuktikan: 'token Snap dan redirect_url yang VALID' menuntut panggilan Midtrans sungguhan, dan MIDTRANS_SERVER_KEY kosong. Idempotensi & PA-5 & PA-10 terbukti. Menunggu kredensial vendor — sama seperti F-05 menunggu akun cloud. |
 | `P-03` | Webhook: verifikasi signature, idempotensi, entri… | A | W5 | 1,5 | `todo` | — | — | — |
-| `PR-01` | Alokasi 2 reviewer lintas squad, identitas disemb… | A | W5 | 1 | `review` | — | 2026-09-17 | PR-2 ditegakkan BENTUK DATA: ReviewQueueItem tidak punya author_id, jadi tidak ada tempat untuk lupa membuangnya. Diuji dengan memeriksa SELURUH isi respons, bukan satu field. PR-1 dijaga di antrean DAN di jalur tulis. |
+| `PR-01` | Alokasi 2 reviewer lintas squad, identitas disemb… | A | W5 | 1 | `done` | #58 | 2026-09-17 | PR-2 ditegakkan BENTUK DATA: ReviewQueueItem tidak punya author_id, jadi tidak ada tempat untuk lupa membuangnya. Diuji dengan memeriksa SELURUH isi respons, bukan satu field. PR-1 dijaga di antrean DAN di jalur tulis. |
 | `RT-01` | WS gateway + Redis pub/sub adapter, kanal squad:{id} | A | W5 | 1,5 | `todo` | — | — | — |
 | `AI-03` | Penyusunan LLM -> JSON terstruktur, prompt berver… | B | W5 | 1,5 | `todo` | — | — | — |
 | `N-02` | UI lonceng notifikasi + banner peringatan streak | B | W5 | 0,5 | `todo` | — | — | — |
@@ -86,7 +86,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `RT-02` | Client hook useRealtime + fallback polling otomatis | B | W5 | 0,5 | `todo` | — | — | — |
 | `K-01` | Upload PDF/DOCX + SHA-256 + simpan ke object storage | A | W6 | 1 | `todo` | — | — | — |
 | `K-02` | ScanService: dedup, hold/settle/release, reaper 3… | A | W6 | 1,5 | `todo` | — | — | — |
-| `MT-01` | Skema mastery_sessions + API | A | W6 | 0,5 | `review` | — | 2026-09-17 | Giliran ditambahkan lewat jsonb_insert di DATABASE, bukan dirakit di Node — 10 penambahan paralel diuji, nol yang hilang. Kepemilikan disaring di WHERE, bukan diperiksa setelah baris diambil. Sesi orang lain dan sesi yang tidak ada menjawab identik. |
+| `MT-01` | Skema mastery_sessions + API | A | W6 | 0,5 | `done` | #59 | 2026-09-17 | Giliran ditambahkan lewat jsonb_insert di DATABASE, bukan dirakit di Node — 10 penambahan paralel diuji, nol yang hilang. Kepemilikan disaring di WHERE, bukan diperiksa setelah baris diambil. Sesi orang lain dan sesi yang tidak ada menjawab identik. |
 | `PR-02` | API submit review + poin berbobot + cap harian | A | W6 | 1 | `todo` | — | — | — |
 | `AI-04` | Skor ATS deterministik + daftar temuan konkret | B | W6 | 0,5 | `todo` | — | — | — |
 | `AI-05` | Render PDF satu kolom, ramah parser | B | W6 | 0,5 | `todo` | — | — | — |
@@ -95,8 +95,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `ST-02` | UI etalase + unduh aset (signed URL 15 menit) | B | W6 | 1 | `todo` | — | — | — |
 | `AI-06` | Tabel ai_jobs + dispatcher di Node + pencatatan b… | A | W7 | 1 | `todo` | — | — | — |
 | `K-03` | Worker Copyleaks + webhook hasil + laporan terunduh | A | W7 | 1,5 | `todo` | — | — | — |
-| `SA-01` | View SQL untuk transaksi & audit + koneksi Retool… | A | W7 | 0,5 | `review` | — | 2026-09-17 | View admin_transactions menggabung 4 tabel + kolom paid_without_ledger (uang masuk tanpa koin keluar). Role strive_readonly diuji dengan SET LOCAL ROLE sungguhan: bisa baca view, TIDAK bisa menulis apa pun, TIDAK bisa membaca tabel mentah. |
-| `SA-02` | PATCH /admin/pricing — terbit versi baru, bukan m… | A | W7 | 0,5 | `review` | — | 2026-09-17 | publishNewVersion sekarang menulis audit_log DI DALAM transaksi yang sama — versi tanpa jejak adalah harga yang berubah tanpa ada yang mengaku. actorId dari GUARD, tidak pernah dari body. Harga lama terbukti tetap terbaca untuk order lama. |
+| `SA-01` | View SQL untuk transaksi & audit + koneksi Retool… | A | W7 | 0,5 | `done` | #60 | 2026-09-17 | View admin_transactions menggabung 4 tabel + kolom paid_without_ledger (uang masuk tanpa koin keluar). Role strive_readonly diuji dengan SET LOCAL ROLE sungguhan: bisa baca view, TIDAK bisa menulis apa pun, TIDAK bisa membaca tabel mentah. |
+| `SA-02` | PATCH /admin/pricing — terbit versi baru, bukan m… | A | W7 | 0,5 | `done` | #61 | 2026-09-17 | publishNewVersion sekarang menulis audit_log DI DALAM transaksi yang sama — versi tanpa jejak adalah harga yang berubah tanpa ada yang mengaku. actorId dari GUARD, tidak pernah dari body. Harga lama terbukti tetap terbaca untuk order lama. |
 | `AI-07` | UI CV builder: isi profil, jalankan, lihat temuan… | B | W7 | 1 | `todo` | — | — | — |
 | `K-04` | UI klinik: unggah, antrean, skor kemiripan, riwayat | B | W7 | 1 | `todo` | — | — | — |
 | `PL-02` | 3 template contoh + riwayat run | B | W7 | 0,5 | `todo` | — | — | — |
@@ -125,8 +125,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 74 | 74,5 |
-| `done` | 17 | 17,5 |
-| `review` | 11 | 8,5 |
+| `done` | 28 | 26,0 |
+| `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 2 | 2,5 |
 | `todo` | 44 | 46,0 |
