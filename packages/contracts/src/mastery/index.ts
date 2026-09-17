@@ -1,2 +1,3 @@
-// Skema zod domain `mastery` — item F-08 (Dev B). Belum ada endpoint sungguhan.
-export {};
+// Skema zod domain `mastery` — docs/PRD.md §10.3 "Karir & AI" (bagian
+// Mastery) + §7 E12.
+export * from './mastery';

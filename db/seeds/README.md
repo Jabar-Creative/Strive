@@ -21,6 +21,25 @@ seed` terpisah. Resolusinya: "impor 1 track percontohan" dibuktikan dengan
 [`seed-content.mjs`](./seed-content.mjs). `pnpm seed` (`F-04`, Dev A) masih
 placeholder — **jangan disentuh dari sini**, itu bukan cakupan `F-11`.
 
+## Batas yang perlu diketahui: konten yang sudah dikerjakan orang
+
+Strategi hapus-lalu-sisip-ulang untuk `modules`/`lessons`/`lesson_cards`
+bekerja **selama belum ada pengguna yang mengerjakan lesson-nya.**
+
+Foreign key `lesson_attempts.lesson_id → lessons` bersifat **`ON DELETE NO
+ACTION`** (diverifikasi langsung di skema), berbeda dari tiga FK konten lain
+yang `CASCADE`. Jadi begitu satu attempt ada, `DELETE` lesson-nya **ditolak
+database**, dan karena seluruh impor dibungkus satu transaksi, **DELETE-nya
+ikut di-rollback** — tidak ada kerusakan sebagian.
+
+Itu perilaku yang benar, bukan bug: riwayat belajar orang tidak boleh lenyap
+karena seseorang menjalankan ulang skrip seed. Tapi artinya **"impor ulang
+idempoten" hanya berlaku sebelum konten itu dipakai.** Di staging dan produksi,
+koreksi konten yang sudah dikerjakan orang butuh migrasi konten tersendiri,
+bukan `pnpm seed:content`.
+
+Ditemukan saat review Dev A atas PR #41.
+
 ## Aturan
 
 - **Impor ulang wajib idempoten.** Menjalankan `pnpm seed:content` dua kali
