@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 
 import { CoinLedgerService } from './coin-ledger.service';
+import { WalletController } from './wallet.controller';
+import { WalletService } from './wallet.service';
 
 /**
  * E4 · Coin & Wallet — docs/PRD.md §7 E4
@@ -13,7 +15,8 @@ import { CoinLedgerService } from './coin-ledger.service';
  * learning) bisa menyuntikkannya.
  */
 @Module({
-  providers: [CoinLedgerService],
-  exports: [CoinLedgerService],
+  controllers: [WalletController],
+  providers: [CoinLedgerService, WalletService],
+  exports: [CoinLedgerService, WalletService],
 })
 export class WalletModule {}
