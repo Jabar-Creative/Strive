@@ -35,7 +35,8 @@ import { PricingConfigService } from './pricing-config.service';
  * menjalankan `docker compose up -d` sendiri.
  */
 const TEST_DATABASE_URL =
-  process.env['PRICING_TEST_DATABASE_URL'] ?? 'postgres://strive:strive_dev_only@127.0.0.1:55432/strive';
+  process.env['PRICING_TEST_DATABASE_URL'] ??
+  'postgres://strive:strive_dev_only@127.0.0.1:55432/strive';
 
 async function pingDatabase(connectionString: string): Promise<boolean> {
   const probe = new Pool({ connectionString, connectionTimeoutMillis: 1500 });
@@ -131,6 +132,13 @@ describe('PricingConfigService (integrasi database nyata)', () => {
       await db.deleteFrom('pricing_config').where('version', 'in', publishedVersions).execute();
     }
     if (actorId) {
+      // audit_log DULU: sejak SA-02, publishNewVersion menulis baris audit yang
+      // menunjuk pelakunya, dan audit_log.actor_id punya FK ke users. Menghapus
+      // penggunanya lebih dulu ditolak `audit_log_actor_id_fkey`.
+      //
+      // FK-nya TIDAK di-CASCADE, dan itu benar: jejak audit tidak boleh lenyap
+      // hanya karena akun pelakunya dihapus.
+      await db.deleteFrom('audit_log').where('actor_id', '=', actorId).execute();
       await db.deleteFrom('users').where('id', '=', actorId).execute();
     }
     await db.destroy();
@@ -139,12 +147,19 @@ describe('PricingConfigService (integrasi database nyata)', () => {
   it('AC P-01: publish versi baru TIDAK menimpa versi lama, dan versi aktif pindah ke yang baru', async (ctx) => {
     if (!dbAvailable) ctx.skip();
 
-    const v1 = await service.publishNewVersion({ ...basePayload, packages: PRICING_V1_PACKAGES }, actorId);
+    const v1 = await service.publishNewVersion(
+      { ...basePayload, packages: PRICING_V1_PACKAGES },
+      actorId,
+    );
     publishedVersions.push(v1.version);
 
     // Snapshot v1 SEBELUM v2 diterbitkan — dibandingkan lagi setelahnya.
     const v1BeforeSecondPublish = await service.getVersion(v1.version);
-    expect(v1BeforeSecondPublish).toMatchObject({ version: v1.version, coin_price_idr: 25, scan_cost_coins: 2400 });
+    expect(v1BeforeSecondPublish).toMatchObject({
+      version: v1.version,
+      coin_price_idr: 25,
+      scan_cost_coins: 2400,
+    });
 
     // Terbitkan versi baru dengan HARGA BERBEDA — ini kasus yang jadi inti
     // acceptance criteria: harga berubah, order lama tidak boleh ikut berubah.
@@ -172,7 +187,10 @@ describe('PricingConfigService (integrasi database nyata)', () => {
   it('menolak payload dengan angka bukan bilangan bulat positif', async (ctx) => {
     if (!dbAvailable) ctx.skip();
 
-    const publish = service.publishNewVersion({ ...basePayload, coinPriceIdr: 0, packages: PRICING_V1_PACKAGES }, actorId);
+    const publish = service.publishNewVersion(
+      { ...basePayload, coinPriceIdr: 0, packages: PRICING_V1_PACKAGES },
+      actorId,
+    );
 
     await expect(publish).rejects.toBeInstanceOf(BadRequestException);
     await publish.catch((error: BadRequestException) => {

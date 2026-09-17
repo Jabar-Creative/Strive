@@ -143,7 +143,11 @@ export class PricingConfigService {
    * aslinya (docs/PRD.md PA-4) walau versi yang lebih baru sudah terbit.
    */
   async getVersion(version: number): Promise<PricingConfigRow | undefined> {
-    return this.db.selectFrom('pricing_config').selectAll().where('version', '=', version).executeTakeFirst();
+    return this.db
+      .selectFrom('pricing_config')
+      .selectAll()
+      .where('version', '=', version)
+      .executeTakeFirst();
   }
 
   /**
@@ -180,7 +184,9 @@ export class PricingConfigService {
         return await this.db.transaction().execute(async (trx) => {
           // Terikat transaksi (xact), bukan sesi — lepas otomatis saat
           // commit/rollback, tidak perlu unlock manual.
-          await sql`select pg_advisory_xact_lock(hashtext(${PUBLISH_LOCK_NAME})::bigint)`.execute(trx);
+          await sql`select pg_advisory_xact_lock(hashtext(${PUBLISH_LOCK_NAME})::bigint)`.execute(
+            trx,
+          );
 
           const latest = await trx
             .selectFrom('pricing_config')
@@ -212,12 +218,46 @@ export class PricingConfigService {
             // dokumentasi pg. Cast `as unknown as ...` karena `Insertable`
             // hasil codegen mengharap `Json` (union `JsonValue`), sedangkan
             // yang dikirim ke driver sekarang memang string JSON mentah.
-            packages: JSON.stringify(data.packages) as unknown as Insertable<DB['pricing_config']>['packages'],
+            packages: JSON.stringify(data.packages) as unknown as Insertable<
+              DB['pricing_config']
+            >['packages'],
             created_by: actorId,
             ...(data.activeFrom ? { active_from: data.activeFrom } : {}),
           };
 
-          return trx.insertInto('pricing_config').values(values).returningAll().executeTakeFirstOrThrow();
+          const baru = await trx
+            .insertInto('pricing_config')
+            .values(values)
+            .returningAll()
+            .executeTakeFirstOrThrow();
+
+          // SA-02: perubahan harga tercatat di audit_log DENGAN PELAKUNYA.
+          //
+          // Ditulis di DALAM transaksi yang sama dengan penerbitannya. Kalau
+          // dipisah, ada jendela di mana harga baru sudah berlaku tapi belum
+          // ada yang tahu siapa yang menerbitkannya — dan itu persis jendela
+          // yang paling ingin dilihat saat harga berubah tanpa ada yang mengaku.
+          //
+          // `before` memuat versi sebelumnya, bukan cuma yang baru: "naik dari
+          // berapa" adalah pertanyaan pertama, dan menjawabnya butuh dua angka.
+          await trx
+            .insertInto('audit_log')
+            .values({
+              actor_id: actorId,
+              action: 'pricing.publish',
+              subject_type: 'pricing_config',
+              subject_id: String(baru.version),
+              before: JSON.stringify({ version: latest?.version ?? null }),
+              after: JSON.stringify({
+                version: baru.version,
+                coin_price_idr: baru.coin_price_idr,
+                scan_cost_coins: baru.scan_cost_coins,
+                packages: data.packages,
+              }),
+            })
+            .execute();
+
+          return baru;
         });
       } catch (error) {
         if (isUniqueViolation(error) && attempt < MAX_PUBLISH_RETRIES) {
