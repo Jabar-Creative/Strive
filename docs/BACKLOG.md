@@ -54,7 +54,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `done` | #22 | 2026-09-16 | Ter-merge lewat #22. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
-| `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `in_progress` | — | 2026-09-17 | — |
+| `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `done` | `a01261f` | 2026-09-17 | Handler HTTP Better-Auth dipasang di /api/v1/auth/* (cookie httpOnly, sesi 30 hari AU-4, disableOriginCheck dikunci) + 5 layar. AC terbukti test integrasi HTTP nyata: Set-Cookie + AU-6 lewat HTTP, get-session dengan cookie, origin asing 403. 75/75 integrasi + 8/8 unit web. Verifikasi visual browser tersisa ke manusia (DevTools MCP tidak terpasang di sesi). Callback email reset/verifikasi + additionalFields timezone = isu untuk Dev A. |
 | `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
 | `L-02` | GradingService — penilaian sepenuhnya di server | B | W2 | 1 | `todo` | — | — | — |
 | `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `todo` | — | — | — |
@@ -125,11 +125,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 74 | 74,5 |
-| `done` | 17 | 17,5 |
+| `done` | 18 | 18,0 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 56 | 55,5 |
+| `todo` | 55 | 55,0 |
 
 ---
 ## Ringkasan per epik
