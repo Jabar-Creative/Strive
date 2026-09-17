@@ -1,7 +1,7 @@
-import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
+import { CurrentUserId, Roles, RolesGuard, SessionGuard } from '../../common/guards';
+import { Controller, Get, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
 
 import { ContentService } from './content.service';
-import { CurrentUserId } from './current-user';
 import type { LessonCards, TrackDetail, TrackSummary } from './content.types';
 
 /**
@@ -12,6 +12,10 @@ import type { LessonCards, TrackDetail, TrackSummary } from './content.types';
  * menolak request tanpa pengguna, jadi rute ini tertutup — bukan terbuka
  * dengan peran yang salah.
  */
+// PRD §2.4: `GET /tracks`, `/lessons/:id/cards` -> student & mentor.
+// Superadmin DITOLAK — panel admin bukan pintu ke konten belajar.
+@UseGuards(SessionGuard, RolesGuard)
+@Roles('student', 'mentor')
 @Controller()
 export class ContentController {
   constructor(private readonly content: ContentService) {}

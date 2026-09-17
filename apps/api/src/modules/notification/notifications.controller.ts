@@ -16,7 +16,6 @@ import type {
   MarkNotificationReadResponse,
   Notification,
 } from '@strive/contracts';
-import { CurrentUserId } from './current-user.decorator';
 import { parseListNotificationsQuery } from './list-query.util';
 import {
   NotificationCursorError,
@@ -24,7 +23,7 @@ import {
   NotificationsService,
   type NotificationRow,
 } from './notifications.service';
-import { NotificationsAuthGuard } from './notifications-auth.guard';
+import { CurrentUserId, Roles, RolesGuard, SessionGuard } from '../../common/guards';
 
 /**
  * Serializer: baris Kysely (Date, kind:string longgar) -> bentuk kontrak zod
@@ -48,7 +47,9 @@ function serialize(row: NotificationRow): Notification {
 }
 
 @Controller('notifications')
-@UseGuards(NotificationsAuthGuard)
+// PRD §2.4: notifikasi milik sendiri -> student & mentor.
+@UseGuards(SessionGuard, RolesGuard)
+@Roles('student', 'mentor')
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 

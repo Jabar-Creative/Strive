@@ -51,7 +51,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `done` | #41 | 2026-09-17 | Ter-merge lewat #41. Review Dev A: batas idempotensi saat lesson sudah dikerjakan dicatat di README. |
 | `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `todo` | — | — | Dibuat dari isu #14. PRD §9.3 mewajibkannya tapi tidak ada item-nya — terlewat saat perencanaan. Partisi habis 2027-03-01 dan insert di luar rentang GAGAL. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 2 | `done` | #45 | 2026-09-17 | Ter-merge lewat #45. Migrasi 004 (33 tabel) + 005 (trigger AU-6). AC-AU-2 ditulis ulang. |
-| `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `todo` | — | — | — |
+| `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `review` | — | 2026-09-17 | ACCESS_MATRIX 31 rute, 91 test unit menjalankan hasil kali silang penuh (rute x peran). Dinamai SessionGuard, bukan JwtGuard: tidak ada JWT sejak isu #18. Guard sementara N-01 dipensiunkan. |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `done` | #22 | 2026-09-16 | Ter-merge lewat #22. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `todo` | — | — | — |
@@ -126,10 +126,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 74 | 74,5 |
 | `done` | 17 | 17,5 |
-| `review` | 0 | 0,0 |
+| `review` | 1 | 1,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 56 | 55,5 |
+| `todo` | 55 | 54,5 |
 
 ---
 ## Ringkasan per epik
