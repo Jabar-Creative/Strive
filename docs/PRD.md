@@ -1592,6 +1592,7 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 | `SQUAD_FULL` | 409 | Squad sudah mencapai `max_members`. `details: {squadId, members, max}` |
 | `ALREADY_IN_SQUAD` | 409 | Pengguna sudah aktif di squad lain — satu squad aktif per pengguna |
 | `SQUAD_MOVE_LIMIT` | 409 | Sudah memakai jatah 1 perpindahan squad musim ini (§5 Q5) |
+| `INVALID_CURSOR` | 400 | Cursor pagination tidak bisa didekode. `details: {cursor}` |
 
 > **Daftar ini TERTUTUP.** Kode yang tidak ada di sini tidak boleh dikirim API, karena
 > `packages/contracts` diturunkan dari tabel ini dan klien diminta bercabang pada `code`,
@@ -2326,6 +2327,7 @@ Ditulis eksplisit agar tidak diam-diam masuk kembali.
 | 15 Sep 2026 | 2.2 | **§9 CO-6 ditulis ulang** (isu #27). Teks lama menjanjikan pengecualian saldo negatif untuk `entry_type='adjust'` yang **database-nya tidak punya** — CHECK `users_coin_balance_non_negative` tidak mengenal pengecualian, jadi setengah CO-6 tidak pernah bisa dijalankan. Sekarang: saldo tidak pernah negatif, koreksi Superadmin dibatasi saldo tersedia. | **Fatih Maulana** |
 | 17 Sep 2026 | **2.3** | **`A-01` selesai — §7 E1 & §9 diselaraskan dengan skema yang benar-benar dibuat.** Tabelnya `auth_accounts` & `auth_verifications` (jamak + berprefiks, supaya tidak terbaca seperti tabel keuangan di sebelah `orders`/`payments`), bukan `account`/`verification`. `users.email_verified` boolean menggantikan `email_verified_at` (isu #35 opsi 1). `sessions` dapat `token` & `updated_at`, dan `ip` dilebarkan inet → text. `password_hash`, `email_verified_at`, dan `refresh_tokens` ditandai USANG — dibuang di migrasi contract, bukan sekarang. | **Fatih Maulana** |
 | 17 Sep 2026 | 2.3 | **`AC-AU-2` ditulis ulang.** Versi lama masih menuntut deteksi pemakaian ulang refresh token — AU-5 yang dibuang isu #18 — sehingga `A-01` punya kriteria yang mustahil dipenuhi. Diganti dengan pencabutan massal saat ganti password, dan apa yang HILANG ditulis di dalam kriterianya sendiri supaya tidak lenyap dari ingatan. | **Fatih Maulana** |
+| 17 Sep 2026 | 2.3 | **§10.2 menerima `INVALID_CURSOR`** (400). Cursor pagination tidak punya padanan di daftar lama, dan bukan cuma milik `N-01` — `C-02` akan butuh yang sama. Ditambahkan **sebelum** kontraknya dipakai, bukan sesudah; daftar itu tertutup. | **Fatih Maulana** |
 | | | _Isi baris baru setiap kali ada keputusan yang mengubah dokumen ini._ | |
 
 ---

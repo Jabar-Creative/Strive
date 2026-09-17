@@ -11,18 +11,20 @@ import { UnauthorizedException, createParamDecorator, type ExecutionContext } fr
  * `request.user` dari JWT. Bentuk di bawah sudah sesuai dengan itu, jadi
  * tidak ada kode rute yang perlu disentuh lagi.
  */
-export const CurrentUserId = createParamDecorator((_data: unknown, ctx: ExecutionContext): string => {
-  const request = ctx.switchToHttp().getRequest<{ user?: { sub?: string } }>();
-  const userId = request.user?.sub;
+export const CurrentUserId = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): string => {
+    const request = ctx.switchToHttp().getRequest<{ user?: { sub?: string } }>();
+    const userId = request.user?.sub;
 
-  if (!userId) {
-    throw new UnauthorizedException({
-      error: {
-        code: 'UNAUTHENTICATED',
-        message: 'Token tidak ada atau tidak valid',
-      },
-    });
-  }
+    if (!userId) {
+      throw new UnauthorizedException({
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Token tidak ada atau tidak valid',
+        },
+      });
+    }
 
-  return userId;
-});
+    return userId;
+  },
+);

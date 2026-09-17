@@ -46,7 +46,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
 | `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `done` | `b060129` | 2026-09-15 | PR #12 ter-merge & di-review. 10/10 token cocok PRD §14.1, kontras teks utama 15,68-18,24:1 di kedua mode. Bukti hidup: /_specimen. Menutup isu #16. |
 | `F-07` | UI kit dari Shadcn blocks: button, card, pill, st… | B | W1 | 1 | `done` | #36 | 2026-09-16 | Ter-merge lewat #36, di-review Dev A (isu #34). DoD: staging dikecualikan (isu #29). |
-| `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `todo` | — | — | — |
+| `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `review` | `b66b33f` | 2026-09-16 | PR #40 dibuka. AC terbukti: tipe di-import web+api tanpa error, snapshot test menolak kebocoran correct/why (diverifikasi uji mutasi). Audit keamanan: 2 temuan (IDOR document_key, field tanpa batas atas) diperbaiki sebelum PR dibuka. Rekonsiliasi skema notification dengan PR N-01 (#43, dikerjakan paralel) — lihat catatan koordinasi di PR. |
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-15 | PR #13 ter-merge & di-review. 12/12 rute HTTP 200, nol referensi menggantung ke backlog/PRD. Nol baris kode baru — memang hasil yang benar. |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `todo` | — | — | — |
 | `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `todo` | — | — | Dibuat dari isu #14. PRD §9.3 mewajibkannya tapi tidak ada item-nya — terlewat saat perencanaan. Partisi habis 2027-03-01 dan insert di luar rentang GAGAL. |
@@ -116,15 +116,20 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 ### Ringkasan progres
 
 > Agent memperbarui tabel ini setiap kali sebuah item jadi `done`.
+>
+> **Rekonsiliasi (2026-09-16):** branch ini di-merge dengan `main` (yang sudah bergerak jauh
+> lewat PR #20/#30/#31/#36/#20-24) SEBELUM PR ini dibuka, mengikuti AGENTS.md aturan 11 —
+> tabel di bawah dihitung ulang dari seluruh baris item di file ini, bukan memilih salah satu
+> sisi konflik.
 
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 74 | 74,5 |
 | `done` | 12 | 12,5 |
-| `review` | 1 | 2,0 |
+| `review` | 2 | 3,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 60 | 58,5 |
+| `todo` | 59 | 57,5 |
 
 ---
 ## Ringkasan per epik
