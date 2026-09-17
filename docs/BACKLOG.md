@@ -95,7 +95,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `ST-02` | UI etalase + unduh aset (signed URL 15 menit) | B | W6 | 1 | `todo` | — | — | — |
 | `AI-06` | Tabel ai_jobs + dispatcher di Node + pencatatan b… | A | W7 | 1 | `todo` | — | — | — |
 | `K-03` | Worker Copyleaks + webhook hasil + laporan terunduh | A | W7 | 1,5 | `todo` | — | — | — |
-| `SA-01` | View SQL untuk transaksi & audit + koneksi Retool… | A | W7 | 0,5 | `todo` | — | — | — |
+| `SA-01` | View SQL untuk transaksi & audit + koneksi Retool… | A | W7 | 0,5 | `review` | — | 2026-09-17 | View admin_transactions menggabung 4 tabel + kolom paid_without_ledger (uang masuk tanpa koin keluar). Role strive_readonly diuji dengan SET LOCAL ROLE sungguhan: bisa baca view, TIDAK bisa menulis apa pun, TIDAK bisa membaca tabel mentah. |
 | `SA-02` | PATCH /admin/pricing — terbit versi baru, bukan m… | A | W7 | 0,5 | `todo` | — | — | — |
 | `AI-07` | UI CV builder: isi profil, jalankan, lihat temuan… | B | W7 | 1 | `todo` | — | — | — |
 | `K-04` | UI klinik: unggah, antrean, skor kemiripan, riwayat | B | W7 | 1 | `todo` | — | — | — |
@@ -126,10 +126,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 74 | 74,5 |
 | `done` | 17 | 17,5 |
-| `review` | 8 | 7,0 |
+| `review` | 9 | 7,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 2 | 2,5 |
-| `todo` | 47 | 47,5 |
+| `todo` | 46 | 47,0 |
 
 ---
 ## Ringkasan per epik
