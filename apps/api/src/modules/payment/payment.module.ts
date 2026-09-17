@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AdminPricingController } from './admin-pricing.controller';
 import { CheckoutService } from './checkout.service';
 import { SnapClient } from './snap.client';
 import { PricingConfigService } from './pricing-config.service';
@@ -21,7 +22,7 @@ import { PricingController } from './pricing.controller';
  * redirect client (PA-5).
  */
 @Module({
-  controllers: [PricingController],
+  controllers: [PricingController, AdminPricingController],
   providers: [PricingConfigService, CheckoutService, SnapClient],
   exports: [PricingConfigService, CheckoutService],
 })
