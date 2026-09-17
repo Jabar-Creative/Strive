@@ -7,6 +7,7 @@ import { StorageModule } from './infra/storage';
 
 import { AuthModule } from './modules/auth';
 import { UsersModule } from './modules/users';
+import { HubModule } from './modules/hub';
 import { LearningModule } from './modules/learning';
 import { StreakModule } from './modules/streak';
 import { SquadModule } from './modules/squad';
@@ -39,6 +40,7 @@ import { HealthModule } from './modules/health';
     // Domain
     AuthModule,
     UsersModule,
+    HubModule,
     LearningModule,
     StreakModule,
     SquadModule,

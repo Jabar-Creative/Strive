@@ -110,6 +110,7 @@ export default tseslint.config(
                 '../career/*',
                 '../health/*',
                 '../league/*',
+                '../hub/*',
                 '../learning/*',
                 '../mastery/*',
                 '../mentor/*',
