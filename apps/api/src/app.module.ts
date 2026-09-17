@@ -8,6 +8,7 @@ import { StorageModule } from './infra/storage';
 import { AuthModule } from './modules/auth';
 import { UsersModule } from './modules/users';
 import { HubModule } from './modules/hub';
+import { ReviewModule } from './modules/review';
 import { LearningModule } from './modules/learning';
 import { StreakModule } from './modules/streak';
 import { SquadModule } from './modules/squad';
@@ -41,6 +42,7 @@ import { HealthModule } from './modules/health';
     AuthModule,
     UsersModule,
     HubModule,
+    ReviewModule,
     LearningModule,
     StreakModule,
     SquadModule,
