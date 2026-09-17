@@ -49,7 +49,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-08` | packages/contracts: skema zod seluruh endpoint MVP | B | W1 | 1 | `done` | #40 | 2026-09-17 | Ter-merge lewat #40. Review Dev A: INVALID_CURSOR masuk PRD §10.2, NOTIFICATION_NOT_FOUND dibuang (daftar §10.2 TERTUTUP). |
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-15 | PR #13 ter-merge & di-review. 12/12 rute HTTP 200, nol referensi menggantung ke backlog/PRD. Nol baris kode baru — memang hasil yang benar. |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `done` | #41 | 2026-09-17 | Ter-merge lewat #41. Review Dev A: batas idempotensi saat lesson sudah dikerjakan dicatat di README. |
-| `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `todo` | — | — | Dibuat dari isu #14. PRD §9.3 mewajibkannya tapi tidak ada item-nya — terlewat saat perencanaan. Partisi habis 2027-03-01 dan insert di luar rentang GAGAL. |
+| `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `review` | — | 2026-09-17 | Batas bulan dihitung POSTGRES (date_trunc), bukan aritmetika bulan JavaScript yang salah di akhir bulan. Batas partisi dibaca dari EKSPRESI partisinya, bukan ditebak dari namanya. Diuji dengan insert sungguhan ke partisi bulan depan — partisi yang terdaftar tapi batasnya salah tetap menolak insert. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 2 | `done` | #45 | 2026-09-17 | Ter-merge lewat #45. Migrasi 004 (33 tabel) + 005 (trigger AU-6). AC-AU-2 ditulis ulang. |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `review` | — | 2026-09-17 | ACCESS_MATRIX 31 rute, 91 test unit menjalankan hasil kali silang penuh (rute x peran). Dinamai SessionGuard, bukan JwtGuard: tidak ada JWT sejak isu #18. Guard sementara N-01 dipensiunkan. |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
@@ -126,10 +126,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 74 | 74,5 |
 | `done` | 17 | 17,5 |
-| `review` | 10 | 8,0 |
+| `review` | 11 | 8,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 2 | 2,5 |
-| `todo` | 45 | 46,5 |
+| `todo` | 44 | 46,0 |
 
 ---
 ## Ringkasan per epik

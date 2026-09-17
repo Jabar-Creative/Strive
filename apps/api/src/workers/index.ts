@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { WalletModule } from '../modules/wallet';
 import { NotificationModule } from '../modules/notification';
 import { ReconcileBalanceService } from './reconcile-balance.service';
+import { PartitionService } from './partition.service';
 import { StreakWarningService } from './streak-warning.service';
 
 /**
@@ -27,9 +28,10 @@ import { StreakWarningService } from './streak-warning.service';
  */
 @Module({
   imports: [WalletModule, NotificationModule],
-  providers: [ReconcileBalanceService, StreakWarningService],
-  exports: [ReconcileBalanceService, StreakWarningService],
+  providers: [ReconcileBalanceService, StreakWarningService, PartitionService],
+  exports: [ReconcileBalanceService, StreakWarningService, PartitionService],
 })
 export class WorkerModule {}
 export * from './reconcile-balance.service';
 export * from './streak-warning.service';
+export * from './partition.service';
