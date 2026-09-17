@@ -38,6 +38,14 @@ export const API_ERROR_CODES = [
   'DOCUMENT_TOO_LONG',
   'SOURCE_TOO_SHORT',
   'RATE_LIMITED',
+  // INVALID_CURSOR: pagination cursor, dipakai GET /notifications dan nanti
+  // GET /wallet/ledger (C-02). Ditambahkan ke PRD §10.2 di commit yang sama —
+  // daftar itu TERTUTUP, jadi kontrak tidak pernah mendahuluinya.
+  //
+  // NOTIFICATION_NOT_FOUND dibuang: `NOT_FOUND` generik sudah jadi konvensi di
+  // track, lesson, squad, dan streak. Identitas sumber dayanya masuk `details`,
+  // bukan ke nama kodenya.
+  'INVALID_CURSOR',
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];

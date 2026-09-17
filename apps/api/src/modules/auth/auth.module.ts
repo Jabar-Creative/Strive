@@ -1,12 +1,18 @@
 import { Module } from '@nestjs/common';
 
+import { AuthService } from './auth.service';
+
 /**
  * E1 · Auth & RBAC — docs/PRD.md §7 E1
  *
- * KERANGKA KOSONG. Controller & service menyusul di item: A-01, A-02.
+ * DIBELI, BUKAN DIBANGUN: Better-Auth + adapter PostgreSQL (CLAUDE.md
+ * §Yang dibeli). `auth.config.ts` adalah konfigurasi, bukan logika auth.
  *
- * DIBELI, BUKAN DIBANGUN: Better-Auth + adapter PostgreSQL.
- * Jangan menulis logika auth sendiri (CLAUDE.md §Yang dibeli).
+ * `AuthService` di sini BUKAN auth — ia tiga kewajiban pengganti AU-5 yang
+ * dibuang isu #18. Guard & matriks akses menyusul di `A-02`.
  */
-@Module({})
+@Module({
+  providers: [AuthService],
+  exports: [AuthService],
+})
 export class AuthModule {}
