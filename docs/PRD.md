@@ -1734,6 +1734,17 @@ Contoh `POST /attempts`:
 | `POST` | `/mentor/reviews/:id/validate` | mentor | Approve/tolak + catatan |
 | `GET` | `/mentor/squads` | mentor | Squad binaan + anggota berisiko putus streak |
 
+#### Notifikasi
+
+> Ditambahkan di N-01 — gap dokumentasi: endpoint ini sebelumnya tidak
+> tercantum di §10.3 walau tabel `notifications` sudah ada sejak F-04.
+> Dirancang supaya bisa langsung dikonsumsi N-02 (UI lonceng notifikasi).
+
+| Metode | Path | Peran | Keterangan |
+|---|---|---|---|
+| `GET` | `/notifications?cursor=&limit=` | semua | Riwayat notifikasi milik sendiri, terbaru dulu. `limit` 1-50, default 20 |
+| `PATCH` | `/notifications/:id/read` | semua | Tandai satu notifikasi milik sendiri sebagai sudah dibaca. Idempoten |
+
 #### Superadmin
 
 | Metode | Path | Peran | Keterangan |

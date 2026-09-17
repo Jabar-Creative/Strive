@@ -72,8 +72,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINC… | A | W4 | 1 | `todo` | — | — | — |
 | `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `todo` | — | — | — |
 | `AI-02` | Ekstraksi PDF/DOCX + penyusunan dari profil pengguna | B | W4 | 1 | `todo` | — | — | — |
-| `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `todo` | — | — | — |
-| `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `review` | `f9acea2` | 2026-09-16 | PR #42 dibuka. AC terbukti test integrasi DB nyata: publish v2 tidak mengubah baris v1, current version pindah, race 2 publish bersamaan aman (advisory lock). Angka 3 paket dari PRD §6.3, bukan placeholder. Audit keamanan: 3 temuan Low diperbaiki (termasuk regresi lint dari eslint.config.mjs milik PR ini sendiri) sebelum PR dibuka. CATATAN untuk SA-02: publishNewVersion() sengaja tanpa guard sendiri, WAJIB @Roles('superadmin') di endpoint publish. |
+| `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `review` | `cf3d7b9` | 2026-09-16 | PR #43 dibuka. AC retry terbukti end-to-end lawan Resend API sungguhan (401, retry 3x nyata, audit_log benar). AC template "lulus uji Gmail/Outlook" BELUM diverifikasi visual (tidak ada alat pratinjau di sesi ini) — ditulis jujur, jangan dianggap selesai untuk bagian itu. Audit keamanan bersih, 2 Low diperbaiki. TEMUAN FONDASI PENTING: @strive/contracts crash node dist/main.js kalau ada import NILAI (bukan tipe) - lihat PR untuk detail, mempengaruhi F-08 juga. |
+| `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `todo` | — | — | — |
 | `Q-05` | UI squad + leaderboard (WS + fallback polling 30 … | B | W4 | 1,5 | `todo` | — | — | — |
 | `P-02` | POST /payments/checkout — Midtrans Snap, QRIS | A | W5 | 1 | `todo` | — | — | — |
 | `P-03` | Webhook: verifikasi signature, idempotensi, entri… | A | W5 | 1,5 | `todo` | — | — | — |
@@ -126,10 +126,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 74 | 74,5 |
 | `done` | 12 | 12,5 |
-| `review` | 4 | 4,0 |
+| `review` | 4 | 4,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 1 | 1,5 |
-| `todo` | 57 | 56,5 |
+| `todo` | 57 | 56,0 |
 
 ---
 ## Ringkasan per epik
