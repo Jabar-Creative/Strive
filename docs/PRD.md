@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| **Versi** | 2.2 |
-| **Tanggal** | 15 September 2026 |
+| **Versi** | 2.3 |
+| **Tanggal** | 17 September 2026 |
 | **Status** | Siap implementasi — **§5 TERKUNCI 14 September 2026** |
 | **Scope** | B2C murni. Tanpa multi-tenancy, tanpa Web3, tanpa hardware NFC. |
 | **Dokumen terkait** | `BACKLOG.md` (estimasi) · `DELIVERY-PLAN.md` (jadwal) · `CLAUDE.md` (konvensi kode) |
@@ -419,9 +419,10 @@ Prefiks aturan per epik: `AU` auth · `LE` learning · `SK` streak · `CO` coin 
 >   Better-Auth tidak akan mengisinya, jadi insert pengguna baru **gagal** kalau ini terlewat
 > - **`refresh_tokens` dipertahankan tapi tidak dipakai**, dibuang di migrasi terpisah setelah
 >   `A-01` stabil (forward-only, expand/contract)
-> - Pemetaan field yang perlu diselesaikan di `A-01`: `name → display_name`,
->   `image → avatar_url`, dan **`emailVerified` (boolean) → `email_verified_at` (timestamptz)** —
->   yang terakhir bukan penggantian nama, melainkan beda tipe
+> - Pemetaan field **sudah selesai di `A-01`**: `name → display_name`, `image → avatar_url`,
+>   `createdAt → created_at`, `updatedAt → updated_at`, dan `emailVerified → email_verified`.
+>   Yang terakhir butuh **kolom baru bertipe boolean** (isu #35 opsi 1) — pemetaan field hanya
+>   mengganti nama, tidak pernah tipe
 >
 > **Harga yang dibayar: AU-5 hilang.** Dijelaskan di bawah.
 
@@ -470,11 +471,21 @@ AC-AU-1
   Then akun dibuat, baris streaks & reviewer_weights ada,
        dan respons memuat access + refresh token
 
-AC-AU-2
-  Given refresh token R sudah dipakai untuk refresh (jadi R')
-  When R dipakai lagi
-  Then seluruh sesi pengguna itu dicabut, respons 401,
-       dan audit_log memuat action='auth.token_reuse'
+AC-AU-2  (DITULIS ULANG — isu #18 membuang AU-5)
+  Given pengguna punya tiga sesi aktif dari tiga perangkat
+  When password-nya diganti
+  Then KETIGA sesi dicabut, dan audit_log memuat
+       action='auth.sessions_revoked' dengan jumlahnya
+
+  Versi lama menuntut deteksi pemakaian ulang refresh token. Better-Auth
+  tidak merotasi token sesi, jadi sinyal itu tidak punya padanan, dan
+  membangunnya sendiri di atasnya berarti menulis logika auth sendiri —
+  yang dilarang kalimat pembuka E1.
+
+  YANG HILANG, ditulis di sini supaya tidak lenyap dari ingatan: token sesi
+  yang dicuri berlaku sampai kedaluwarsa, dan TIDAK ADA YANG TAHU ia dicuri.
+  Pencabutan massal di atas hanya mengurangi dampak setelah pengguna
+  menyadarinya sendiri.
 
 AC-AU-3
   Given pengguna dengan role='student'
@@ -1294,7 +1305,7 @@ AC-NO-3
 
 | Domain | Tabel |
 |---|---|
-| Identitas | `users` · `sessions` · `account` · `verification` · ~~`refresh_tokens`~~ · `push_tokens` |
+| Identitas | `users` · `sessions` · `auth_accounts` · `auth_verifications` · ~~`refresh_tokens`~~ · `push_tokens` |
 | Pembelajaran | `tracks` · `modules` · `lessons` · `lesson_cards` · `lesson_attempts` |
 | Gamifikasi | `streaks` · `daily_quests` · `squads` · `squad_members` · `league_seasons` · `league_standings` |
 | Ekonomi | `coin_ledger` · `pricing_config` · `orders` · `payments` · `store_items` · `store_purchases` |
@@ -1323,14 +1334,15 @@ CREATE TYPE coin_entry  AS ENUM (
 |---|---|---|
 | `id` | `uuid PK` | `gen_random_uuid()` |
 | `email` | `citext UNIQUE NOT NULL` | case-insensitive |
-| `password_hash` | `text NOT NULL` | Argon2id |
+| ~~`password_hash`~~ | `text` **NULLABLE sejak 004** | **USANG.** Password ada di `auth_accounts.password` (Argon2id). Dibuang di migrasi contract |
 | `display_name` | `text NOT NULL` | |
 | `avatar_url` | `text` | |
 | `role` | `user_role NOT NULL DEFAULT 'student'` | |
 | `timezone` | `text NOT NULL DEFAULT 'Asia/Jakarta'` | IANA |
 | `coin_balance` | `integer NOT NULL DEFAULT 0` | **CACHE** — kebenaran = `SUM(coin_ledger.amount)` |
 | `status` | `text NOT NULL DEFAULT 'active'` | `active` \| `suspended` \| `deleted` |
-| `email_verified_at` | `timestamptz` | memblokir top-up kalau NULL |
+| `email_verified` | `boolean NOT NULL DEFAULT false` | **AU-8: `false` memblokir top-up.** Ditulis Better-Auth |
+| ~~`email_verified_at`~~ | `timestamptz` | **USANG sejak 004** (isu #35 opsi 1). Diganti `email_verified` karena `emailVerified` Better-Auth bertipe boolean dan tipenya tidak bisa dipetakan. Dibuang di migrasi contract |
 | `created_at` / `updated_at` | `timestamptz NOT NULL DEFAULT now()` | |
 
 Constraint: `CHECK (coin_balance >= 0)`. Index: `(role) WHERE status='active'`.
@@ -1477,7 +1489,10 @@ Worker mengambil batch dengan `FOR UPDATE SKIP LOCKED` agar banyak instance aman
 
 | Tabel | Kolom kunci |
 |---|---|
-| `refresh_tokens` | `id, user_id, token_hash UNIQUE, expires_at, revoked_at, replaced_by, user_agent` |
+| `sessions` | `id, user_id, expires_at, `**`token`**` UNIQUE, ip `**`text`**`, user_agent, created_at, `**`updated_at`**` ` — `token` & `updated_at` ditambahkan 004. `ip` dilebarkan inet → text: Better-Auth meneruskan `X-Forwarded-For` apa adanya, dan rantai proxy bukan `inet` yang sah |
+| `auth_accounts` | `id, account_id, provider_id, user_id, access_token, refresh_token, id_token, access_token_expires_at, refresh_token_expires_at, scope, password, created_at, updated_at` — UNIQUE `(provider_id, account_id)`. **Password Argon2id ada di sini**, provider_id `'credential'` |
+| `auth_verifications` | `id, identifier, value, expires_at, created_at, updated_at` — token verifikasi email & reset password |
+| ~~`refresh_tokens`~~ | **USANG sejak migrasi 004** (isu #18). AU-4 jadi sesi server Better-Auth; tabel ini tidak dipakai kode mana pun dan dibuang di migrasi contract. |
 | `push_tokens` | `id, user_id, endpoint, p256dh, auth` — UNIQUE `(user_id, endpoint)` |
 | `tracks` | `id, slug UNIQUE, title, description, category, is_published, sort_order` |
 | `modules` | `id, track_id, title, sort_order` |
@@ -2309,6 +2324,8 @@ Ditulis eksplisit agar tidak diam-diam masuk kembali.
 | 15 Sep 2026 | 2.2 | **§9.3 — `peer_reviews.attempt_date` ditambahkan** beserta FK `(attempt_id, attempt_date) → lesson_attempts` (isu #15). Tanpa kolom ini FK mustahil: PK `lesson_attempts` adalah `(id, attempt_date)` karena terpartisi, dan PostgreSQL mewajibkan FK menunjuk seluruh PK. Poin liga berbobot dihitung dari tabel ini, jadi review yang menunjuk attempt fantom = poin fantom. | **Fatih Maulana** |
 | 15 Sep 2026 | 2.2 | **§10.2 — 4 kode error ditambahkan** (`NOT_FOUND`, `SQUAD_FULL`, `ALREADY_IN_SQUAD`, `SQUAD_MOVE_LIMIT`) dan daftarnya **dinyatakan tertutup** (isu #25). Keempatnya sudah dipakai di kode sebelum ada di sini — urutan terbalik yang justru jadi alasan catatan "tertutup" itu ditulis. | **Fatih Maulana** |
 | 15 Sep 2026 | 2.2 | **§9 CO-6 ditulis ulang** (isu #27). Teks lama menjanjikan pengecualian saldo negatif untuk `entry_type='adjust'` yang **database-nya tidak punya** — CHECK `users_coin_balance_non_negative` tidak mengenal pengecualian, jadi setengah CO-6 tidak pernah bisa dijalankan. Sekarang: saldo tidak pernah negatif, koreksi Superadmin dibatasi saldo tersedia. | **Fatih Maulana** |
+| 17 Sep 2026 | **2.3** | **`A-01` selesai — §7 E1 & §9 diselaraskan dengan skema yang benar-benar dibuat.** Tabelnya `auth_accounts` & `auth_verifications` (jamak + berprefiks, supaya tidak terbaca seperti tabel keuangan di sebelah `orders`/`payments`), bukan `account`/`verification`. `users.email_verified` boolean menggantikan `email_verified_at` (isu #35 opsi 1). `sessions` dapat `token` & `updated_at`, dan `ip` dilebarkan inet → text. `password_hash`, `email_verified_at`, dan `refresh_tokens` ditandai USANG — dibuang di migrasi contract, bukan sekarang. | **Fatih Maulana** |
+| 17 Sep 2026 | 2.3 | **`AC-AU-2` ditulis ulang.** Versi lama masih menuntut deteksi pemakaian ulang refresh token — AU-5 yang dibuang isu #18 — sehingga `A-01` punya kriteria yang mustahil dipenuhi. Diganti dengan pencabutan massal saat ganti password, dan apa yang HILANG ditulis di dalam kriterianya sendiri supaya tidak lenyap dari ingatan. | **Fatih Maulana** |
 | | | _Isi baris baru setiap kali ada keputusan yang mengubah dokumen ini._ | |
 
 ---

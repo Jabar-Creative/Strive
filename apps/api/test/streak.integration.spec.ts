@@ -51,8 +51,14 @@ async function seed(id: string, tz: string, email: string) {
     .insertInto('users')
     .values({ id, email, password_hash: 'x', display_name: 'Uji', timezone: tz })
     .execute();
-  // AU-6: registrasi membuat baris streaks; di sini disimulasikan.
-  await db.insertInto('streaks').values({ user_id: id, timezone: tz }).execute();
+  // AU-6 TIDAK LAGI DISIMULASIKAN di sini: sejak migrasi 005, trigger
+  // `users_registration_rows` membuat baris streaks + reviewer_weights dalam
+  // transaksi yang sama dengan INSERT users — siapa pun yang meng-INSERT.
+  //
+  // Versi lama berkas ini menyisipkan barisnya sendiri dan langsung bentrok
+  // (`duplicate key value violates unique constraint "streaks_pkey"`).
+  // Bentrokan itu justru buktinya trigger bekerja; yang perlu diperbaiki
+  // adalah asumsi test-nya. Timezone disalin trigger dari users.
 }
 
 beforeAll(async () => {
