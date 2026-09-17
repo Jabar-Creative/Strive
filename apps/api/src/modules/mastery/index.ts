@@ -1,3 +1,3 @@
-// Barrel modul `mastery`. SATU-SATUNYA pintu masuk dari modul lain —
-// aturan lint `no-restricted-imports` menolak impor menembus ke file di dalam.
+// Barrel modul `mastery`. SATU-SATUNYA pintu masuk dari modul lain.
 export * from './mastery.module';
+export * from './mastery.service';

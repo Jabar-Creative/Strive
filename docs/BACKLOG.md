@@ -86,7 +86,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `RT-02` | Client hook useRealtime + fallback polling otomatis | B | W5 | 0,5 | `todo` | — | — | — |
 | `K-01` | Upload PDF/DOCX + SHA-256 + simpan ke object storage | A | W6 | 1 | `todo` | — | — | — |
 | `K-02` | ScanService: dedup, hold/settle/release, reaper 3… | A | W6 | 1,5 | `todo` | — | — | — |
-| `MT-01` | Skema mastery_sessions + API | A | W6 | 0,5 | `todo` | — | — | — |
+| `MT-01` | Skema mastery_sessions + API | A | W6 | 0,5 | `review` | — | 2026-09-17 | Giliran ditambahkan lewat jsonb_insert di DATABASE, bukan dirakit di Node — 10 penambahan paralel diuji, nol yang hilang. Kepemilikan disaring di WHERE, bukan diperiksa setelah baris diambil. Sesi orang lain dan sesi yang tidak ada menjawab identik. |
 | `PR-02` | API submit review + poin berbobot + cap harian | A | W6 | 1 | `todo` | — | — | — |
 | `AI-04` | Skor ATS deterministik + daftar temuan konkret | B | W6 | 0,5 | `todo` | — | — | — |
 | `AI-05` | Render PDF satu kolom, ramah parser | B | W6 | 0,5 | `todo` | — | — | — |
@@ -126,10 +126,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 74 | 74,5 |
 | `done` | 17 | 17,5 |
-| `review` | 7 | 6,5 |
+| `review` | 8 | 7,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 2 | 2,5 |
-| `todo` | 48 | 48,0 |
+| `todo` | 47 | 47,5 |
 
 ---
 ## Ringkasan per epik
