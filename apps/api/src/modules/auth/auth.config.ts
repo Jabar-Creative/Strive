@@ -27,6 +27,8 @@ export function createAuth(opts: AuthOptions): StriveAuth {
   return betterAuth({
     baseURL: opts.baseURL ?? 'http://localhost:3001',
     secret: opts.secret,
+    basePath: opts.basePath,
+    trustedOrigins: opts.trustedOrigins,
 
     // Pool terpisah dari `infra/kysely`, dan itu disengaja: Better-Auth
     // memiliki transaksinya sendiri. Konsekuensinya nyata — ia TIDAK bisa
@@ -68,6 +70,14 @@ export function createAuth(opts: AuthOptions): StriveAuth {
         // benar-benar memanggil `crypto.randomUUID()`.
         generateId: 'uuid',
       },
+
+      // Pemeriksaan origin dikunci EKSPLISIT (A-03). Tanpa baris ini,
+      // Better-Auth menyala-matikan proteksi CSRF berdasarkan inferensi env:
+      // `NODE_ENV=test` atau `TEST=1` membuat pemeriksaan origin DILEWATI
+      // diam-diam. Postur keamanan tidak boleh bergantung pada nama env
+      // proses — API yang kebetulan berjalan dengan env test akan kehilangan
+      // perlindungan ini tanpa error apa pun.
+      disableOriginCheck: false,
     },
 
     // ── pemetaan nama tabel & kolom ──────────────────────────────────────
@@ -95,6 +105,12 @@ export function createAuth(opts: AuthOptions): StriveAuth {
         createdAt: 'created_at',
         updatedAt: 'updated_at',
       },
+      // AU-4 (isu #18): sesi server 30 HARI. Default pustaka hanya 7 hari —
+      // ditemukan saat A-03 memasang handler HTTP; tanpa ini perilaku
+      // menyimpang dari PRD tanpa error apa pun. `updateAge` dibiarkan
+      // default (1 hari): sesi yang dipakai diperpanjang maksimal sekali per
+      // hari, dan itulah padanan "refresh senyap" di dunia sesi (AC A-03).
+      expiresIn: 60 * 60 * 24 * 30,
     },
     account: {
       modelName: 'auth_accounts',

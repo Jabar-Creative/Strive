@@ -32,6 +32,16 @@ async function bootstrapApi(): Promise<void> {
   // orkestrator tidak ikut terpengaruh saat versi API naik.
   app.setGlobalPrefix('api/v1', { exclude: ['health'] });
 
+  // CORS SEKALI DI SINI, terbatas ketat (A-03): web dan API berjalan di port
+  // berbeda, dan cookie sesi httpOnly hanya terkirim lintas origin kalau
+  // respons eksplisit mengizinkan origin + credentials. Origin dipin ke
+  // APP_URL — BUKAN true/false, memakai `origin: true` berarti CORS longgar
+  // dan itu masuk daftar jebakan keamanan repo ini.
+  app.enableCors({
+    origin: process.env['APP_URL'] ?? 'http://localhost:3000',
+    credentials: true,
+  });
+
   await app.listen(port);
   new Logger('bootstrap').log(`API mendengarkan di :${port} (MODE=api)`);
 }
