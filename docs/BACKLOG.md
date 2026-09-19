@@ -54,7 +54,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `done` | #49 | 2026-09-17 | ACCESS_MATRIX 31 rute, 91 test unit menjalankan hasil kali silang penuh (rute x peran). Dinamai SessionGuard, bukan JwtGuard: tidak ada JWT sejak isu #18. Guard sementara N-01 dipensiunkan. |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `done` | #22 | 2026-09-16 | Ter-merge lewat #22. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
-| `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `todo` | — | — | — |
+| `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `done` | `a01261f` | 2026-09-17 | Handler HTTP Better-Auth dipasang di /api/v1/auth/* (cookie httpOnly, sesi 30 hari AU-4, disableOriginCheck dikunci) + 5 layar. AC terbukti test integrasi HTTP nyata: Set-Cookie + AU-6 lewat HTTP, get-session dengan cookie, origin asing 403. 75/75 integrasi + 8/8 unit web. Verifikasi visual browser tersisa ke manusia (DevTools MCP tidak terpasang di sesi). Callback email reset/verifikasi + additionalFields timezone = isu untuk Dev A. |
 | `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
 | `L-02` | GradingService — penilaian sepenuhnya di server | B | W2 | 1 | `todo` | — | — | — |
 | `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `todo` | — | — | — |
@@ -117,19 +117,20 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 > Agent memperbarui tabel ini setiap kali sebuah item jadi `done`.
 >
-> **Rekonsiliasi (2026-09-16):** branch ini di-merge dengan `main` (yang sudah bergerak jauh
-> lewat PR #20/#30/#31/#36/#20-24) SEBELUM PR ini dibuka, mengikuti AGENTS.md aturan 11 —
-> tabel di bawah dihitung ulang dari seluruh baris item di file ini, bukan memilih salah satu
-> sisi konflik.
+> **Rekonsiliasi (2026-09-19, A-03/PR #64):** `main` bergerak 11 item sementara PR #64 terbuka.
+> Konflik di tabel ini diselesaikan mengikuti AGENTS.md aturan keras 11 — **dihitung ulang dari
+> 74 baris item**, bukan memilih sisi. Kedua sisi salah: `HEAD` menulis 28 `done` (belum
+> memasukkan A-03), PR #64 menulis 18 (basis lama). Jawaban benar **29**, dan tidak ada di
+> salah satu sisi mana pun. Itu persis alasan aturan 11 ada.
 
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 74 | 74,5 |
-| `done` | 28 | 26,0 |
+| `done` | 29 | 26,5 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 2 | 2,5 |
-| `todo` | 44 | 46,0 |
+| `todo` | 43 | 45,5 |
 
 ---
 ## Ringkasan per epik
