@@ -13,3 +13,8 @@
  * §Test) menimpa variabel ini dengan URL testcontainers-nya sendiri.
  */
 process.env['DATABASE_URL'] ??= 'postgres://vitest:vitest@127.0.0.1:1/vitest_tidak_terkoneksi';
+// Sama filosofinya dengan DATABASE_URL di atas: provider AUTH (A-03) menolak
+// rahasia kosong saat boot — perilaku yang benar untuk produksi. Unit test
+// tidak pernah memverifikasi sesi, jadi cukup nilai wiring yang jelas bukan
+// rahasia sungguhan. Test integrasi menimpanya di beforeAll-nya.
+process.env['AUTH_SECRET'] ??= 'wiring-unit-test-bukan-rahasia-0123456789abcdef';
