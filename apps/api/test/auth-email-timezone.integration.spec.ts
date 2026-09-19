@@ -253,6 +253,41 @@ describe('Callback email auth (isu #65 poin 1)', () => {
     expect(baru.status).toBe(200);
   });
 
+  it('AU-8: tautan verifikasi BENAR-BENAR menyetel email_verified — gerbang top-up terbuka', async () => {
+    if (!reachable) return;
+    // Mata rantai terakhir, dan yang paling mudah dianggap selesai tanpa diuji.
+    //
+    // `CheckoutService` sudah memblokir `email_verified = false` (PA-10) sejak
+    // P-02. Tapi sebelum isu #65 kolom itu TIDAK PERNAH bisa jadi true lewat
+    // jalur mana pun — jadi gerbangnya bukan "belum diuji", ia memblokir
+    // SEMUA ORANG SELAMANYA. Test ini yang membuktikan gerbangnya sekarang
+    // punya kunci.
+    const res = await post('/api/v1/auth/sign-up/email', {
+      email: 'verif@uji.test',
+      password: SANDI,
+      name: 'Uji',
+    });
+    expect(res.status).toBe(200);
+
+    const sebelum = await db
+      .selectFrom('users')
+      .select('email_verified')
+      .where('email', '=', 'verif@uji.test')
+      .executeTakeFirstOrThrow();
+    expect(sebelum.email_verified, 'terverifikasi sebelum diklik apa pun').toBe(false);
+
+    const asli = new URL(tautanDari(satuEmail()));
+    const klik = await fetch(`${base}${asli.pathname}${asli.search}`, { redirect: 'manual' });
+    expect(klik.status, 'tautan verifikasi tidak dijawab').toBeLessThan(400);
+
+    const sesudah = await db
+      .selectFrom('users')
+      .select('email_verified')
+      .where('email', '=', 'verif@uji.test')
+      .executeTakeFirstOrThrow();
+    expect(sesudah.email_verified, 'email_verified TIDAK berubah — AU-8 tetap mustahil').toBe(true);
+  });
+
   it('alamat yang TIDAK terdaftar tetap dijawab 200 — bukan alat pencacah akun', async () => {
     if (!reachable) return;
     const res = await post('/api/v1/auth/request-password-reset', {
