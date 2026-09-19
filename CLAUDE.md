@@ -90,7 +90,8 @@ strive-academy/
 │  └─ api/                     NestJS · REST + WebSocket · MODE=api|worker
 │     └─ src/
 │        ├─ main.ts
-│        ├─ common/            guards, interceptor idempotency, filter, zod pipe
+│        ├─ common/            guards (SessionGuard · RolesGuard · ACCESS_MATRIX),
+│        │                     interceptor idempotency, filter, zod pipe
 │        ├─ infra/             kysely, redis, bullmq, storage, http clients
 │        ├─ modules/
 │        │  ├─ auth/ users/ learning/ streak/ squad/ league/
@@ -115,9 +116,12 @@ strive-academy/
 │  │                           001 = 31 tabel · 002 = trigger kapasitas squad
 │  │                           003 = peer_reviews FK · 004 = Better-Auth (33)
 │  │                           005 = trigger AU-6
-│  └─ seeds/                   KOSONG — item F-11
+│  │                           006 = view admin_* + role strive_readonly
+│  └─ seeds/                   seed-content.mjs (F-11) + content/ contoh
+│                              `pnpm seed` TIDAK ada di sini — lihat Perintah
 ├─ scripts/                    perkakas lintas-OS, Node murni, nol dependensi
 │                              dev-web · dev-api · dev-ai · db-migrate · db-types
+│                              resolve-bin · not-implemented (placeholder exit 0)
 ├─ docs/                       PRD.md · BACKLOG.md · DELIVERY-PLAN.md
 └─ infra/                      docker-compose dev, Dockerfile, CI
 ```
@@ -145,8 +149,8 @@ cp .env.example .env      # opsional: stack jalan tanpa .env, semua punya defaul
 
 pnpm db:migrate           # forward-only, satu transaksi per file, checksum diperiksa
 pnpm db:types             # generate tipe Kysely DARI SKEMA SUNGGUHAN, lalu prettier
-pnpm seed                 # BELUM ADA — masih mencetak pesan
-pnpm seed:content <file>  # BELUM ADA — item F-11
+pnpm seed                 # BELUM ADA, dan TIDAK ADA ITEM YANG MEMBUATNYA — lihat catatan
+pnpm seed:content <file>  # ADA (F-11, #41). Impor kartu dari CSV/JSON, idempoten
 
 pnpm dev                  # web + api + ai bersamaan
 pnpm dev:web              # hanya Next.js
@@ -165,6 +169,14 @@ cd services/ai && ./.venv/Scripts/python -m pytest    # Windows
 ```
 
 Sebelum membuka PR: `pnpm lint && pnpm typecheck && pnpm test && pnpm build` harus hijau.
+
+> **`pnpm seed` adalah perintah yatim — jangan mengandaikan ada yang akan membuatnya.**
+> `db/seeds/README.md` mengatribusikannya ke `F-04`, tapi acceptance criteria resmi `F-04`
+> tidak pernah menyebutnya (isinya: 31 tabel, `pnpm db:types`, trigger immutable) — dan
+> `F-04` sudah `done`. Jadi perintah ini ada di dokumentasi, tidak ada di backlog, dan
+> tidak akan pernah dikerjakan siapa pun kecuali dijadikan item baru. Yang ADA dan bekerja
+> adalah `pnpm seed:content` (`F-11`). Kalau butuh data dev (pricing, track contoh, store),
+> **buat itemnya dulu**, jangan diam-diam menulis skripnya di PR lain.
 
 **Port bisa ditimpa** lewat `.env`: `WEB_PORT`, `API_PORT`, `AI_SERVICE_PORT`.
 Port PostgreSQL/Redis/MinIO sengaja digeser dan **terikat ke `127.0.0.1`** — repo ini
@@ -485,6 +497,9 @@ Jangan bangun ulang; baca dulu.
 | Codegen tipe | `scripts/db-types.mjs` | Tipe diturunkan dari skema sungguhan, lalu diformat prettier. **SQL sumber kebenaran, TypeScript turunannya.** Satu cacat diketahui: kolom `date` — lihat poin 4 di bawah |
 | Test integrasi | `pnpm --filter @strive/api test:integration` | Berjalan terhadap **PostgreSQL sungguhan** lewat `vitest.integration.config.mts`, `fileParallelism: false`. Dipanggil job CI `migrasi kering`, BUKAN job `node` — job itu tidak punya database |
 | Pembungkus dev | `scripts/dev-{web,api,ai}.mjs` | Lintas-OS, `spawn` tanpa `shell: true`, port divalidasi angka |
+| Impor konten | `db/seeds/seed-content.mjs` | `F-11`. Idempoten — batasnya saat lesson sudah dikerjakan orang ada di `db/seeds/README.md`, baca sebelum mengimpor ulang |
+| Job partisi | `apps/api/src/workers/partition.service.ts` | `F-12`. Idempoten. Lihat poin 3 di bawah — job bulanan yang gagal saat dijalankan dua kali membuat orang ragu menjalankannya ulang setelah insiden |
+| View admin + role read-only | `db/migrations/006_admin_views.sql` | `SA-01`. `admin_transactions` merangkai order→user→payment→ledger dalam satu baris; `admin_audit` membawa email pelaku. Role `strive_readonly` **tidak bisa menulis apa pun** dan **tidak bisa membaca tabel mentah** |
 
 **Empat hal yang mudah salah dipahami soal skema:**
 
@@ -495,7 +510,13 @@ Jangan bangun ulang; baca dulu.
    CI menjalankan ulang codegen lalu `git diff --exit-code` — ubah skema tanpa
    `pnpm db:types` = PR merah.
 3. **Partisi `lesson_attempts` habis 2027-03-01.** Insert di luar rentang **gagal**, bukan
-   jatuh ke partisi default. Job bulanan pembuatnya sekarang punya item: **`F-12`** (isu #14).
+   jatuh ke partisi default. Job bulanan pembuatnya **sudah ada**: `PartitionService`
+   (`apps/api/src/workers/partition.service.ts`, `F-12` lewat #62). Ia menjamin bulan
+   berjalan + `MONTHS_AHEAD` bulan ke depan dan menyalakan alarm di bawah `WARN_DAYS`.
+   Dua hal yang jangan diubah tanpa membaca kodenya: batas bulan dihitung **Postgres**
+   (`date_trunc`), karena aritmetika bulan JavaScript salah di akhir bulan; dan batas
+   partisi dibaca dari **ekspresi partisinya** (`pg_get_expr(relpartbound)`), bukan ditebak
+   dari namanya — partisi yang namanya benar tapi batasnya salah tetap menolak insert.
    Diverifikasi bahwa FK baru di `peer_reviews` **tidak** menghalangi `CREATE TABLE … PARTITION OF`
    maupun `DETACH PARTITION`.
 4. **Kolom `date` bertipe `string`, bukan `Date`** — dan itu memang disengaja.
@@ -505,6 +526,18 @@ Jangan bangun ulang; baca dulu.
    Kalau salah satu dilepas, yang lain jadi berbohong: tipe bilang `Date`, runtime
    memberi `'YYYY-MM-DD'`, dan `attempt_date.getFullYear()` lolos `tsc` lalu meledak
    saat dijalankan. **Jangan cabut salah satunya sendirian.**
+
+**Retool membaca lewat role, bukan lewat kepercayaan.** Dua hal yang mudah salah soal
+migrasi 006:
+
+- **View bukan tabel.** Assert CI "tepat 33 tabel" menghitung `BASE TABLE` saja, jadi
+  menambah view tidak membuatnya merah. Menambah **tabel** tetap merah — itu memang
+  pembedaan yang diinginkan.
+- **View yang dibuat SETELAH migrasi 006 tidak otomatis terbaca Retool.** Ada
+  `ALTER DEFAULT PRIVILEGES … REVOKE ALL ON TABLES FROM strive_readonly`, jadi setiap
+  view baru butuh `GRANT SELECT` eksplisit. Itu disengaja: menambah view ke Retool
+  adalah tindakan yang pantas terasa. Kalau Retool tiba-tiba "tidak melihat" view baru,
+  ini sebabnya — bukan bug koneksi.
 
 **Dua batas yang ditegakkan di tingkat berbeda — jangan disamakan.**
 
