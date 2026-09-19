@@ -1609,15 +1609,37 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 
 #### Auth
 
-| Metode | Path | Peran | Keterangan |
-|---|---|---|---|
-| `POST` | `/auth/register` | publik | Body: `{email, password, display_name, timezone?}`. Membuat `streaks` + `reviewer_weights`. |
-| `POST` | `/auth/login` | publik | → `{access, refresh, user}` |
-| `POST` | `/auth/refresh` | publik | Rotasi token; token lama langsung dicabut |
-| `POST` | `/auth/logout` | semua | Mencabut refresh token |
-| `POST` | `/auth/verify-email` | publik | Token dari email |
-| `GET` | `/me` | semua | Profil, peran, saldo koin, zona waktu |
-| `PATCH` | `/me` | semua | `{display_name?, timezone?, avatar_url?}` |
+> **Path auth adalah milik Better-Auth, bukan milik kita (isu #65 poin 4).**
+> Isu #18 mengganti AU-4 dari JWT+refresh menjadi sesi server Better-Auth, tapi tabel ini
+> tidak ikut diperbarui — ia masih menjanjikan `/auth/login → {access, refresh}` dan
+> `/auth/refresh` selama dua minggu setelah keduanya berhenti ada. `A-02` membangun matriks
+> aksesnya di atas daftar ini, jadi tabel yang salah bukan sekadar dokumentasi usang.
+>
+> Daftar di bawah **dienumerasi dari instance yang berjalan** (`Object.entries(auth.api)`),
+> bukan disalin dari dokumentasi vendor. Better-Auth memasang **30** endpoint; yang
+> tercantum di sini adalah yang dipakai MVP. Sisanya (OAuth sosial, tautan akun, hapus akun)
+> ada tapi di luar cakupan — jangan dianggap tidak ada.
+>
+> **Jangan membuat alias.** Endpoint `/auth/login` buatan sendiri yang meneruskan ke
+> `/auth/sign-in/email` berarti menulis lapisan auth sendiri lewat pintu belakang, dan
+> ia akan menyimpang begitu Better-Auth naik versi.
+
+Semua di bawah prefiks `/api/v1`. Kolom **Milik** membedakan yang DIBELI dari yang kita tulis.
+
+| Metode | Path | Peran | Milik | Keterangan |
+|---|---|---|---|---|
+| `POST` | `/auth/sign-up/email` | publik | Better-Auth | Body: `{email, password, name, timezone?}`. **`name`, bukan `display_name`** — dipetakan ke kolom `display_name`. `timezone` divalidasi IANA (AU-7); tidak ada → `Asia/Jakarta`, ada tapi tidak dikenal → ditolak. `streaks` + `reviewer_weights` dibuat trigger `users_registration_rows` (AU-6, migrasi 005), bukan oleh endpoint ini |
+| `POST` | `/auth/sign-in/email` | publik | Better-Auth | → `{user, token}` + `Set-Cookie` sesi httpOnly. **Tidak ada `access`/`refresh`** |
+| `POST` | `/auth/sign-out` | semua | Better-Auth | Menghapus baris `sessions` dan cookie-nya |
+| `GET` | `/auth/get-session` | semua | Better-Auth | → sesi + pengguna, atau `null` tanpa cookie. **Bukan 401** — `null` adalah jawaban yang sah |
+| `POST` | `/auth/request-password-reset` | publik | Better-Auth | Body: `{email, redirectTo}`. Selalu 200, terdaftar maupun tidak — perbedaan respons akan jadi alat pencacah akun |
+| `GET` | `/auth/reset-password/:token` | publik | Better-Auth | Tautan yang diklik dari email. **Tokennya segmen path, bukan query.** Mengalihkan ke `redirectTo` dengan `?token=` |
+| `POST` | `/auth/reset-password` | publik | Better-Auth | Body: `{token, newPassword}`. Seluruh sesi lama dicabut (AC-AU-2) |
+| `POST` | `/auth/change-password` | semua | Better-Auth | `{currentPassword, newPassword, revokeOtherSessions}` |
+| `POST` | `/auth/send-verification-email` | publik | Better-Auth | Kirim ulang. Dibutuhkan karena kegagalan vendor email **tidak** menggagalkan registrasi |
+| `GET` | `/auth/verify-email` | publik | Better-Auth | Tautan dari email. Menyetel `users.email_verified` — syarat top-up (AU-8) |
+| `GET` | `/me` | semua | **kita** | Profil, peran, saldo koin, zona waktu |
+| `PATCH` | `/me` | semua | **kita** | `{display_name?, timezone?, avatar_url?}` |
 
 #### Hub & pembelajaran
 

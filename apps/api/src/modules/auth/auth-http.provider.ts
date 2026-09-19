@@ -1,4 +1,4 @@
-import type { StriveAuth } from './auth.types';
+import type { SendAuthEmail, StriveAuth } from './auth.types';
 import { createAuth } from './auth.config';
 
 /**
@@ -14,7 +14,7 @@ import { createAuth } from './auth.config';
 /** Prefiks global NestJS (main.ts) + path bawaan Better-Auth. */
 export const AUTH_HTTP_BASE_PATH = '/api/v1/auth';
 
-export function createAuthFromEnv(): StriveAuth {
+export function createAuthFromEnv(sendEmail?: SendAuthEmail): StriveAuth {
   const connectionString = process.env['DATABASE_URL'];
   if (!connectionString) {
     throw new Error(
@@ -37,5 +37,6 @@ export function createAuthFromEnv(): StriveAuth {
     baseURL: process.env['API_URL'] ?? 'http://localhost:3001',
     basePath: AUTH_HTTP_BASE_PATH,
     trustedOrigins: [process.env['APP_URL'] ?? 'http://localhost:3000'],
+    sendEmail,
   });
 }

@@ -1,8 +1,51 @@
 import { hash as argonHash, verify as argonVerify, Algorithm } from '@node-rs/argon2';
-import { betterAuth } from 'better-auth';
+import { betterAuth, type BetterAuthOptions } from 'better-auth';
+import { Logger } from '@nestjs/common';
 import { Pool } from 'pg';
 
-import type { AuthOptions, StriveAuth } from './auth.types';
+import type { AuthOptions, SendAuthEmail, StriveAuth } from './auth.types';
+import {
+  SUBJEK_RESET,
+  SUBJEK_VERIFIKASI,
+  renderResetPasswordEmail,
+  renderVerificationEmail,
+} from './auth-emails';
+import { ZONA_DEFAULT, skemaZonaWaktu } from './timezone';
+
+const logger = new Logger('AuthEmail');
+
+/**
+ * Membungkus pengiriman email auth supaya kegagalan vendor TIDAK menggagalkan
+ * registrasi atau permintaan reset (isu #65 poin 1).
+ *
+ * Dua alasan, dan keduanya soal apa yang rusak kalau dilakukan sebaliknya:
+ *
+ * 1. **Registrasi.** `sendOnSignUp` berjalan di dalam alur sign-up. Kalau
+ *    callback-nya melempar, Resend yang sedang down berarti **tidak ada yang
+ *    bisa mendaftar**. Kegagalan mengirim email verifikasi seharusnya menunda
+ *    kemampuan top-up satu pengguna, bukan menutup pintu pendaftaran.
+ *
+ * 2. **Reset password.** Better-Auth sengaja menjawab sukses baik alamatnya
+ *    terdaftar maupun tidak, supaya tidak jadi alat pencacah akun. Kalau
+ *    kegagalan kirim diteruskan jadi 500, perbedaan respons itu **membocorkan
+ *    alamat mana yang punya akun** — persis yang dihindari desain aslinya.
+ *
+ * Gantinya: log `error` dengan alamat tujuan. Kegagalan tetap terlihat
+ * operator, bukan hilang. Pengguna yang tidak menerima email menekan "kirim
+ * ulang" — dan itu jalur yang memang harus ada.
+ */
+function kirimAman(send: SendAuthEmail, jenis: string) {
+  return async (pesan: { to: string; subject: string; html: string }): Promise<void> => {
+    try {
+      await send(pesan);
+    } catch (e) {
+      logger.error(
+        `Gagal mengirim email ${jenis} ke ${pesan.to}: ${e instanceof Error ? e.message : String(e)}. ` +
+          `Alur pemanggilnya SENGAJA diteruskan — lihat catatan di auth.config.ts.`,
+      );
+    }
+  };
+}
 
 /**
  * Instance Better-Auth untuk Strive.
@@ -24,7 +67,19 @@ import type { AuthOptions, StriveAuth } from './auth.types';
  *    tidak terbaca seperti tabel keuangan di sebelah `orders` dan `payments`.
  */
 export function createAuth(opts: AuthOptions): StriveAuth {
-  return betterAuth({
+  const kirim = opts.sendEmail;
+
+  // Dianotasi `BetterAuthOptions`, bukan dibiarkan inferensi lalu di-cast.
+  //
+  // `betterAuth` generik terhadap bentuk opsinya (`<O> (o: O) => Auth<O>`),
+  // jadi objek literal menghasilkan tipe yang JAUH lebih sempit daripada
+  // `Auth<BetterAuthOptions>` — dan begitu `additionalFields` ditambahkan,
+  // `as StriveAuth` yang dulu ada di sini berhenti bisa dikompilasi. Menambah
+  // `as unknown as` akan menutup gejalanya sekaligus mematikan pengecekan tipe
+  // atas SELURUH objek konfigurasi ini. Anotasi di sini melakukan kebalikannya:
+  // setiap salah ketik nama opsi jadi error, bukan properti yang diabaikan
+  // diam-diam.
+  const opsi: BetterAuthOptions = {
     baseURL: opts.baseURL ?? 'http://localhost:3001',
     secret: opts.secret,
     basePath: opts.basePath,
@@ -53,7 +108,68 @@ export function createAuth(opts: AuthOptions): StriveAuth {
         verify: ({ hash, password }: { hash: string; password: string }) =>
           argonVerify(hash, password),
       },
+
+      // AU-8: verifikasi email TIDAK memblokir pemakaian. Dinyatakan eksplisit
+      // meski `false` adalah bawaannya — baris yang tertulis lebih sulit
+      // dibalik tanpa sengaja daripada baris yang tidak ada, dan membalik yang
+      // satu ini berarti seluruh pengguna baru terkunci di luar produk sampai
+      // membuka inbox.
+      requireEmailVerification: false,
+
+      // isu #65 poin 1. Tanpa ini `POST /auth/request-password-reset` menjawab
+      // 400 RESET_PASSWORD_DISABLED — dan itulah keadaan `main` sebelum PR ini.
+      ...(kirim
+        ? {
+            sendResetPassword: async ({
+              user,
+              url,
+            }: {
+              user: { email: string; name?: string | null };
+              url: string;
+            }) => {
+              await kirimAman(
+                kirim,
+                'reset password',
+              )({
+                to: user.email,
+                subject: SUBJEK_RESET,
+                html: renderResetPasswordEmail({ displayName: user.name, url }),
+              });
+            },
+          }
+        : {}),
     },
+
+    // isu #65 poin 1, sisi verifikasi. AU-8 mensyaratkan `email_verified`
+    // sebagai syarat top-up; tanpa callback ini kolom itu TIDAK PERNAH jadi
+    // true lewat jalur normal, jadi AU-8 bukan "belum diuji" melainkan
+    // **tidak bisa dipenuhi siapa pun**.
+    ...(kirim
+      ? {
+          emailVerification: {
+            // Dikirim saat registrasi, bukan menunggu pengguna memintanya.
+            // Email verifikasi yang harus diminta dulu adalah email yang tidak
+            // pernah diminta.
+            sendOnSignUp: true,
+            sendVerificationEmail: async ({
+              user,
+              url,
+            }: {
+              user: { email: string; name?: string | null };
+              url: string;
+            }) => {
+              await kirimAman(
+                kirim,
+                'verifikasi',
+              )({
+                to: user.email,
+                subject: SUBJEK_VERIFIKASI,
+                html: renderVerificationEmail({ displayName: user.name, url }),
+              });
+            },
+          },
+        }
+      : {}),
 
     advanced: {
       database: {
@@ -93,6 +209,40 @@ export function createAuth(opts: AuthOptions): StriveAuth {
         emailVerified: 'email_verified',
         createdAt: 'created_at',
         updatedAt: 'updated_at',
+      },
+
+      // AU-7, isu #65 poin 2: zona waktu dari body registrasi.
+      //
+      // Better-Auth HANYA meneruskan field yang terdaftar di sini — field lain
+      // di body dibuang diam-diam. Itu sebabnya sebelum ini SEMUA pendaftar
+      // jatuh ke `Asia/Jakarta` apa pun yang mereka kirim: bukan karena
+      // validasinya menolak, tapi karena nilainya tidak pernah sampai.
+      //
+      // Efek hilirnya otomatis: trigger `users_registration_rows` (migrasi
+      // 005) menyalin `NEW.timezone` ke `streaks.timezone` DALAM TRANSAKSI
+      // YANG SAMA. Jadi cukup nilainya benar di `users`, dan aturan keras 5
+      // ikut benar tanpa kode tambahan.
+      additionalFields: {
+        timezone: {
+          type: 'string',
+          required: false,
+          input: true,
+          // AU-7 "fallback Asia/Jakarta" — untuk klien yang tidak mengirim
+          // apa pun. Sama dengan DEFAULT kolomnya, jadi tidak ada dua sumber
+          // kebenaran untuk satu fakta.
+          defaultValue: ZONA_DEFAULT,
+          // Nilai yang ADA tapi tidak dikenal DITOLAK, bukan diam-diam
+          // diganti default. Diam-diam mengganti berarti mahasiswa Jayapura
+          // yang salah ketik mendapat jam Jakarta, streaknya putus di jam yang
+          // salah, dan tidak ada satu pun sinyal yang menunjukkan kenapa.
+          //
+          // CATATAN: AU-7 menulis "divalidasi terhadap daftar IANA, fallback
+          // Asia/Jakarta" tanpa menyebut yang mana yang berlaku untuk nilai
+          // tidak sah. Ditafsirkan: TIDAK ADA → fallback; ADA tapi salah →
+          // tolak. Ditulis di sini supaya keputusannya terlihat dan bisa
+          // dibalik, bukan tersembunyi di perilaku.
+          validator: { input: skemaZonaWaktu },
+        },
       },
     },
     session: {
@@ -135,5 +285,7 @@ export function createAuth(opts: AuthOptions): StriveAuth {
         updatedAt: 'updated_at',
       },
     },
-  }) as StriveAuth;
+  };
+
+  return betterAuth(opsi);
 }
