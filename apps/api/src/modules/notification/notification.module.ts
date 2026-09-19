@@ -23,6 +23,6 @@ import { ResendMailerService } from './resend-mailer.service';
 @Module({
   controllers: [NotificationsController],
   providers: [NotificationsService, ResendMailerService],
-  exports: [NotificationsService],
+  exports: [NotificationsService, ResendMailerService],
 })
 export class NotificationModule {}

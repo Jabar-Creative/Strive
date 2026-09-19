@@ -20,7 +20,20 @@ export interface AuthOptions {
    * tanpa ini semua POST dari browser ditolak 403 INVALID_ORIGIN.
    */
   trustedOrigins?: string[];
+  /**
+   * Pengirim email untuk reset password & verifikasi (isu #65 poin 1).
+   *
+   * Sebuah FUNGSI, bukan `ResendMailerService`, dan itu disengaja:
+   * `auth.config.ts` tidak boleh tahu vendor emailnya siapa, dan test bisa
+   * menangkap email yang dikirim tanpa memalsukan HTTP. Kalau tidak diisi,
+   * kedua callback tidak dipasang — dan Better-Auth kembali menjawab
+   * `RESET_PASSWORD_DISABLED`, persis keadaan sebelum isu #65.
+   */
+  sendEmail?: SendAuthEmail;
 }
+
+/** Bentuk minimal pengiriman email yang dibutuhkan auth. */
+export type SendAuthEmail = (pesan: { to: string; subject: string; html: string }) => Promise<void>;
 
 /** Konteks sesi yang dicatat ke `audit_log` — sisa satu-satunya dari AU-5. */
 export interface SessionContext {

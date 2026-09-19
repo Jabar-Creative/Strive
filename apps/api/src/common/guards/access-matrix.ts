@@ -29,7 +29,16 @@ const BELAJAR = ['student', 'mentor'] as const;
 const KONSOL = ['mentor', 'superadmin'] as const;
 
 export const ACCESS_MATRIX: readonly AccessRule[] = [
-  { route: 'POST /auth/*', allow: [], note: 'publik — belum ada sesi saat dipanggil' },
+  // `ALL`, bukan `POST` (isu #65 poin 4). Ditulis `POST /auth/*` saat A-02
+  // dibangun di atas PRD §10.3 yang masih menjanjikan dunia JWT — di dunia itu
+  // semua endpoint auth memang POST. Better-Auth tidak begitu: `get-session`,
+  // `verify-email`, dan `reset-password/:token` adalah **GET**.
+  //
+  // Dienumerasi dari instance yang berjalan, bukan ditebak: 30 endpoint, 6 di
+  // antaranya GET. Kalau matriks ini suatu hari ditegakkan apa adanya dan
+  // default-nya TERTUTUP, `GET /auth/get-session` akan ditolak — login terlihat
+  // berhasil, lalu sesinya tidak pernah bisa dibaca.
+  { route: 'ALL /auth/*', allow: [], note: 'publik — belum ada sesi saat dipanggil' },
   { route: 'GET /me', allow: SEMUA },
   { route: 'GET /hub', allow: BELAJAR },
   { route: 'GET /tracks', allow: BELAJAR },

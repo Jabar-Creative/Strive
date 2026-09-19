@@ -6,6 +6,7 @@ import { Test } from '@nestjs/testing';
 import { createDatabase, type DB } from '../src/infra/kysely';
 import { KyselyModule } from '../src/infra/kysely';
 import { AuthModule } from '../src/modules/auth';
+import { ResendMailerService } from '../src/modules/notification';
 
 /**
  * Test integrasi mounting HTTP Better-Auth (A-03) terhadap database nyata.
@@ -64,7 +65,14 @@ beforeAll(async () => {
 
   const moduleRef = await Test.createTestingModule({
     imports: [KyselyModule, AuthModule],
-  }).compile();
+  })
+    // Sejak isu #65, `sendOnSignUp` menyala: SETIAP sign-up di berkas ini
+    // memicu pengiriman email. Tanpa pengganti ini tiap test menembak jaringan
+    // Resend sungguhan dengan kunci placeholder — lambat, dan lulus-gagalnya
+    // jadi bergantung koneksi internet.
+    .overrideProvider(ResendMailerService)
+    .useValue({ send: async () => undefined })
+    .compile();
   app = moduleRef.createNestApplication();
   // SAMA seperti main.ts: prefiks global + CORS credentials untuk web.
   app.setGlobalPrefix('api/v1', { exclude: ['health'] });
@@ -212,15 +220,18 @@ describe('Auth HTTP (database nyata)', () => {
     expect(sah.status).toBeLessThan(400);
   });
 
-  it('request-password-reset menjawab 400 RESET_PASSWORD_DISABLED sampai callback email terpasang', async () => {
+  it('request-password-reset TIDAK LAGI RESET_PASSWORD_DISABLED — callback terpasang (isu #65)', async () => {
     if (!reachable) return;
+    // Test ini dulu MEMATOK keadaan rusak: 400 RESET_PASSWORD_DISABLED, dengan
+    // catatan "sampai callback email terpasang". Callback-nya sekarang
+    // terpasang (isu #65 poin 1), jadi tripwire-nya menyala — persis fungsinya.
+    // Bukti perilaku barunya yang lengkap ada di
+    // `auth-email-timezone.integration.spec.ts`.
     const res = await post(
       '/api/v1/auth/request-password-reset',
       { email: 'http6@uji.test', redirectTo: `${WEB}/reset/finish` },
       { origin: WEB },
     );
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { code?: string; message?: string };
-    expect(String(body.code ?? body.message)).toContain('RESET_PASSWORD_DISABLED');
+    expect(res.status).toBe(200);
   });
 });
