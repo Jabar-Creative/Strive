@@ -139,11 +139,19 @@ jobs:
 
           # Bucket dibuat DI SINI, bukan di test: test yang membuat bucketnya
           # sendiri akan lulus meski GRANT-nya salah, karena ia pemiliknya.
-          curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
-          chmod +x /usr/local/bin/mc
-          mc alias set ci http://localhost:9000 strive strive_ci_only
-          mc mb --ignore-existing ci/strive-documents
-          mc mb --ignore-existing ci/strive-assets
+          #
+          # `aws` CLI, bukan `mc`. Mengunduh `mc` dari dl.min.io sempat dicoba
+          # dan gagal: servernya membalas 410, curl menyimpan badan galatnya
+          # sebagai "binary", dan kegagalannya muncul sebagai
+          # `mc: line 1: 410: command not found` — pesan yang tidak menyebut
+          # unduhan sama sekali. `aws` sudah terpasang di runner ubuntu-latest,
+          # jadi tidak ada yang perlu diunduh.
+          export AWS_ACCESS_KEY_ID=strive AWS_SECRET_ACCESS_KEY=strive_ci_only
+          export AWS_DEFAULT_REGION=us-east-1
+          for b in strive-documents strive-assets; do
+            aws --endpoint-url http://localhost:9000 s3api create-bucket --bucket "$b" \
+              || aws --endpoint-url http://localhost:9000 s3api head-bucket --bucket "$b"
+          done
 
       - name: Jalankan migrasi terhadap DB kosong
         env:
