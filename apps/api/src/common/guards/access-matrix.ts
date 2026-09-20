@@ -76,6 +76,11 @@ export const ACCESS_MATRIX: readonly AccessRule[] = [
   { route: 'GET /wallet/ledger', allow: BELAJAR },
   { route: 'POST /payments/checkout', allow: BELAJAR },
   {
+    route: 'POST /webhooks/copyleaks',
+    allow: [],
+    note: 'tanda tangan vendor, BUKAN sesi — vendor tidak punya sesi dan tidak akan pernah punya. Webhook yang dijaga peran adalah webhook yang tidak pernah sampai. Ditemukan hilang oleh penyisiran isu #88',
+  },
+  {
     route: 'POST /webhooks/payment',
     allow: [],
     note: 'tanda tangan Midtrans, BUKAN sesi — koin gratis untuk siapa pun kalau ini dijaga peran saja',

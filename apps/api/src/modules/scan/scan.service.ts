@@ -5,6 +5,7 @@ import { DATABASE, type DB } from '../../infra/kysely';
 import { CoinLedgerService, InsufficientCoinsError, type Trx } from '../wallet';
 import { PricingConfigService } from '../payment';
 import { DocumentUploadService, type UploadedDocument } from './document-upload.service';
+import type { WebhookSuccess } from './plagiarism-provider';
 
 /** KL-8: hold yang menggantung lebih lama dari ini dilepas reaper. */
 export const STALE_HOLD_MINUTES = 30;
@@ -192,8 +193,9 @@ export class ScanService {
     hasil: {
       providerScanId: string;
       similarityScore: number;
-      reportKey: string;
-      wordCount: number;
+      /** `null` saat hasil datang dari webhook — lihat `completeFromWebhook`. */
+      reportKey: string | null;
+      wordCount: number | null;
     },
   ): Promise<void> {
     await this.db.transaction().execute(async (trx) => {
@@ -253,6 +255,29 @@ export class ScanService {
         })
         .where('id', '=', scanId)
         .execute();
+    });
+  }
+
+  /**
+   * Hasil dari webhook vendor — `K-03`.
+   *
+   * `reportUrl` dari vendor SENGAJA tidak disimpan ke `report_key`.
+   * `plagiarism_scans.report_key` adalah kunci objek **di storage kita**
+   * (PRD §9), dan yang diberikan vendor adalah URL **di storage mereka** —
+   * berumur pendek, di luar kendali kita, dan tidak bisa ditandatangani ulang
+   * untuk pengguna (KL-10 mewajibkan signed URL 15 menit milik kita).
+   *
+   * Mengunduh laporan lalu menyimpannya adalah langkah terpisah yang butuh
+   * kredensial vendor — bagian `K-03` yang terblokir (isu #90). Sampai itu
+   * ada, `report_key` dibiarkan NULL: kosong yang jujur lebih baik daripada
+   * URL yang akan mati diam-diam.
+   */
+  async completeFromWebhook(hasil: WebhookSuccess): Promise<void> {
+    await this.complete(hasil.scanId, {
+      providerScanId: hasil.scanId,
+      similarityScore: hasil.score,
+      reportKey: null,
+      wordCount: null,
     });
   }
 
