@@ -94,7 +94,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `P-04` | UI top-up: pilih paket, bayar, status, kembali ke… | B | W5 | 0,5 | `todo` | — | — | — |
 | `Q-04` | Job rollup mingguan + promosi/degradasi 20% | B | W5 | 1 | `todo` | — | — | — |
 | `RT-02` | Client hook useRealtime + fallback polling otomatis | B | W5 | 0,5 | `todo` | — | — | — |
-| `K-01` | Upload PDF/DOCX + SHA-256 + simpan ke object storage | A | W6 | 1 | `todo` | — | — | — |
+| `K-01` | Upload PDF/DOCX + SHA-256 + simpan ke object storage | A | W6 | 1 | `done` | — | 2026-09-20 | Tipe ditentukan dari BYTE berkasnya, bukan nama/Content-Type — keduanya dari klien. Magic `PK` saja tidak cukup untuk DOCX: setiap .zip/.jar/.xlsx punya empat byte pertama yang sama, jadi entri `word/document.xml` ikut dicari. AC "ditolak SEBELUM menyentuh storage" dibuktikan dengan menghitung panggilan `put` (nol), bukan dengan "objeknya tidak ada" — service yang menyimpan lalu menghapus akan lolos cara kedua. Dibalik urutannya jadi merah: 6 berkas ditolak sampai ke bucket. Kunci objek dari HASH, bukan nama berkas (`../../etc/passwd` diuji). |
 | `K-02` | ScanService: dedup, hold/settle/release, reaper 3… | A | W6 | 1,5 | `todo` | — | — | — |
 | `MT-01` | Skema mastery_sessions + API | A | W6 | 0,5 | `done` | #59 | 2026-09-17 | Giliran ditambahkan lewat jsonb_insert di DATABASE, bukan dirakit di Node — 10 penambahan paralel diuji, nol yang hilang. Kepemilikan disaring di WHERE, bukan diperiksa setelah baris diambil. Sesi orang lain dan sesi yang tidak ada menjawab identik. |
 | `PR-02` | API submit review + poin berbobot + cap harian | A | W6 | 1 | `done` | — | 2026-09-20 | Cap harian memakai hari LOKAL reviewer (aturan 5), diuji tepat di batas tengah malam lokal — implementasi UTC lulus test biasa tapi gagal yang ini. Test konkurensi versi pertama LULUS tanpa `FOR UPDATE`, jadi ditulis ulang dengan gerbang; sekarang cabut kuncinya dan ia merah (6 berpoin, bukan 5). Nilai rubrik dari klien DIBATASI 0..5 × maks 10 kriteria — tanpa itu `{"x":999999}` mencetak poin lewat endpoint publik (isu #73). CHECK `no_self_review` dibuktikan dengan MENEMBUS service. |
@@ -136,11 +136,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 76 | 75,5 |
-| `done` | 32 | 29,0 |
+| `done` | 33 | 30,0 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 3 | 3,0 |
-| `todo` | 41 | 43,5 |
+| `todo` | 40 | 42,5 |
 
 ---
 ## Ringkasan per epik

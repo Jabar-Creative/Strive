@@ -113,6 +113,46 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # MinIO ditambahkan di K-01, alasan yang sama dengan Redis di Q-02: AC-nya
+      # berbunyi "tipe berkas lain ditolak SEBELUM menyentuh storage", dan itu
+      # tidak bisa dibuktikan dengan mock — mock akan selalu "tidak menyimpan
+      # apa pun", karena memang tidak ada storage yang disentuh.
+      #
+      # `docker run`, BUKAN entri `services:`. GitHub Actions tidak bisa
+      # menimpa command container layanan, sementara image MinIO butuh
+      # `server /data`. Tanpa itu ia mencetak layar bantuan lalu keluar, dan
+      # kegagalannya muncul sebagai "unhealthy" yang tidak menyebut sebabnya.
+      - name: Jalankan MinIO + siapkan bucket
+        run: |
+          set -euo pipefail
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=strive -e MINIO_ROOT_PASSWORD=strive_ci_only \
+            quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z server /data
+
+          # Tunggu API-nya SIAP, bukan tunggu sekian detik. `sleep` yang cukup
+          # hari ini adalah `sleep` yang kurang di runner yang lebih lambat.
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:9000/minio/health/live && break
+            [ "$i" = 60 ] && { echo "::error::MinIO tidak siap dalam 60 detik"; docker logs minio; exit 1; }
+            sleep 1
+          done
+
+          # Bucket dibuat DI SINI, bukan di test: test yang membuat bucketnya
+          # sendiri akan lulus meski GRANT-nya salah, karena ia pemiliknya.
+          #
+          # `aws` CLI, bukan `mc`. Mengunduh `mc` dari dl.min.io sempat dicoba
+          # dan gagal: servernya membalas 410, curl menyimpan badan galatnya
+          # sebagai "binary", dan kegagalannya muncul sebagai
+          # `mc: line 1: 410: command not found` — pesan yang tidak menyebut
+          # unduhan sama sekali. `aws` sudah terpasang di runner ubuntu-latest,
+          # jadi tidak ada yang perlu diunduh.
+          export AWS_ACCESS_KEY_ID=strive AWS_SECRET_ACCESS_KEY=strive_ci_only
+          export AWS_DEFAULT_REGION=us-east-1
+          for b in strive-documents strive-assets; do
+            aws --endpoint-url http://localhost:9000 s3api create-bucket --bucket "$b" \
+              || aws --endpoint-url http://localhost:9000 s3api head-bucket --bucket "$b"
+          done
+
       - name: Jalankan migrasi terhadap DB kosong
         env:
           DATABASE_URL: postgres://strive:strive_ci@localhost:5432/strive_ci
@@ -206,6 +246,10 @@ jobs:
         env:
           DATABASE_URL: postgres://strive:strive_ci@localhost:5432/strive_ci
           REDIS_URL: redis://localhost:6379
+          S3_ENDPOINT: http://localhost:9000
+          S3_ACCESS_KEY: strive
+          S3_SECRET_KEY: strive_ci_only
+          S3_BUCKET_DOCUMENTS: strive-documents
         run: pnpm --filter @strive/api test:integration
 
       - name: Tipe Kysely harus sinkron dengan skema
