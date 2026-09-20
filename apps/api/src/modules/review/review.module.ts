@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { ReviewController } from './review.controller';
 import { ReviewService } from './review.service';
 
 /**
@@ -10,6 +11,7 @@ import { ReviewService } from './review.service';
  * membuangnya, karena ia tidak pernah ada di sana.
  */
 @Module({
+  controllers: [ReviewController],
   providers: [ReviewService],
   exports: [ReviewService],
 })
