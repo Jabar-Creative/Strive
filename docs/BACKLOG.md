@@ -1,15 +1,16 @@
 # BACKLOG — Strive Academy
 
 > **Versi:** 2.0 · semua fitur · kedalaman v0.1  
-> **Total:** 75 item · 75,0 dev-hari · Dev A 38,5 · Dev B 34,0 · Dev AB 2,5  
-> **Kapasitas:** 68 dev-hari efektif (2 dev × 8 minggu × 5 hari − 15% overhead) → **110% terisi**  
+> **Total:** 76 item · 75,5 dev-hari · Dev A 39,0 · Dev B 34,0 · Dev AB 2,5  
+> **Kapasitas:** 68 dev-hari efektif (2 dev × 8 minggu × 5 hari − 15% overhead) → **111% terisi**  
 > **Angka di baris ini DIHITUNG dari tabel papan, bukan ditulis tangan (2026-09-20).** Sebelum
 > ini tertulis `74 item · 73,0 dev-hari · Dev A 37,75 · Dev B 35,25` — tiga dari empat angkanya
 > salah, dan `Dev AB` (2,5 hari) tidak terhitung sama sekali. `assert` di `AGENTS.md` hanya
 > memeriksa JUMLAH ITEM, jadi hari-harinya menyimpang diam-diam selama seminggu. Assert-nya
 > sekarang ikut memeriksa hari.  
-> **`F-12` (isu #14) dan `F-13` (isu #69) masing-masing menambah 0,5 hari Dev A** — keduanya
-> pekerjaan yang terlewat saat perencanaan, bukan scope baru. Terisi naik 107% → 110%.
+> **`F-12` (#14), `F-13` (#69), dan `Q-06` (#79) masing-masing menambah 0,5 hari Dev A** —
+> ketiganya pekerjaan yang terlewat saat perencanaan, bukan scope baru. Terisi naik 107% → 111%.
+> Ketiganya ditemukan dengan cara yang sama: **mencoba memakai hasilnya**, bukan membaca papan.
 > Pemotongan scope di checkpoint W5 jadi lebih menentukan, bukan kurang.  
 > **Sumber kebenaran estimasi.** `DELIVERY-PLAN.md` diturunkan dari file ini, bukan sebaliknya.
 
@@ -83,6 +84,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `done` | #43 | 2026-09-17 | Ter-merge lewat #43. Review Dev A: guard JWT diganti guard sesi — A-01 menghapus JWT setelah item ini mulai. |
 | `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `done` | #42 | 2026-09-17 | Ter-merge lewat #42. Review Dev A: uang integer, append-only terbukti, advisory lock bernama. |
 | `Q-05` | UI squad + leaderboard (WS + fallback polling 30 … | B | W4 | 1,5 | `todo` | — | — | — |
+| `Q-06` | API squad: GET /squads/me + GET /squads/:id/leaderboard | A | W4 | 0,5 | `todo` | — | — | Dibuat dari isu #79. `Q-02` membangun `LeaderboardService` dan AC-nya terpenuhi PENUH — ia memang tidak pernah menjanjikan endpoint. Pekerjaan yang jatuh di antara dua item. Ditemukan saat `R-02` mau mengukur leaderboard dan endpointnya tidak ada. |
 | `P-02` | POST /payments/checkout — Midtrans Snap, QRIS | A | W5 | 1 | `blocked` | — | 2026-09-17 | Kode selesai & ter-merge, TAPI setengah AC tidak bisa dibuktikan: 'token Snap dan redirect_url yang VALID' menuntut panggilan Midtrans sungguhan, dan MIDTRANS_SERVER_KEY kosong. Idempotensi & PA-5 & PA-10 terbukti. Menunggu kredensial vendor — sama seperti F-05 menunggu akun cloud. |
 | `P-03` | Webhook: verifikasi signature, idempotensi, entri… | A | W5 | 1,5 | `todo` | — | — | — |
 | `PR-01` | Alokasi 2 reviewer lintas squad, identitas disemb… | A | W5 | 1 | `done` | #58 | 2026-09-17 | PR-2 ditegakkan BENTUK DATA: ReviewQueueItem tidak punya author_id, jadi tidak ada tempat untuk lupa membuangnya. Diuji dengan memeriksa SELURUH isi respons, bukan satu field. PR-1 dijaga di antrean DAN di jalur tulis. |
@@ -133,12 +135,12 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 | | Jumlah | Dev-hari |
 |---|---:|---:|
-| Total | 75 | 75,0 |
+| Total | 76 | 75,5 |
 | `done` | 32 | 29,0 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 3 | 3,0 |
-| `todo` | 40 | 43,0 |
+| `todo` | 41 | 43,5 |
 
 ---
 ## Ringkasan per epik
@@ -434,9 +436,33 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 ### `Q-05` — UI squad + leaderboard (WS + fallback polling 30 dtk)
 
-**1,5 hari** · Dev **B** · Minggu **W4** · Butuh: `Q-02`
+**1,5 hari** · Dev **B** · Minggu **W4** · Butuh: `Q-06`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Papan tetap benar saat koneksi WS putus lalu pulih. Tanpa WS sama sekali, papan tetap terisi lewat polling.
+
+### `Q-06` — API squad: `GET /squads/me` + `GET /squads/:id/leaderboard`
+
+**0,5 hari** · Dev **A** · Minggu **W4** · Butuh: `Q-02`
+
+**Status:** lihat papan status di atas · **Selesai berarti:** Kedua rute mengembalikan data yang sama dengan `SquadService`/`LeaderboardService`, dijaga peran sesuai `ACCESS_MATRIX`, dan anggota squad lain tidak bisa membaca papan squad yang bukan miliknya lewat `:id` tebakan.
+
+> **Kenapa item ini ada.** Kedua rute tercantum di `docs/PRD.md` §10.3 **dan** di
+> `ACCESS_MATRIX`, tapi tidak ada item yang membangunnya (isu #79). `Q-02` membuat
+> `LeaderboardService` dan memenuhi AC-nya seluruhnya — AC itu berbunyi *"Redis di-FLUSHALL
+> lalu papan pulih otomatis"*, soal service, bukan HTTP. Tidak ada yang salah dikerjakan;
+> yang salah adalah tidak ada yang menjanjikan permukaan HTTP-nya.
+>
+> **Ini menahan `Q-05` (Dev B).** UI squad + leaderboard tidak bisa dibangun di atas endpoint
+> yang tidak ada. Sebelum `Q-06` ada, `Q-05` terhitung "siap" di papan padahal tidak —
+> itu jenis kebohongan papan yang paling mahal, karena baru ketahuan setelah orang mulai
+> mengerjakannya.
+>
+> **0,5 hari itu realistis, bukan optimis:** kedua service sudah ada dan sudah diuji. Yang
+> dibutuhkan controller + guard + baris `ACCESS_MATRIX` + test. Nol logika baru.
+>
+> Ditemukan saat `R-02` hendak mengukur leaderboard dan endpointnya tidak ada — bukan lewat
+> pembacaan papan. Pola yang sama dengan `pnpm seed` (`F-13`, isu #69) dan job partisi
+> (`F-12`, isu #14).
 
 ## E15 · Realtime
 
