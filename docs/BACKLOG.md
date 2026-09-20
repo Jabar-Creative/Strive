@@ -114,7 +114,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `R-03` | Audit keamanan: auth, webhook, upload, rate limit… | A | W8 | 1 | `todo` | — | — | — |
 | `R-04` | Observability: log terstruktur, error tracking, a… | A | W8 | 1 | `todo` | — | — | — |
 | `SA-03` | Endpoint /admin/integrations/health + biaya vendo… | A | W8 | 0,5 | `todo` | — | — | — |
-| `SA-04` | Dasbor Retool: transaksi, harga, audit, health | A | W8 | 0,5 | `todo` | — | — | — |
+| `SA-04` | Dasbor Retool: transaksi, harga, audit, health | A | W8 | 0,5 | `blocked` | — | 2026-09-20 | BLOCKED: butuh langganan Retool (blocker non-kode, `docs/reports/blocker-non-kode.pdf`) — isu #77. AC-nya "superadmin bisa bekerja tanpa membuka database" mustahil tanpa dasbornya. Panel `health` juga menunggu `SA-03`. Yang SUDAH ada: seluruh query-nya di `docs/retool/queries.sql`, diverifikasi berjalan sebagai role `strive_readonly` (6 test integrasi) dan tidak satu pun menyentuh tabel mentah. Saat lisensinya ada, perakitannya setengah jam. |
 | `R-05` | Cadangan perbaikan bug | AB | W8 | 2 | `todo` | — | — | — |
 | `MT-02` | Wawancara terpandu: bank soal statis + jawaban te… | B | W8 | 1,5 | `todo` | — | — | — |
 | `MT-03` | Review personal statement (LLM terstruktur) | B | W8 | 1 | `todo` | — | — | — |
@@ -137,8 +137,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `done` | 31 | 28,5 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
-| `blocked` | 2 | 2,5 |
-| `todo` | 42 | 44,0 |
+| `blocked` | 3 | 3,0 |
+| `todo` | 41 | 43,5 |
 
 ---
 ## Ringkasan per epik
