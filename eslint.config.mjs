@@ -147,8 +147,15 @@ export default tseslint.config(
   },
 
   // Script build/dev dan seed memang menulis ke stdout.
+  //
+  // `db/seeds` dulu tertulis `**/*.ts` saja — dan **tidak ada satu pun berkas
+  // `.ts` di direktori itu**, jadi pengecualian ini tidak pernah cocok dengan
+  // apa pun sejak ditulis. Akibatnya `seed-content.mjs` menyiasatinya dengan
+  // menulis pesan informasi ke `process.stderr`, tempat yang salah untuk
+  // keluaran yang bukan galat: `pnpm seed > log.txt` tidak menangkap apa pun.
+  // Diperbaiki jadi pola yang sama dengan `scripts/` (isu #69 / `F-13`).
   {
-    files: ['scripts/**/*.{mjs,js,ts}', '**/*.config.{mjs,js,ts}', 'db/seeds/**/*.ts'],
+    files: ['scripts/**/*.{mjs,js,ts}', '**/*.config.{mjs,js,ts}', 'db/seeds/**/*.{mjs,js,ts}'],
     rules: { 'no-console': 'off' },
   },
 
