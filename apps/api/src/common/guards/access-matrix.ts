@@ -39,9 +39,15 @@ export const ACCESS_MATRIX: readonly AccessRule[] = [
   // default-nya TERTUTUP, `GET /auth/get-session` akan ditolak — login terlihat
   // berhasil, lalu sesinya tidak pernah bisa dibaca.
   { route: 'ALL /auth/*', allow: [], note: 'publik — belum ada sesi saat dipanggil' },
+  {
+    route: 'ALL /auth',
+    allow: [],
+    note: 'rute TANPA segmen (mis. probe). Bukan tercakup `/auth/*` — "/auth" tidak berada di bawah "/auth/". Ditemukan test drift isu #68, bukan oleh mata',
+  },
   { route: 'GET /me', allow: SEMUA },
   { route: 'GET /hub', allow: BELAJAR },
   { route: 'GET /tracks', allow: BELAJAR },
+  { route: 'GET /tracks/:id', allow: BELAJAR },
   { route: 'GET /lessons/:id/cards', allow: BELAJAR },
   { route: 'POST /attempts', allow: BELAJAR },
   { route: 'GET /streak', allow: BELAJAR },
@@ -51,6 +57,21 @@ export const ACCESS_MATRIX: readonly AccessRule[] = [
   { route: 'GET /leagues/:season/:tier', allow: BELAJAR },
   { route: 'GET /reviews/queue', allow: BELAJAR },
   { route: 'POST /reviews/:id', allow: BELAJAR },
+  // Ditambahkan saat isu #68 — rute ini SUDAH berdiri tapi tidak pernah
+  // tercatat di sini, dan tidak ada yang memberi tahu. Sekarang ada test
+  // drift yang menolak PR yang menambah rute tanpa menambahkannya ke sini.
+  { route: 'GET /notifications', allow: BELAJAR },
+  { route: 'PATCH /notifications/:id/read', allow: BELAJAR },
+  {
+    route: 'GET /pricing',
+    allow: [],
+    note: 'PUBLIK di kode — tanpa guard sama sekali. PRD §10.3 menulis "semua" (= tiga peran, artinya butuh sesi). Selisih itu BELUM diputuskan; lihat isu #75',
+  },
+  {
+    route: 'GET /health',
+    allow: [],
+    note: 'probe orkestrator. Dikecualikan dari prefiks global di main.ts, dan memang harus terjangkau tanpa sesi',
+  },
   { route: 'GET /wallet', allow: BELAJAR },
   { route: 'GET /wallet/ledger', allow: BELAJAR },
   { route: 'POST /payments/checkout', allow: BELAJAR },
