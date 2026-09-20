@@ -117,8 +117,8 @@ strive-academy/
 │  │                           003 = peer_reviews FK · 004 = Better-Auth (33)
 │  │                           005 = trigger AU-6
 │  │                           006 = view admin_* + role strive_readonly
-│  └─ seeds/                   seed-content.mjs (F-11) + content/ contoh
-│                              `pnpm seed` TIDAK ada di sini — lihat Perintah
+│  └─ seeds/                   seed-dev.mjs (F-13) · seed-content.mjs (F-11)
+│                              + content/ contoh
 ├─ scripts/                    perkakas lintas-OS, Node murni, nol dependensi
 │                              dev-web · dev-api · dev-ai · db-migrate · db-types
 │                              resolve-bin · not-implemented (placeholder exit 0)
@@ -150,7 +150,7 @@ cp .env.example .env      # opsional: stack jalan tanpa .env, semua punya defaul
 
 pnpm db:migrate           # forward-only, satu transaksi per file, checksum diperiksa
 pnpm db:types             # generate tipe Kysely DARI SKEMA SUNGGUHAN, lalu prettier
-pnpm seed                 # BELUM ADA, dan TIDAK ADA ITEM YANG MEMBUATNYA — lihat catatan
+pnpm seed                 # data dev: harga, 1 track lengkap, 8 item store. Idempoten
 pnpm seed:content <file>  # ADA (F-11, #41). Impor kartu dari CSV/JSON, idempoten
 
 pnpm dev                  # web + api + ai bersamaan
@@ -171,14 +171,17 @@ cd services/ai && ./.venv/Scripts/python -m pytest    # Windows
 
 Sebelum membuka PR: `pnpm lint && pnpm typecheck && pnpm test && pnpm build` harus hijau.
 
-> **`pnpm seed` sekarang punya pemilik: `F-13` (W3, Dev A).**
-> Sampai 2026-09-20 ia perintah yatim — `db/seeds/README.md` mengatribusikannya ke `F-04`,
-> padahal AC resmi `F-04` tidak pernah menyebutnya dan `F-04` sudah `done`. Jadi ia ada di
-> dokumentasi, tidak ada di backlog, dan tidak akan pernah dikerjakan siapa pun (isu #69).
-> Sekarang ia item sungguhan dengan AC sendiri. **Sampai `F-13` selesai ia masih
-> placeholder** — jangan diam-diam menulis skripnya menumpang PR lain. Yang ADA dan bekerja
-> sekarang adalah `pnpm seed:content` (`F-11`), dan itu hal yang berbeda: impor konten
-> belajar, bukan data dev.
+> **`pnpm seed` dan `pnpm seed:content` adalah dua hal yang BERBEDA — jangan tertukar.**
+> `pnpm seed` (`F-13`) membuat data dev supaya stack bisa dipakai: satu `pricing_config`
+> aktif dengan angka `docs/PRD.md` §6 yang TERKUNCI, satu track lengkap sampai kartu, dan
+> 8 `store_items`. `pnpm seed:content <file>` (`F-11`) mengimpor konten belajar dari
+> CSV/JSON. Keduanya idempoten dan **tidak pernah UPDATE atau DELETE** — hanya
+> `INSERT … ON CONFLICT DO NOTHING`, yang membuat "data pengguna tidak pernah ditimpa"
+> benar secara konstruksi, bukan karena hati-hati.
+>
+> Pengguna jangkar yang dibuat `pnpm seed` **tidak bisa login** dan itu disengaja: repo ini
+> publik. Untuk superadmin yang bisa dipakai, daftar lewat aplikasi lalu
+> `UPDATE users SET role='superadmin' WHERE email='…'`.
 
 **Port bisa ditimpa** lewat `.env`: `WEB_PORT`, `API_PORT`, `AI_SERVICE_PORT`.
 Port PostgreSQL/Redis/MinIO sengaja digeser dan **terikat ke `127.0.0.1`** — repo ini

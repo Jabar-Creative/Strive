@@ -2,6 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { BadRequestException, PayloadTooLargeException } from '@nestjs/common';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { HeadBucketCommand } from '@aws-sdk/client-s3';
+
 import { StorageService, bucketDocuments, createS3FromEnv } from '../src/infra/storage';
 import { DocumentUploadService, MAX_UPLOAD_BYTES, detectType } from '../src/modules/scan';
 
@@ -86,7 +88,12 @@ beforeAll(async () => {
   upload = new DocumentUploadService(storage);
 
   try {
-    await storage.exists(BUCKET, `probe/${randomUUID()}`);
+    // `HeadBucket`, BUKAN `storage.exists`. `exists` sengaja menelan galat dan
+    // mengembalikan `false` — dipakai sebagai probe, ia melaporkan "terjangkau"
+    // bahkan saat MinIO mati sama sekali, dan 9 test di bawah gagal dengan
+    // pesan yang tidak menyebut MinIO. Itu benar-benar terjadi di CI sebelum
+    // MinIO ditambahkan ke workflow.
+    await s3.send(new HeadBucketCommand({ Bucket: BUCKET }));
     reachable = true;
   } catch {
     reachable = false;

@@ -4,22 +4,19 @@ Dua jalur berbeda, jangan tertukar:
 
 | Perintah                   | Isi                                                       | Item   |
 | -------------------------- | --------------------------------------------------------- | ------ |
-| `pnpm seed`                | `pricing_config` versi awal, 1 track contoh, 8 item store | `F-04` |
+| `pnpm seed`                | `pricing_config` versi awal, 1 track contoh, 8 item store | `F-13` |
 | `pnpm seed:content <file>` | Impor kartu belajar dari CSV/JSON                         | `F-11` |
 
-> **Catatan ketidakkonsistenan dokumen (dicatat, bukan diam-diam diputuskan):**
-> Judul item `F-11` di `docs/BACKLOG.md` menyebut "... + impor 1 track
-> percontohan" seolah itu deliverable terpisah dari `pnpm seed` (`F-04`).
-> Acceptance criteria RESMI `F-11` di `docs/BACKLOG.md` hanya menyebut
-> `pnpm seed:content <file>` + idempotensi — TIDAK menyebut perintah `pnpm
-seed` terpisah. Resolusinya: "impor 1 track percontohan" dibuktikan dengan
-> memakai `pnpm seed:content` untuk mengimpor satu file contoh berisi satu
-> track lengkap (`db/seeds/content/contoh-track.json`), bukan dengan
-> membangun jalur `pnpm seed` sendiri (itu tetap murni tugas `F-04`/Dev A).
+> **Dulu ada ketidakkonsistenan di sini, sekarang tidak lagi.** Sampai 20 September 2026
+> berkas ini mengatribusikan `pnpm seed` ke `F-04`, padahal acceptance criteria resmi `F-04`
+> tidak pernah menyebutnya dan `F-04` sudah `done`. Perintahnya jadi yatim: ada di
+> dokumentasi, tidak ada di backlog. Sekarang ia item sungguhan — **`F-13`** (isu #69),
+> diimplementasikan di [`seed-dev.mjs`](./seed-dev.mjs).
 
 `pnpm seed:content` (`F-11`, Dev B) diimplementasikan di
-[`seed-content.mjs`](./seed-content.mjs). `pnpm seed` (`F-04`, Dev A) masih
-placeholder — **jangan disentuh dari sini**, itu bukan cakupan `F-11`.
+[`seed-content.mjs`](./seed-content.mjs). `pnpm seed` (`F-13`, Dev A) di
+[`seed-dev.mjs`](./seed-dev.mjs). Keduanya idempoten dan tidak pernah saling
+menyentuh: yang satu data dev, yang satu konten belajar.
 
 ## Batas yang perlu diketahui: konten yang sudah dikerjakan orang
 

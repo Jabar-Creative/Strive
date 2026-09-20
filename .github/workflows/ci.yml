@@ -99,6 +99,20 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s --health-timeout 5s --health-retries 10
+      # MinIO ditambahkan di K-01, alasan yang sama dengan Redis di Q-02.
+      # AC-nya berbunyi "tipe berkas lain ditolak SEBELUM menyentuh storage" —
+      # itu tidak bisa dibuktikan dengan mock: mock akan selalu "tidak
+      # menyimpan apa pun", karena memang tidak ada storage yang disentuh.
+      # Yang diuji di sini bucket privat sungguhan dan signed URL sungguhan.
+      minio:
+        image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
+        env:
+          MINIO_ROOT_USER: strive
+          MINIO_ROOT_PASSWORD: strive_ci_only
+        ports: ['9000:9000']
+        options: >-
+          --health-cmd "mc ready local"
+          --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v4
 
@@ -112,6 +126,17 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # Bucket dibuat di sini, bukan di test: test yang membuat bucketnya sendiri
+      # akan lulus meski GRANT-nya salah, karena ia pemiliknya.
+      - name: Siapkan bucket MinIO
+        run: |
+          set -euo pipefail
+          curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+          chmod +x /usr/local/bin/mc
+          mc alias set ci http://localhost:9000 strive strive_ci_only
+          mc mb --ignore-existing ci/strive-documents
+          mc mb --ignore-existing ci/strive-assets
 
       - name: Jalankan migrasi terhadap DB kosong
         env:
@@ -206,6 +231,10 @@ jobs:
         env:
           DATABASE_URL: postgres://strive:strive_ci@localhost:5432/strive_ci
           REDIS_URL: redis://localhost:6379
+          S3_ENDPOINT: http://localhost:9000
+          S3_ACCESS_KEY: strive
+          S3_SECRET_KEY: strive_ci_only
+          S3_BUCKET_DOCUMENTS: strive-documents
         run: pnpm --filter @strive/api test:integration
 
       - name: Tipe Kysely harus sinkron dengan skema
