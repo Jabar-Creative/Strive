@@ -173,17 +173,17 @@ for st in ['done', 'review', 'in_progress', 'blocked', 'todo']:
 awal = s.index('| | Jumlah | Dev-hari |'); akhir = s.index('\n\n', awal)
 p.write_text(s[:awal] + '\n'.join(blok) + s[akhir:])
 # INI yang menangkap baris item yang hilang saat resolusi konflik — bukan mata.
-assert sum(n.values()) == 75, f'jumlah item {sum(n.values())}, harus 75'
+assert sum(n.values()) == 76, f'jumlah item {sum(n.values())}, harus 76'
 # Hari juga. Baris item yang ANGKA HARINYA berubah tidak mengubah jumlah item,
 # jadi assert di atas sendirian meloloskannya — dan itu benar-benar terjadi:
 # header backlog menyimpang jadi 73,0 sementara barisnya berjumlah 74,5,
 # diam-diam, selama seminggu.
-assert abs(total - 75.0) < 0.01, f'total {total} dev-hari, harus 75,0'
+assert abs(total - 75.5) < 0.01, f'total {total} dev-hari, harus 75,5'
 print('\n'.join(blok))
 EOF
 ```
 
-Total harus tetap **75 item / 75,0 dev-hari**. Kedua `assert` itu bukan hiasan, dan
+Total harus tetap **76 item / 75,5 dev-hari**. Kedua `assert` itu bukan hiasan, dan
 masing-masing sudah menangkap kegagalan yang berbeda:
 
 - **Jumlah item.** Saat merge `main` ke `c-01` (16 Sep), resolusi konflik **menjatuhkan
