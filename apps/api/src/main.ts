@@ -26,7 +26,16 @@ function resolveMode(): Mode {
 
 async function bootstrapApi(): Promise<void> {
   const port = Number(process.env['API_PORT'] ?? 3001);
-  const app = await NestFactory.create(AppModule);
+  // `rawBody: true` — WAJIB, dan kalau hilang yang rusak cuma di PRODUKSI.
+  //
+  // Verifikasi tanda tangan webhook (Midtrans & Copyleaks) dihitung atas BYTE
+  // yang dikirim. Tanpa opsi ini `req.rawBody` undefined, controller jatuh ke
+  // `JSON.stringify(body)`, dan hasilnya berbeda dari aslinya begitu urutan
+  // kunci atau spasi berbeda — tanda tangan yang sah pun ditolak.
+  //
+  // Test integrasi memakai `createNestApplication({ rawBody: true })` sendiri,
+  // jadi ia TIDAK akan menangkap kalau baris ini hilang dari sini.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Prefiks /api/v1 — docs/PRD.md §10. `/health` dikecualikan agar probe
   // orkestrator tidak ikut terpengaruh saat versi API naik.

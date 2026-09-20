@@ -104,7 +104,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `ST-01` | store_items + pembelian transaksional (debit ledger) | B | W6 | 1 | `todo` | — | — | — |
 | `ST-02` | UI etalase + unduh aset (signed URL 15 menit) | B | W6 | 1 | `todo` | — | — | — |
 | `AI-06` | Tabel ai_jobs + dispatcher di Node + pencatatan b… | A | W7 | 1 | `todo` | — | — | — |
-| `K-03` | Worker Copyleaks + webhook hasil + laporan terunduh | A | W7 | 1,5 | `todo` | — | — | — |
+| `K-03` | Worker Copyleaks + webhook hasil + laporan terunduh | A | W7 | 1,5 | `blocked` | — | 2026-09-20 | BLOCKED: kredensial sandbox Copyleaks belum ada (isu #90) — vendor KETIGA yang menahan item, setelah Midtrans (#57) dan Retool (#77). AC-nya menuntut "tuntas end-to-end di sandbox vendor". YANG SUDAH ADA: antarmuka disesuaikan PRD §12.2 (versi K-02 menyimpang — `documentUrl`, bukan `documentKey`; vendor mengambil dokumennya sendiri lewat signed URL dan tidak boleh punya akses bucket kita), rute `POST /webhooks/copyleaks` + entri ACCESS_MATRIX yang ditemukan hilang oleh penyisiran #88, kabel ke settle/release, dan `rawBody: true` di main.ts. Provider GAGAL TERTUTUP: tanpa rahasia, setiap webhook ditolak — bukan tiruan yang mengembalikan true supaya "bisa dites". |
 | `SA-01` | View SQL untuk transaksi & audit + koneksi Retool… | A | W7 | 0,5 | `done` | #60 | 2026-09-17 | View admin_transactions menggabung 4 tabel + kolom paid_without_ledger (uang masuk tanpa koin keluar). Role strive_readonly diuji dengan SET LOCAL ROLE sungguhan: bisa baca view, TIDAK bisa menulis apa pun, TIDAK bisa membaca tabel mentah. |
 | `SA-02` | PATCH /admin/pricing — terbit versi baru, bukan m… | A | W7 | 0,5 | `done` | #61 | 2026-09-17 | publishNewVersion sekarang menulis audit_log DI DALAM transaksi yang sama — versi tanpa jejak adalah harga yang berubah tanpa ada yang mengaku. actorId dari GUARD, tidak pernah dari body. Harga lama terbukti tetap terbaca untuk order lama. |
 | `AI-07` | UI CV builder: isi profil, jalankan, lihat temuan… | B | W7 | 1 | `todo` | — | — | — |
@@ -139,8 +139,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `done` | 35 | 32,0 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
-| `blocked` | 3 | 3,0 |
-| `todo` | 38 | 40,5 |
+| `blocked` | 4 | 4,5 |
+| `todo` | 37 | 39,0 |
 
 ---
 ## Ringkasan per epik

@@ -1,36 +1,71 @@
 /**
- * Antarmuka vendor plagiarisme — `KL-12`, dan ia ada **sejak awal** justru
- * karena belum ada implementasinya.
+ * Antarmuka vendor plagiarisme — **`docs/PRD.md` §12.2**, aturan `KL-12`.
  *
- * PRD §5 Q7 memilih Copyleaks sebagai vendor pertama, dengan catatan bahwa
- * harga kontraknya belum diketahui dan **bisa membuat vendor lain lebih
- * masuk akal**. Antarmuka yang baru dibuat saat vendor kedua datang selalu
- * berbentuk seperti vendor pertama — dan pindah vendor lalu jadi pekerjaan
- * berminggu-minggu alih-alih berhari-hari.
+ * Bentuknya disalin dari PRD, bukan dirancang ulang. Versi pertama berkas ini
+ * (`K-02`) menyimpang: `submit()` menerima `documentKey` alih-alih
+ * `documentUrl`, dan `verifyWebhook`/`parseWebhook` tidak ada sama sekali.
+ * PRD menang untuk perilaku (CLAUDE.md), jadi yang diperbaiki ini.
  *
- * Implementasinya datang di `K-03`. Yang ada di sini hanya bentuknya, dan
- * bentuk itu sengaja **tidak menyebut Copyleaks sama sekali**.
+ * Bedanya bukan kosmetik: **`documentUrl`, bukan `documentKey`.** Vendor
+ * mengambil dokumennya sendiri lewat signed URL — ia tidak punya akses ke
+ * bucket kita dan tidak boleh punya. Antarmuka yang menerima `documentKey`
+ * diam-diam mengandaikan vendor bisa membaca storage kita.
+ *
+ * ── Kenapa ada meski vendornya belum tersambung ──
+ *
+ * PRD §5 Q7 memilih Copyleaks sebagai vendor pertama dengan catatan bahwa
+ * harga kontraknya belum diketahui dan **bisa membuat vendor lain lebih masuk
+ * akal**. Antarmuka yang baru dibuat saat vendor kedua datang selalu berbentuk
+ * seperti vendor pertama.
  */
+
 export interface PlagiarismSubmission {
-  /** Kunci objek di object storage — vendor mengambilnya lewat signed URL. */
-  documentKey: string;
-  documentSha256: string;
+  /** `plagiarism_scans.id` — dipakai sebagai `scanId` vendor (PRD §12.2). */
+  scanId: string;
+  /** Signed URL 15 menit. Vendor mengambil dokumennya sendiri. */
+  documentUrl: string;
   filename: string;
 }
 
-export interface PlagiarismResult {
-  /** Id scan di sisi vendor, untuk mencocokkan webhook. */
-  providerScanId: string;
-  /** 0..100. Disimpan `numeric(5,2)`. */
-  similarityScore: number;
-  /** Kunci objek laporan, diunduh lewat signed URL 15 menit (KL-10). */
-  reportKey: string;
-  wordCount: number;
+/** Hasil sukses dari webhook vendor. */
+export interface WebhookSuccess {
+  scanId: string;
+  /** 0..100. */
+  score: number;
+  reportUrl: string;
 }
+
+/** Kegagalan yang dilaporkan vendor — bukan kegagalan jaringan. */
+export interface WebhookFailure {
+  scanId: string;
+  error: string;
+}
+
+export type ParsedWebhook = WebhookSuccess | WebhookFailure;
+
+export const isWebhookFailure = (w: ParsedWebhook): w is WebhookFailure => 'error' in w;
 
 export interface PlagiarismProvider {
   /** Nama yang masuk `plagiarism_scans.provider`. */
   readonly name: string;
-  /** Mengirim dokumen. Mengembalikan id vendor; hasilnya datang lewat webhook. */
-  submit(input: PlagiarismSubmission): Promise<{ providerScanId: string }>;
+
+  /** Mengirim dokumen. Hasilnya datang lewat webhook, bukan dari nilai balik. */
+  submit(p: PlagiarismSubmission): Promise<{ providerScanId: string }>;
+
+  /**
+   * Apakah webhook ini benar-benar dari vendor.
+   *
+   * Menerima **`rawBody: Buffer`**, bukan objek yang sudah di-parse, dan itu
+   * menentukan: tanda tangan dihitung atas byte yang dikirim. `JSON.parse`
+   * lalu `JSON.stringify` mengubah urutan kunci dan spasi, dan tanda tangan
+   * yang dihitung ulang dari hasil parse **tidak akan pernah cocok** — atau
+   * lebih buruk, kebetulan cocok dan berhenti memeriksa apa pun.
+   */
+  verifyWebhook(headers: Record<string, string>, rawBody: Buffer): boolean;
+
+  /** Menerjemahkan badan webhook ke bentuk yang dipahami `ScanService`. */
+  parseWebhook(body: unknown): ParsedWebhook;
 }
+
+/** Token injeksi — satu provider aktif per proses. */
+export const PLAGIARISM_PROVIDER = Symbol('PLAGIARISM_PROVIDER');
