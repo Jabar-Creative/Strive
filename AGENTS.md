@@ -173,15 +173,30 @@ for st in ['done', 'review', 'in_progress', 'blocked', 'todo']:
 awal = s.index('| | Jumlah | Dev-hari |'); akhir = s.index('\n\n', awal)
 p.write_text(s[:awal] + '\n'.join(blok) + s[akhir:])
 # INI yang menangkap baris item yang hilang saat resolusi konflik — bukan mata.
-assert sum(n.values()) == 74, f'jumlah item {sum(n.values())}, harus 74'
+assert sum(n.values()) == 75, f'jumlah item {sum(n.values())}, harus 75'
+# Hari juga. Baris item yang ANGKA HARINYA berubah tidak mengubah jumlah item,
+# jadi assert di atas sendirian meloloskannya — dan itu benar-benar terjadi:
+# header backlog menyimpang jadi 73,0 sementara barisnya berjumlah 74,5,
+# diam-diam, selama seminggu.
+assert abs(total - 75.0) < 0.01, f'total {total} dev-hari, harus 75,0'
 print('\n'.join(blok))
 EOF
 ```
 
-Total harus tetap **74 item / 73,0 dev-hari**. `assert` di skrip itu bukan hiasan:
-saat merge `main` ke `c-01` (16 Sep), resolusi konflik **menjatuhkan baris papan `F-12`**
-— bagian detailnya dan catatan rencananya selamat, barisnya tidak. Yang menangkapnya
-angka 74, bukan mata. Kalau assert-nya gagal, bandingkan daftar ID terhadap `main`:
+Total harus tetap **75 item / 75,0 dev-hari**. Kedua `assert` itu bukan hiasan, dan
+masing-masing sudah menangkap kegagalan yang berbeda:
+
+- **Jumlah item.** Saat merge `main` ke `c-01` (16 Sep), resolusi konflik **menjatuhkan
+  baris papan `F-12`** — bagian detailnya dan catatan rencananya selamat, barisnya tidak.
+  Yang menangkapnya angka 74, bukan mata.
+- **Jumlah hari.** Sampai 20 Sep header backlog menulis `73,0 dev-hari` sementara barisnya
+  berjumlah `74,5`, dan `Dev AB` (2,5 hari) tidak terhitung sama sekali. Jumlah itemnya
+  benar sepanjang waktu itu, jadi assert yang lama meloloskannya — **selama seminggu.**
+
+> **Kalau menambah atau membuang item, ubah kedua angka di sini DAN header `BACKLOG.md`.**
+> Angka yang ditulis tangan di dua tempat akan menyimpang; itulah yang baru saja terjadi.
+
+Kalau assert-nya gagal, bandingkan daftar ID terhadap `main`:
 
 ```bash
 python3 - <<'EOF'
