@@ -122,6 +122,7 @@ strive-academy/
 ├─ scripts/                    perkakas lintas-OS, Node murni, nol dependensi
 │                              dev-web · dev-api · dev-ai · db-migrate · db-types
 │                              resolve-bin · not-implemented (placeholder exit 0)
+│                              load-test (R-02, open-loop — lihat docs/reports/R-02)
 ├─ docs/                       PRD.md · BACKLOG.md · DELIVERY-PLAN.md
 └─ infra/                      docker-compose dev, Dockerfile, CI
 ```

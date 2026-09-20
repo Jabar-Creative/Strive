@@ -1,0 +1,71 @@
+{
+  "dicatat_pada": "2026-09-20T10:40:39.316Z",
+  "node": "v24.20.0",
+  "catatan": "Open-loop: permintaan berangkat pada jadwal tetap, tidak menunggu respons sebelumnya. Closed-loop akan mengurangi laju kirim saat server melambat (coordinated omission) dan melaporkan p95 yang terlalu bagus.",
+  "target": {
+    "p95_ms": 250,
+    "rps": 500
+  },
+  "hasil": [
+    {
+      "jalur": "/api/v1/hub",
+      "rps_target": 500,
+      "rps_tercapai": 499.9,
+      "durasi_detik": 15,
+      "permintaan": 7500,
+      "gagal": 0,
+      "status": {
+        "200": 7500
+      },
+      "p50_ms": 3.3,
+      "p95_ms": 6,
+      "p99_ms": 12.2,
+      "maks_ms": 64.2
+    },
+    {
+      "jalur": "/api/v1/hub",
+      "rps_target": 1000,
+      "rps_tercapai": 999.8,
+      "durasi_detik": 15,
+      "permintaan": 15000,
+      "gagal": 0,
+      "status": {
+        "200": 15000
+      },
+      "p50_ms": 3.3,
+      "p95_ms": 20,
+      "p99_ms": 51.7,
+      "maks_ms": 81.4
+    },
+    {
+      "jalur": "/api/v1/hub",
+      "rps_target": 1500,
+      "rps_tercapai": 1499.7,
+      "durasi_detik": 15,
+      "permintaan": 22500,
+      "gagal": 0,
+      "status": {
+        "200": 22500
+      },
+      "p50_ms": 21.8,
+      "p95_ms": 353.1,
+      "p99_ms": 368.9,
+      "maks_ms": 380.4
+    },
+    {
+      "jalur": "/api/v1/hub",
+      "rps_target": 3000,
+      "rps_tercapai": 1616.6,
+      "durasi_detik": 27.8,
+      "permintaan": 45000,
+      "gagal": 15389,
+      "status": {
+        "200": 29611
+      },
+      "p50_ms": 7954.7,
+      "p95_ms": 16804.1,
+      "p99_ms": 17140.9,
+      "maks_ms": 17245.9
+    }
+  ]
+}

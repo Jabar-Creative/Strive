@@ -110,7 +110,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `PL-02` | 3 template contoh + riwayat run | B | W7 | 0,5 | `todo` | — | — | — |
 | `PR-03` | UI antrean review + form rubrik | B | W7 | 1 | `todo` | — | — | — |
 | `PR-04` | Konsol mentor: antrean validasi, approve/tolak, c… | B | W7 | 1 | `todo` | — | — | — |
-| `R-02` | Load test /hub & leaderboard — target p95 <250 ms… | A | W8 | 1 | `todo` | — | — | — |
+| `R-02` | Load test /hub & leaderboard — target p95 <250 ms… | A | W8 | 1 | `done` | — | 2026-09-20 | p95 **6 ms @ 500 rps** (target 250) — margin ~40×. Kurva dicatat, bukan satu titik: 1000 rps masih lulus (20 ms), 1500 rps tidak (353 ms), 3000 rps jenuh di ~1617 rps dengan 15.389 gagal. Headroom nyata 2–3×, bukan tak terbatas. Beban OPEN-LOOP — closed-loop mengurangi laju kirim saat server melambat dan melaporkan p95 yang terlalu bagus (coordinated omission). Leaderboard TIDAK terukur: endpointnya tidak ada dan tidak dimiliki item mana pun (isu #79). |
 | `R-03` | Audit keamanan: auth, webhook, upload, rate limit… | A | W8 | 1 | `todo` | — | — | — |
 | `R-04` | Observability: log terstruktur, error tracking, a… | A | W8 | 1 | `todo` | — | — | — |
 | `SA-03` | Endpoint /admin/integrations/health + biaya vendo… | A | W8 | 0,5 | `todo` | — | — | — |
@@ -134,11 +134,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 75 | 75,0 |
-| `done` | 30 | 27,5 |
+| `done` | 31 | 28,5 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 2 | 2,5 |
-| `todo` | 43 | 45,0 |
+| `todo` | 42 | 44,0 |
 
 ---
 ## Ringkasan per epik
