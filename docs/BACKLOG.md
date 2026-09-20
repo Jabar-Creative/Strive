@@ -1,9 +1,16 @@
 # BACKLOG — Strive Academy
 
 > **Versi:** 2.0 · semua fitur · kedalaman v0.1  
-> **Total:** 74 item · 73,0 dev-hari · Dev A 37,75 · Dev B 35,25  
-> **Kapasitas:** 68 dev-hari efektif (2 dev × 8 minggu × 5 hari − 15% overhead) → **107% terisi**  
-> **`F-12` menambah 0,5 hari Dev A di W8** (isu #14) — W8 sudah minggu paling berat, dan ini memperberatnya. Pemotongan scope di checkpoint W5 jadi lebih menentukan, bukan kurang.  
+> **Total:** 75 item · 75,0 dev-hari · Dev A 38,5 · Dev B 34,0 · Dev AB 2,5  
+> **Kapasitas:** 68 dev-hari efektif (2 dev × 8 minggu × 5 hari − 15% overhead) → **110% terisi**  
+> **Angka di baris ini DIHITUNG dari tabel papan, bukan ditulis tangan (2026-09-20).** Sebelum
+> ini tertulis `74 item · 73,0 dev-hari · Dev A 37,75 · Dev B 35,25` — tiga dari empat angkanya
+> salah, dan `Dev AB` (2,5 hari) tidak terhitung sama sekali. `assert` di `AGENTS.md` hanya
+> memeriksa JUMLAH ITEM, jadi hari-harinya menyimpang diam-diam selama seminggu. Assert-nya
+> sekarang ikut memeriksa hari.  
+> **`F-12` (isu #14) dan `F-13` (isu #69) masing-masing menambah 0,5 hari Dev A** — keduanya
+> pekerjaan yang terlewat saat perencanaan, bukan scope baru. Terisi naik 107% → 110%.
+> Pemotongan scope di checkpoint W5 jadi lebih menentukan, bukan kurang.  
 > **Sumber kebenaran estimasi.** `DELIVERY-PLAN.md` diturunkan dari file ini, bukan sebaliknya.
 
 Setiap item punya ID stabil. **Jangan pernah mengubah ID** — ID dipakai di nama branch, pesan commit, judul PR, dan rujukan lintas dokumen.
@@ -41,7 +48,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-01` | Monorepo pnpm, TypeScript strict, ESLint, Prettie… | A | W1 | 1 | `done` | `3836fed` | 2026-09-15 | PR #4 ter-merge. 4 AC terbukti + penegakan versi Python (keputusan 1 PR #3), 5 jalur diuji. |
 | `F-03` | CI: lint, typecheck, unit test, build, migrasi ke… | A | W1 | 1 | `done` | `973d7cf` | 2026-09-15 | PR #11 ter-merge. PR merah dibuktikan lewat PR #7 sungguhan, CI 77 dtk, migrasi terhadap DB kosong + verifikasi 31 tabel & trigger. |
 | `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | A | W1 | 1,5 | `done` | `9aa3037` | 2026-09-15 | PR #5 ter-merge. 31 tabel cocok PRD §9.1 (nol hilang, nol berlebih). Trigger append-only, partisi attempt_date, PK surrogate squad_members terbukti. BELUM di-review Dev B. |
-| `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `blocked` | — | 2026-09-15 | DITUNDA atas keputusan Dev A (isu #29), bukan menggantung tanpa pemilik. Staging tidak diadakan sampai Dev A mengumumkan siap. DoD dilonggarkan sementara: baris "ter-deploy ke staging" dinonaktifkan (CLAUDE.md). Menahan 20 item hilir. |
+| `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `blocked` | — | 2026-09-15 | DITUNDA atas keputusan Dev A (isu #29), bukan menggantung tanpa pemilik. Staging tidak diadakan sampai Dev A mengumumkan siap. DoD dilonggarkan sementara: baris "ter-deploy ke staging" dinonaktifkan (CLAUDE.md). TIDAK lagi menahan item mana pun sejak 2026-09-20 (isu #70): `K-01` dan `AI-01` dipindah ke `F-02`, yang memang menyediakan infrastruktur lokalnya. `F-05` tetap dibutuhkan sebelum rilis. |
 | `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
 | `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `done` | `b060129` | 2026-09-15 | PR #12 ter-merge & di-review. 10/10 token cocok PRD §14.1, kontras teks utama 15,68-18,24:1 di kedua mode. Bukti hidup: /_specimen. Menutup isu #16. |
@@ -50,6 +57,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-09` | Wireframe sebagai page stub di kode (12 layar inti) | B | W1 | 0,5 | `done` | `d2cee60` | 2026-09-15 | PR #13 ter-merge & di-review. 12/12 rute HTTP 200, nol referensi menggantung ke backlog/PRD. Nol baris kode baru — memang hasil yang benar. |
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `done` | #41 | 2026-09-17 | Ter-merge lewat #41. Review Dev A: batas idempotensi saat lesson sudah dikerjakan dicatat di README. |
 | `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `done` | #62 | 2026-09-17 | Batas bulan dihitung POSTGRES (date_trunc), bukan aritmetika bulan JavaScript yang salah di akhir bulan. Batas partisi dibaca dari EKSPRESI partisinya, bukan ditebak dari namanya. Diuji dengan insert sungguhan ke partisi bulan depan — partisi yang terdaftar tapi batasnya salah tetap menolak insert. |
+| `F-13` | Seed data dev: pricing_config, track contoh, store items | A | W3 | 0,5 | `todo` | — | — | Dibuat dari isu #69. `pnpm seed` ada di CLAUDE.md sejak awal tapi TIDAK dimiliki item mana pun — `db/seeds/README.md` mengatribusikannya ke `F-04`, yang AC-nya tidak pernah menyebutnya dan sudah `done`. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 2 | `done` | #45 | 2026-09-17 | Ter-merge lewat #45. Migrasi 004 (33 tabel) + 005 (trigger AU-6). AC-AU-2 ditulis ulang. |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `done` | #49 | 2026-09-17 | ACCESS_MATRIX 31 rute, 91 test unit menjalankan hasil kali silang penuh (rute x peran). Dinamai SessionGuard, bukan JwtGuard: tidak ada JWT sejak isu #18. Guard sementara N-01 dipensiunkan. |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
@@ -125,12 +133,12 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 | | Jumlah | Dev-hari |
 |---|---:|---:|
-| Total | 74 | 74,5 |
+| Total | 75 | 75,0 |
 | `done` | 29 | 26,5 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 2 | 2,5 |
-| `todo` | 43 | 45,5 |
+| `todo` | 44 | 46,0 |
 
 ---
 ## Ringkasan per epik
@@ -190,6 +198,25 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 **1,5 hari** · Dev **A** · Minggu **W1** · Butuh: `F-03`
 
+> **Tidak lagi menahan item mana pun — 2026-09-20, keputusan Dev A (isu #70).**
+>
+> `F-05` dulu punya dua dependen: `K-01` dan `AI-01`. Lewat keduanya ia menahan **20 item
+> (27% proyek)**. Keduanya diperiksa ulang terhadap acceptance criteria masing-masing dan
+> terhadap `docs/PRD.md` §12, dan **tidak satu pun butuh lingkungan ter-deploy**:
+>
+> - `AI-01` — *"Hanya Core API yang bisa memanggil AI service (token bersama). Panggilan
+>   tanpa token → 401."* Autentikasinya token bersama lewat env (`AI_SERVICE_TOKEN`), dan
+>   `pnpm dev:ai` menjalankan FastAPI lokal.
+> - `K-01` — *"Tipe berkas lain ditolak sebelum menyentuh storage. Berkas >25 MB ditolak."*
+>   PRD §12 menyebut object storage dev-nya **MinIO lewat docker-compose**, hidup sejak `F-02`.
+>
+> Keduanya dipindah ke `F-02`, yang memang menyediakan infrastruktur lokalnya. Dugaan asal
+> salahnya: dependensi ini ditulis saat `F-05` masih dibayangkan sebagai satu-satunya tempat
+> infrastruktur berdiri, lalu `F-02` menyediakannya secara lokal dan tidak ada yang meninjau
+> ulang.
+>
+> `F-05` tetap dibutuhkan sebelum rilis. Ia hanya berhenti menjadi prasyarat pekerjaan.
+
 **Status:** lihat papan status di atas · **Selesai berarti:** URL staging hidup. Push ke `main` men-deploy ketiganya. Rollback ke commit sebelumnya bisa dilakukan dalam <5 menit.
 
 ### `F-06` — Token design system -> tailwind.config, init Shadcn, mode gelap
@@ -239,6 +266,29 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 ## E1 · Auth & RBAC
 
 > Beli, jangan bangun: Better-Auth. Tiga peran saja.
+
+### `F-13` — Seed data dev: `pricing_config`, track contoh, store items
+
+**0,5 hari** · Dev **A** · Minggu **W3** · Butuh: `F-04`
+
+**Status:** lihat papan status di atas · **Selesai berarti:** `pnpm seed` pada database kosong menghasilkan stack yang bisa dipakai: satu `pricing_config` aktif, satu track lengkap sampai kartu, dan `store_items` yang bisa dibeli. Idempoten — dijalankan dua kali tidak menggandakan apa pun dan tidak error. Data yang sudah disentuh pengguna (attempt, ledger) tidak pernah ditimpa.
+
+> **Kenapa item ini ada.** `pnpm seed` tercantum di `CLAUDE.md` sejak hari pertama dan
+> `db/seeds/README.md` mengatribusikannya ke `F-04`. Tapi acceptance criteria resmi `F-04`
+> tidak pernah menyebutnya — isinya 31 tabel, `pnpm db:types`, trigger immutable — dan `F-04`
+> sudah `done` sejak 2026-09-15. Jadi perintah itu ada di dokumentasi, tidak ada di backlog,
+> dan tidak akan pernah dikerjakan siapa pun (isu #69).
+>
+> Ini **pekerjaan yang jatuh di antara dua item**: jenis yang tidak muncul di papan status
+> mana pun karena tidak pernah punya baris. Sampai sekarang ia menjawab dengan pesan
+> "belum diimplementasikan — itu item `F-04`", yang menunjuk item yang sudah selesai.
+>
+> **W3, bukan W8.** `R-01` (E2E) dan `R-02` (load test) sama-sama butuh data, dan keduanya
+> W8 — minggu yang sudah paling berat dan baru ditambahi `F-12`. Menaruh prasyaratnya di
+> minggu yang sama dengan pemakainya berarti keduanya terdorong bersamaan kalau satu meleset.
+>
+> **Jangan dicampur dengan `pnpm seed:content` (`F-11`, Dev B).** Yang itu mengimpor konten
+> belajar dari CSV/JSON dan sudah ada. Yang ini data dev untuk menjalankan aplikasi.
 
 ### `A-01` — Integrasi Better-Auth + adapter PostgreSQL + rotasi refresh token
 
@@ -470,7 +520,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 ### `K-01` — Upload PDF/DOCX + SHA-256 + simpan ke object storage
 
-**1 hari** · Dev **A** · Minggu **W6** · Butuh: `F-05`
+**1 hari** · Dev **A** · Minggu **W6** · Butuh: `F-02`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Tipe berkas lain ditolak sebelum menyentuh storage. Berkas >25 MB ditolak dengan pesan yang jelas.
 
@@ -526,7 +576,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 ### `AI-01` — FastAPI skeleton + auth service-to-service + config + cache
 
-**1 hari** · Dev **B** · Minggu **W3** · Butuh: `F-05`
+**1 hari** · Dev **B** · Minggu **W3** · Butuh: `F-02`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Hanya Core API yang bisa memanggil AI service (token bersama). Panggilan tanpa token -> 401.
 

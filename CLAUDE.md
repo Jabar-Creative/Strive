@@ -170,13 +170,14 @@ cd services/ai && ./.venv/Scripts/python -m pytest    # Windows
 
 Sebelum membuka PR: `pnpm lint && pnpm typecheck && pnpm test && pnpm build` harus hijau.
 
-> **`pnpm seed` adalah perintah yatim — jangan mengandaikan ada yang akan membuatnya.**
-> `db/seeds/README.md` mengatribusikannya ke `F-04`, tapi acceptance criteria resmi `F-04`
-> tidak pernah menyebutnya (isinya: 31 tabel, `pnpm db:types`, trigger immutable) — dan
-> `F-04` sudah `done`. Jadi perintah ini ada di dokumentasi, tidak ada di backlog, dan
-> tidak akan pernah dikerjakan siapa pun kecuali dijadikan item baru. Yang ADA dan bekerja
-> adalah `pnpm seed:content` (`F-11`). Kalau butuh data dev (pricing, track contoh, store),
-> **buat itemnya dulu**, jangan diam-diam menulis skripnya di PR lain.
+> **`pnpm seed` sekarang punya pemilik: `F-13` (W3, Dev A).**
+> Sampai 2026-09-20 ia perintah yatim — `db/seeds/README.md` mengatribusikannya ke `F-04`,
+> padahal AC resmi `F-04` tidak pernah menyebutnya dan `F-04` sudah `done`. Jadi ia ada di
+> dokumentasi, tidak ada di backlog, dan tidak akan pernah dikerjakan siapa pun (isu #69).
+> Sekarang ia item sungguhan dengan AC sendiri. **Sampai `F-13` selesai ia masih
+> placeholder** — jangan diam-diam menulis skripnya menumpang PR lain. Yang ADA dan bekerja
+> sekarang adalah `pnpm seed:content` (`F-11`), dan itu hal yang berbeda: impor konten
+> belajar, bukan data dev.
 
 **Port bisa ditimpa** lewat `.env`: `WEB_PORT`, `API_PORT`, `AI_SERVICE_PORT`.
 Port PostgreSQL/Redis/MinIO sengaja digeser dan **terikat ke `127.0.0.1`** — repo ini
