@@ -84,7 +84,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `done` | #43 | 2026-09-17 | Ter-merge lewat #43. Review Dev A: guard JWT diganti guard sesi — A-01 menghapus JWT setelah item ini mulai. |
 | `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `done` | #42 | 2026-09-17 | Ter-merge lewat #42. Review Dev A: uang integer, append-only terbukti, advisory lock bernama. |
 | `Q-05` | UI squad + leaderboard (WS + fallback polling 30 … | B | W4 | 1,5 | `todo` | — | — | — |
-| `Q-06` | API squad: GET /squads/me + GET /squads/:id/leaderboard | A | W4 | 0,5 | `todo` | — | — | Dibuat dari isu #79. `Q-02` membangun `LeaderboardService` dan AC-nya terpenuhi PENUH — ia memang tidak pernah menjanjikan endpoint. Pekerjaan yang jatuh di antara dua item. Ditemukan saat `R-02` mau mengukur leaderboard dan endpointnya tidak ada. |
+| `Q-06` | API squad: GET /squads/me + GET /squads/:id/leaderboard | A | W4 | 0,5 | `done` | — | 2026-09-20 | Kepemilikan dicek SERVICE, bukan guard — AC-nya soal keanggotaan dan RolesGuard tidak tahu apa-apa soal itu. Dibuktikan menggigit: cabut penjaganya, 3 test merah termasuk AC intinya. Dua bug KODEKU ditangkap test: (1) `RANK() OVER (ORDER BY poin, user_id)` tidak pernah seri — tiebreaker di dalam OVER mengubahnya jadi ROW_NUMBER, dan komentarku mengklaim sebaliknya; (2) handler Nest yang mengembalikan `null` mengirim body KOSONG, `.json()` melempar di peramban juga — dibungkus `{ squad }`. Peringkat jalur Redis dihitung ulang dengan semantik seri supaya kedua rute tidak menampilkan angka berbeda di layar yang sama. Membuka `Q-05` untuk Dev B. |
 | `P-02` | POST /payments/checkout — Midtrans Snap, QRIS | A | W5 | 1 | `blocked` | — | 2026-09-17 | Kode selesai & ter-merge, TAPI setengah AC tidak bisa dibuktikan: 'token Snap dan redirect_url yang VALID' menuntut panggilan Midtrans sungguhan, dan MIDTRANS_SERVER_KEY kosong. Idempotensi & PA-5 & PA-10 terbukti. Menunggu kredensial vendor — sama seperti F-05 menunggu akun cloud. |
 | `P-03` | Webhook: verifikasi signature, idempotensi, entri… | A | W5 | 1,5 | `todo` | — | — | — |
 | `PR-01` | Alokasi 2 reviewer lintas squad, identitas disemb… | A | W5 | 1 | `done` | #58 | 2026-09-17 | PR-2 ditegakkan BENTUK DATA: ReviewQueueItem tidak punya author_id, jadi tidak ada tempat untuk lupa membuangnya. Diuji dengan memeriksa SELURUH isi respons, bukan satu field. PR-1 dijaga di antrean DAN di jalur tulis. |
@@ -136,11 +136,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 76 | 75,5 |
-| `done` | 33 | 30,0 |
+| `done` | 34 | 30,5 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 3 | 3,0 |
-| `todo` | 40 | 42,5 |
+| `todo` | 39 | 42,0 |
 
 ---
 ## Ringkasan per epik
