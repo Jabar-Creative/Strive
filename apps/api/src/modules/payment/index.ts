@@ -5,3 +5,5 @@ export * from './pricing-config.service';
 export * from './checkout.service';
 export * from './snap.client';
 export * from './admin-pricing.controller';
+export * from './order-read.service';
+export * from './orders.controller';

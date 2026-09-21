@@ -5,3 +5,5 @@ export * from './document-upload.service';
 export * from './plagiarism-provider';
 export * from './copyleaks.provider';
 export * from './scan-webhook.controller';
+export * from './scan-history.service';
+export * from './scans.controller';

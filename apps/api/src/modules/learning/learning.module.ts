@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 
+import { KyselyModule } from '../../infra/kysely';
+import { AttemptHistoryService } from './attempt-history.service';
+import { AttemptsController } from './attempts.controller';
 import { ContentController } from './content.controller';
 import { ContentService } from './content.service';
 
@@ -14,8 +17,9 @@ import { ContentService } from './content.service';
  * dilakukan di ContentService supaya tidak ada jalur yang bisa melewatkannya.
  */
 @Module({
-  controllers: [ContentController],
-  providers: [ContentService],
-  exports: [ContentService],
+  imports: [KyselyModule],
+  controllers: [ContentController, AttemptsController],
+  providers: [ContentService, AttemptHistoryService],
+  exports: [ContentService, AttemptHistoryService],
 })
 export class LearningModule {}

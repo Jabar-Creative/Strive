@@ -1,7 +1,18 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Kysely } from 'kysely';
 
+import {
+  type HistoryPage,
+  clampLimit,
+  decodeCursor,
+  potongHalaman,
+  setelahCursor,
+  waktuCursor,
+} from '../../common/cursor';
 import { DATABASE, type DB } from '../../infra/kysely';
+
+/** Prefiks cursor `GET /mastery/sessions` — lihat `common/cursor.ts`. */
+const PREFIX = 'ms';
 
 export type MasteryKind = 'interview' | 'statement';
 export type MasteryTarget = 'chevening' | 'lpdp' | 'fulbright';
@@ -12,6 +23,23 @@ export interface MasteryTurn {
   text: string;
   /** ISO 8601 — dibentuk server, tidak pernah dari klien. */
   at: string;
+}
+
+/**
+ * Baris riwayat: tanpa `turns`, yang bisa memuat puluhan giliran per sesi.
+ *
+ * `feedback` dan `mentor_note` IKUT — tidak ada `GET /mastery/sessions/:id`
+ * di PRD §10.3, jadi riwayat inilah satu-satunya tempat pengguna membaca ulang
+ * umpan balik sesi lama.
+ */
+export interface MasterySessionSummary {
+  id: string;
+  kind: MasteryKind;
+  target: string | null;
+  status: string;
+  feedback: unknown;
+  mentor_note: string | null;
+  created_at: Date;
 }
 
 export interface MasterySession {
@@ -81,6 +109,13 @@ export class MasteryService {
     return serialize(row);
   }
 
+  /**
+   * SELURUH sesi, tanpa batas. Dipakai internal; **bukan** yang dilayani HTTP.
+   *
+   * `GET /mastery/sessions` memakai `historyFor()` yang cursor-paginated —
+   * respons yang tumbuh tanpa batas adalah respons yang akhirnya gagal, dan
+   * gagalnya di akun yang paling aktif.
+   */
   async listFor(userId: string): Promise<MasterySession[]> {
     const rows = await this.db
       .selectFrom('mastery_sessions')
@@ -89,6 +124,52 @@ export class MasteryService {
       .orderBy('created_at', 'desc')
       .execute();
     return rows.map(serialize);
+  }
+
+  /**
+   * `GET /mastery/sessions?cursor=` — `F-14`, PRD §10.3.
+   *
+   * `turns` TIDAK ikut: satu sesi wawancara bisa memuat puluhan giliran, dan
+   * layar riwayat tidak menampilkan satu pun. Giliran lengkap dikembalikan
+   * `POST /mastery/*` (`MT-02`) dan `byId()`, yang belum punya rute HTTP
+   * karena PRD §10.3 tidak menjanjikannya.
+   */
+  async historyFor(
+    userId: string,
+    opts: { cursor?: string | undefined; limit?: unknown } = {},
+  ): Promise<HistoryPage<MasterySessionSummary>> {
+    const limit = clampLimit(opts.limit);
+
+    let q = this.db
+      .selectFrom('mastery_sessions')
+      .select([
+        'id',
+        'kind',
+        'target',
+        'status',
+        'feedback',
+        'mentor_note',
+        'created_at',
+        waktuCursor('created_at').as('cursor_ts'),
+      ])
+      .where('user_id', '=', userId)
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(limit + 1);
+
+    if (opts.cursor) {
+      q = q.where(setelahCursor('created_at', 'id', decodeCursor(PREFIX, opts.cursor)));
+    }
+
+    return potongHalaman(await q.execute(), limit, PREFIX, (row) => ({
+      id: row.id,
+      kind: row.kind as MasteryKind,
+      target: row.target,
+      status: row.status,
+      feedback: row.feedback,
+      mentor_note: row.mentor_note,
+      created_at: row.created_at,
+    }));
   }
 
   /**

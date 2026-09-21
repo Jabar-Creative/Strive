@@ -67,7 +67,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `done` | #41 | 2026-09-17 | Ter-merge lewat #41. Review Dev A: batas idempotensi saat lesson sudah dikerjakan dicatat di README. |
 | `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `done` | #62 | 2026-09-17 | Batas bulan dihitung POSTGRES (date_trunc), bukan aritmetika bulan JavaScript yang salah di akhir bulan. Batas partisi dibaca dari EKSPRESI partisinya, bukan ditebak dari namanya. Diuji dengan insert sungguhan ke partisi bulan depan — partisi yang terdaftar tapi batasnya salah tetap menolak insert. |
 | `F-13` | Seed data dev: pricing_config, track contoh, store items | A | W3 | 0,5 | `done` | — | 2026-09-20 | Harga disalin dari PRD §6 yang TERKUNCI, **bukan dari fixture test** — fixture `admin-pricing` memakai angka lain (cache hit 1200 vs 240 sebenarnya, CV 1500 vs 400) karena ia menguji mekanisme versi, bukan harganya. Test menegaskan tiap angka satu per satu. Idempotensi dijamin konstruksi: HANYA `INSERT … ON CONFLICT DO NOTHING`, nol UPDATE/DELETE. `pricing_config` disemai hanya kalau tabelnya kosong — menerbitkan versi tiap jalan membuat order lama menunjuk versi yang bukan harganya. Pengguna jangkar TIDAK bisa login (repo publik). |
-| `F-14` | API baca riwayat milik sendiri (7 rute lintas domain) | A | W7 | 1,5 | `todo` | — | — | Dari isu #88. Tujuh rute PRD §10.3 berbentuk sama — baca baris MILIK SENDIRI, cursor-paginated, kepemilikan dicek service: `/attempts` `/scans` `/reviews/mine` `/payments/orders/:id` `/career/cv/:id` `/career/prompt-lab/history` `/mastery/sessions`. W7 karena domain yang MENULIS barisnya harus ada dulu. |
+| `F-14` | API baca riwayat milik sendiri (7 rute lintas domain) | A | W7 | 1,5 | `done` | #101 | 2026-09-21 | Dikerjakan MENDAHULUI `L-03` dan `P-03` yang masih todo — tabelnya sudah ada di migrasi 001, dan AC-nya soal kepemilikan + cursor, keduanya tidak bergantung pada siapa yang menulis barisnya. Cursor `(waktu, id)`, BUKAN id: PK-nya uuid yang acak. Waktu diambil sebagai TEKS dari Postgres — `Date` JS hanya milidetik sementara timestamptz mikrodetik, dan test membuktikannya merah (2 dari 3 baris hilang). Prefiks per rute: cursor lintas-rute ditolak, bukan mengembalikan halaman salah tanpa error. `GET /mastery/sessions/:id` SENGAJA tidak dibuat — tidak dijanjikan PRD §10.3. PRD vs papan bertentangan soal arti `/reviews/mine` (isu #100), diikuti PRD. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 2 | `done` | #45 | 2026-09-17 | Ter-merge lewat #45. Migrasi 004 (33 tabel) + 005 (trigger AU-6). AC-AU-2 ditulis ulang. |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `done` | #49 | 2026-09-17 | ACCESS_MATRIX 31 rute, 91 test unit menjalankan hasil kali silang penuh (rute x peran). Dinamai SessionGuard, bukan JwtGuard: tidak ada JWT sejak isu #18. Guard sementara N-01 dipensiunkan. |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
@@ -148,11 +148,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 38 | 33,5 |
+| `done` | 39 | 35,0 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 38 | 40,5 |
+| `todo` | 37 | 39,0 |
 
 ---
 ## Ringkasan per epik

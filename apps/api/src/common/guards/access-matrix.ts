@@ -99,6 +99,16 @@ export const ACCESS_MATRIX: readonly AccessRule[] = [
   // Ketiganya boleh, tapi student hanya untuk job MILIKNYA — itu kepemilikan,
   // dicek di service, bukan di guard (PRD §2.5).
   { route: 'GET /ai/jobs/:id', allow: SEMUA },
+  // ── F-14 (isu #88): riwayat MILIK SENDIRI, tujuh rute lintas domain ──
+  // Superadmin ditolak di semuanya: riwayat belajar, scan, dan pembayaran
+  // orang bukan urusan panel admin — untuk itu ada view `admin_*` (SA-01).
+  { route: 'GET /attempts', allow: BELAJAR },
+  { route: 'GET /scans', allow: BELAJAR },
+  { route: 'GET /reviews/mine', allow: BELAJAR },
+  { route: 'GET /payments/orders/:id', allow: BELAJAR },
+  { route: 'GET /career/cv/:id', allow: BELAJAR },
+  { route: 'GET /career/prompt-lab/history', allow: BELAJAR },
+  { route: 'GET /mastery/sessions', allow: BELAJAR },
   { route: 'GET /mentor/queue', allow: KONSOL },
   { route: 'GET /mentor/squads', allow: KONSOL },
   // Superadmin DILARANG di sini: memvalidasi review adalah pekerjaan mentor,

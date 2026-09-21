@@ -1,6 +1,17 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 
 import { CurrentUserId, Roles, RolesGuard, SessionGuard } from '../../common/guards';
+import type { HistoryPage } from '../../common/cursor';
+import { type ReceivedReview, ReviewHistoryService } from './review-history.service';
 import { type ReviewQueueItem, ReviewService, type SubmitReviewResult } from './review.service';
 
 /** Bentuk body `POST /reviews/:id`. Divalidasi di service, bukan hanya di sini. */
@@ -29,7 +40,30 @@ interface SubmitBody {
 @Roles('student', 'mentor')
 @Controller('reviews')
 export class ReviewController {
-  constructor(private readonly reviews: ReviewService) {}
+  constructor(
+    private readonly reviews: ReviewService,
+    private readonly riwayat: ReviewHistoryService,
+  ) {}
+
+  /**
+   * `GET /reviews/mine` — review yang pemanggilnya **terima** (`F-14`).
+   *
+   * Didaftarkan sebelum `POST :id`; keduanya metode berbeda jadi tidak
+   * bertabrakan, tapi `mine` tetap ditaruh di atas supaya terbaca sebagai
+   * rute tetap, bukan nilai `:id`.
+   *
+   * Respons tidak memuat identitas reviewer — `ReceivedReview` tidak punya
+   * field-nya. Lihat catatan kelas `ReviewHistoryService`, termasuk
+   * pertentangan PRD vs papan soal arti "mine" (isu #100).
+   */
+  @Get('mine')
+  async mine(
+    @CurrentUserId() userId: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+  ): Promise<HistoryPage<ReceivedReview>> {
+    return this.riwayat.receivedBy(userId, { cursor, limit });
+  }
 
   /**
    * Antrean review milik si pemanggil.

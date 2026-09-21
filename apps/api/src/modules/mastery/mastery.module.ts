@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { KyselyModule } from '../../infra/kysely';
+import { MasteryController } from './mastery.controller';
 import { MasteryService } from './mastery.service';
 
 /**
@@ -9,6 +11,8 @@ import { MasteryService } from './mastery.service';
  * `ai_jobs` + AI service, dan itu item `MT-02`.
  */
 @Module({
+  imports: [KyselyModule],
+  controllers: [MasteryController],
   providers: [MasteryService],
   exports: [MasteryService],
 })
