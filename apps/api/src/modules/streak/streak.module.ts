@@ -1,5 +1,10 @@
 import { Module } from '@nestjs/common';
 
+import { PaymentModule } from '../payment';
+import { WalletModule } from '../wallet';
+
+import { FreezeController } from './freeze.controller';
+import { FreezePurchaseService } from './freeze-purchase.service';
 import { StreakService } from './streak.service';
 
 /**
@@ -11,9 +16,14 @@ import { StreakService } from './streak.service';
  *
  * Diekspor supaya transaksi POST /attempts (L-03) bisa memanggilnya di dalam
  * transaksinya sendiri.
+ *
+ * `S-05` menambahkan `POST /streak/freeze/purchase` — jalur UANG (200 koin,
+ * §5 Q3), karena itu `WalletModule` dan `PaymentModule` ikut diimpor.
  */
 @Module({
-  providers: [StreakService],
-  exports: [StreakService],
+  imports: [WalletModule, PaymentModule],
+  controllers: [FreezeController],
+  providers: [StreakService, FreezePurchaseService],
+  exports: [StreakService, FreezePurchaseService],
 })
 export class StreakModule {}

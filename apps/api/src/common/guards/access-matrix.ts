@@ -52,6 +52,9 @@ export const ACCESS_MATRIX: readonly AccessRule[] = [
   { route: 'POST /attempts', allow: BELAJAR },
   { route: 'GET /streak', allow: BELAJAR },
   { route: 'POST /streak/freeze', allow: BELAJAR },
+  // Ditambahkan bersama `S-05`. Ditemukan hilang oleh penyisiran isu #88 —
+  // dijanjikan PRD §10.3 sejak awal, tidak pernah tercatat di sini.
+  { route: 'POST /streak/freeze/purchase', allow: BELAJAR },
   { route: 'GET /squads/me', allow: BELAJAR },
   { route: 'GET /squads/:id/leaderboard', allow: BELAJAR },
   { route: 'GET /leagues/:season/:tier', allow: BELAJAR },
