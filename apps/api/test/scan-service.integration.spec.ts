@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { ConflictException } from '@nestjs/common';
 import { Kysely, sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -614,16 +615,88 @@ describe('ScanService — reaper (AC: worker mati → koin kembali ≤30 menit)'
 });
 
 describe('ScanService — idempotensi (PRD §10.3 ⚡)', () => {
-  it('kunci idempotensi yang SAMA dua kali → satu hold, bukan dua', async () => {
+  it('kunci SAMA + dokumen SAMA → hasil pertama dikembalikan, satu hold', async () => {
     if (!reachable) return;
     const kunci = randomUUID();
-    await scans.submit({ userId: USER, document: dokumen(pdf('x')), idempotencyKey: kunci });
+    const buf = pdf();
+
+    const satu = await scans.submit({
+      userId: USER,
+      document: dokumen(buf),
+      idempotencyKey: kunci,
+    });
     const sesudah = await saldo(USER);
 
-    // Dokumen berbeda, kunci sama — request ulang dari klien yang sama.
-    await scans.submit({ userId: USER, document: dokumen(pdf('y')), idempotencyKey: kunci });
+    const dua = await scans.submit({ userId: USER, document: dokumen(buf), idempotencyKey: kunci });
 
-    expect(await saldo(USER), 'kunci idempotensi yang sama memotong koin dua kali').toBe(sesudah);
+    // Semantik Idempotency-Key: percobaan ulang yang jujur mendapat jawaban
+    // yang SAMA, bukan pekerjaan baru.
+    expect(dua.scanId, 'percobaan ulang membuat scan BARU').toBe(satu.scanId);
+    expect(await saldo(USER)).toBe(sesudah);
     await assertSaldoKonsisten(USER);
+
+    const n = await db
+      .selectFrom('plagiarism_scans')
+      .select((eb) => eb.fn.countAll<string>().as('n'))
+      .executeTakeFirstOrThrow();
+    expect(Number(n.n), 'ada baris scan kedua untuk percobaan ulang').toBe(1);
+  });
+
+  it('kunci SAMA + dokumen BERBEDA → ditolak, dan NOL scan hantu', async () => {
+    if (!reachable) return;
+    // Cacat yang ditemukan review bermusuhan, bukan test.
+    //
+    // Versi pertama membuat baris scan KEDUA lalu memanggil `hold()` yang —
+    // karena idempoten — mengembalikan entri LAMA tanpa mendebit. Hasilnya dua
+    // scan berbagi satu hold, dan yang kedua TIDAK AKAN PERNAH bisa selesai:
+    // `settle()` mencari hold dengan ref_id scan kedua dan tidak menemukannya.
+    //
+    // Uangnya tidak pernah salah. Yang salah janji ke penggunanya: scan yang
+    // menggantung selamanya, lalu ditandai `released` tanpa koin kembali —
+    // memang tidak ada yang ditahan untuknya.
+    const kunci = randomUUID();
+    await scans.submit({
+      userId: USER,
+      document: dokumen(pdf('dokumen-A')),
+      idempotencyKey: kunci,
+    });
+    const sesudah = await saldo(USER);
+
+    await expect(
+      scans.submit({ userId: USER, document: dokumen(pdf('dokumen-B')), idempotencyKey: kunci }),
+      'kunci dipakai ulang untuk dokumen lain DITERIMA',
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    const n = await db
+      .selectFrom('plagiarism_scans')
+      .select((eb) => eb.fn.countAll<string>().as('n'))
+      .executeTakeFirstOrThrow();
+    expect(Number(n.n), 'scan hantu terbuat — tidak punya hold, tidak bisa selesai').toBe(1);
+    expect(await saldo(USER)).toBe(sesudah);
+    await assertSaldoKonsisten(USER);
+  });
+
+  it('setiap scan yang `queued` PUNYA hold miliknya sendiri', async () => {
+    if (!reachable) return;
+    // Invarian yang seharusnya ada sejak awal: baris scan menggantung tanpa
+    // hold adalah baris yang tidak bisa diselesaikan maupun dilepas.
+    for (let i = 0; i < 3; i++) {
+      await scans.submit({
+        userId: USER,
+        document: dokumen(pdf(`inv-${i}`)),
+        idempotencyKey: randomUUID(),
+      });
+    }
+
+    const yatim = await sql<{ n: string }>`
+      SELECT count(*)::text AS n
+      FROM plagiarism_scans s
+      WHERE s.status IN ('queued','running')
+        AND NOT EXISTS (
+          SELECT 1 FROM coin_ledger l
+          WHERE l.ref_type = 'scan' AND l.ref_id = s.id AND l.entry_type = 'hold'
+        )
+    `.execute(db);
+    expect(Number(yatim.rows[0]!.n), 'ada scan menggantung tanpa hold').toBe(0);
   });
 });
