@@ -1,16 +1,24 @@
 # BACKLOG — Strive Academy
 
 > **Versi:** 2.0 · semua fitur · kedalaman v0.1  
-> **Total:** 76 item · 75,5 dev-hari · Dev A 39,0 · Dev B 34,0 · Dev AB 2,5  
-> **Kapasitas:** 68 dev-hari efektif (2 dev × 8 minggu × 5 hari − 15% overhead) → **111% terisi**  
+> **Total:** 80 item · 78,5 dev-hari · Dev A 42,0 · Dev B 34,0 · Dev AB 2,5  
+> **Kapasitas:** 68 dev-hari efektif (2 dev × 8 minggu × 5 hari − 15% overhead) → **115% terisi**  
 > **Angka di baris ini DIHITUNG dari tabel papan, bukan ditulis tangan (2026-09-20).** Sebelum
 > ini tertulis `74 item · 73,0 dev-hari · Dev A 37,75 · Dev B 35,25` — tiga dari empat angkanya
 > salah, dan `Dev AB` (2,5 hari) tidak terhitung sama sekali. `assert` di `AGENTS.md` hanya
 > memeriksa JUMLAH ITEM, jadi hari-harinya menyimpang diam-diam selama seminggu. Assert-nya
 > sekarang ikut memeriksa hari.  
-> **`F-12` (#14), `F-13` (#69), dan `Q-06` (#79) masing-masing menambah 0,5 hari Dev A** —
-> ketiganya pekerjaan yang terlewat saat perencanaan, bukan scope baru. Terisi naik 107% → 111%.
-> Ketiganya ditemukan dengan cara yang sama: **mencoba memakai hasilnya**, bukan membaca papan.
+> **Tujuh item sisipan, semuanya pekerjaan yang TERLEWAT saat perencanaan — bukan scope baru.**
+> `F-12` (#14) · `F-13` (#69) · `Q-06` (#79) · lalu `A-05`, `S-05`, `SA-05`, `F-14` (#88).
+> Terisi naik 107% → **115%**, dan itu angka jujur menggantikan angka yang salah.
+>
+> Empat terakhir datang dari **satu penyisiran** (`scripts/audit-rute.mjs`): 12 dari 59 rute
+> yang dijanjikan PRD §10.3 kepada klien tidak dimiliki item mana pun. Tiga sebelumnya
+> ditemukan satu per satu, dengan cara yang sama — **mencoba memakai hasilnya**, bukan membaca
+> papan. Papan hanya tahu apa yang tertulis di dalamnya.
+>
+> **Pemotongan scope di checkpoint W5 sekarang bukan pilihan, tapi keharusan aritmetika:**
+> 78,5 dev-hari terhadap kapasitas 68.
 > Pemotongan scope di checkpoint W5 jadi lebih menentukan, bukan kurang.  
 > **Sumber kebenaran estimasi.** `DELIVERY-PLAN.md` diturunkan dari file ini, bukan sebaliknya.
 
@@ -59,12 +67,14 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-11` | Pipeline seed konten (CSV/JSON -> DB) + impor 1 t… | B | W1 | 0,5 | `done` | #41 | 2026-09-17 | Ter-merge lewat #41. Review Dev A: batas idempotensi saat lesson sudah dikerjakan dicatat di README. |
 | `F-12` | Job bulanan pembuat partisi `lesson_attempts` + alarm… | A | W8 | 0,5 | `done` | #62 | 2026-09-17 | Batas bulan dihitung POSTGRES (date_trunc), bukan aritmetika bulan JavaScript yang salah di akhir bulan. Batas partisi dibaca dari EKSPRESI partisinya, bukan ditebak dari namanya. Diuji dengan insert sungguhan ke partisi bulan depan — partisi yang terdaftar tapi batasnya salah tetap menolak insert. |
 | `F-13` | Seed data dev: pricing_config, track contoh, store items | A | W3 | 0,5 | `done` | — | 2026-09-20 | Harga disalin dari PRD §6 yang TERKUNCI, **bukan dari fixture test** — fixture `admin-pricing` memakai angka lain (cache hit 1200 vs 240 sebenarnya, CV 1500 vs 400) karena ia menguji mekanisme versi, bukan harganya. Test menegaskan tiap angka satu per satu. Idempotensi dijamin konstruksi: HANYA `INSERT … ON CONFLICT DO NOTHING`, nol UPDATE/DELETE. `pricing_config` disemai hanya kalau tabelnya kosong — menerbitkan versi tiap jalan membuat order lama menunjuk versi yang bukan harganya. Pengguna jangkar TIDAK bisa login (repo publik). |
+| `F-14` | API baca riwayat milik sendiri (7 rute lintas domain) | A | W7 | 1,5 | `todo` | — | — | Dari isu #88. Tujuh rute PRD §10.3 berbentuk sama — baca baris MILIK SENDIRI, cursor-paginated, kepemilikan dicek service: `/attempts` `/scans` `/reviews/mine` `/payments/orders/:id` `/career/cv/:id` `/career/prompt-lab/history` `/mastery/sessions`. W7 karena domain yang MENULIS barisnya harus ada dulu. |
 | `A-01` | Integrasi Better-Auth + adapter PostgreSQL + rota… | A | W2 | 2 | `done` | #45 | 2026-09-17 | Ter-merge lewat #45. Migrasi 004 (33 tabel) + 005 (trigger AU-6). AC-AU-2 ditulis ulang. |
 | `A-02` | JwtGuard + RolesGuard + decorator @Roles + matrik… | A | W2 | 1 | `done` | #49 | 2026-09-17 | ACCESS_MATRIX 31 rute, 91 test unit menjalankan hasil kali silang penuh (rute x peran). Dinamai SessionGuard, bukan JwtGuard: tidak ada JWT sejak isu #18. Guard sementara N-01 dipensiunkan. |
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `done` | #22 | 2026-09-16 | Ter-merge lewat #22. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `done` | `a01261f` | 2026-09-17 | Handler HTTP Better-Auth dipasang di /api/v1/auth/* (cookie httpOnly, sesi 30 hari AU-4, disableOriginCheck dikunci) + 5 layar. AC terbukti test integrasi HTTP nyata: Set-Cookie + AU-6 lewat HTTP, get-session dengan cookie, origin asing 403. 75/75 integrasi + 8/8 unit web. Verifikasi visual browser tersisa ke manusia (DevTools MCP tidak terpasang di sesi). Callback email reset/verifikasi + additionalFields timezone = isu untuk Dev A. |
 | `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
+| `A-05` | API profil: GET /me + PATCH /me | A | W2 | 0,5 | `todo` | — | — | Dari isu #88. `GET /me` ADA di ACCESS_MATRIX tapi tidak dijanjikan item mana pun; `PATCH /me` tidak ada di keduanya. Setiap klien butuh ini — A-01 hanya menjanjikan register/login/logout. |
 | `L-02` | GradingService — penilaian sepenuhnya di server | B | W2 | 1 | `todo` | — | — | — |
 | `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `todo` | — | — | — |
 | `C-02` | GET /wallet + GET /wallet/ledger (cursor-paginated) | A | W3 | 0,5 | `done` | #50 | 2026-09-17 | Cursor buram berprefiks cl: — cursor dari endpoint lain ditolak, bukan diam-diam dipakai sebagai id. AC 'telusur sampai entri pertama' diuji dengan menelusuri 47 entri penuh dan mencocokkannya dengan isi tabel. |
@@ -80,6 +90,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `Q-02` | LeaderboardService: ZSET, rotasi kunci musim, reb… | A | W4 | 1,5 | `done` | #54 | 2026-09-17 | Redis melayani, Postgres memiliki. AC 'FLUSHALL lalu pulih dengan angka identik' diuji dengan FLUSHALL sungguhan — mock akan selalu pulih karena datanya tidak pernah benar-benar hilang. Service redis ditambahkan ke CI. |
 | `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINC… | A | W4 | 1 | `todo` | — | — | — |
 | `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `done` | #55 | 2026-09-17 | Job jalan tiap jam, memilih pengguna yang SAAT ITU pukul 20.00 di zonanya sendiri — perbandingan jam di dalam SQL. Idempoten per hari lokal. IS DISTINCT FROM, bukan <>: pengguna yang belum pernah aktif justru yang paling butuh diingatkan. |
+| `S-05` | POST /streak/freeze/purchase — beli kredit freeze | A | W4 | 0,5 | `todo` | — | — | Dari isu #88. JALUR UANG: 200 koin, maksimal 1 pembelian/bulan (§5 Q3). `S-01` membangun service freeze-nya, AC-nya tidak pernah menyebut pembelian. |
 | `AI-02` | Ekstraksi PDF/DOCX + penyusunan dari profil pengguna | B | W4 | 1 | `todo` | — | — | — |
 | `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `done` | #43 | 2026-09-17 | Ter-merge lewat #43. Review Dev A: guard JWT diganti guard sesi — A-01 menghapus JWT setelah item ini mulai. |
 | `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `done` | #42 | 2026-09-17 | Ter-merge lewat #42. Review Dev A: uang integer, append-only terbukti, advisory lock bernama. |
@@ -102,7 +113,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `AI-05` | Render PDF satu kolom, ramah parser | B | W6 | 0,5 | `todo` | — | — | — |
 | `PL-01` | Form prompt terstruktur (role/context/task/format… | B | W6 | 1 | `todo` | — | — | — |
 | `ST-01` | store_items + pembelian transaksional (debit ledger) | B | W6 | 1 | `todo` | — | — | — |
-| `ST-02` | UI etalase + unduh aset (signed URL 15 menit) | B | W6 | 1 | `todo` | — | — | — |
+| `ST-02` | UI etalase + unduh aset (signed URL 15 menit) | B | W6 | 1 | `todo` | — | — | Memiliki `GET /store/purchases/:id/download` — AC-nya ("URL unduh kedaluwarsa setelah 15 menit") sudah menjanjikannya; path-nya dicatat di sini supaya penyisiran `scripts/audit-rute.mjs` bisa melihatnya (isu #88). |
 | `AI-06` | Tabel ai_jobs + dispatcher di Node + pencatatan b… | A | W7 | 1 | `todo` | — | — | — |
 | `K-03` | Worker Copyleaks + webhook hasil + laporan terunduh | A | W7 | 1,5 | `blocked` | — | 2026-09-20 | BLOCKED: kredensial sandbox Copyleaks belum ada (isu #90) — vendor KETIGA yang menahan item, setelah Midtrans (#57) dan Retool (#77). AC-nya menuntut "tuntas end-to-end di sandbox vendor". YANG SUDAH ADA: antarmuka disesuaikan PRD §12.2 (versi K-02 menyimpang — `documentUrl`, bukan `documentKey`; vendor mengambil dokumennya sendiri lewat signed URL dan tidak boleh punya akses bucket kita), rute `POST /webhooks/copyleaks` + entri ACCESS_MATRIX yang ditemukan hilang oleh penyisiran #88, kabel ke settle/release, dan `rawBody: true` di main.ts. Provider GAGAL TERTUTUP: tanpa rahasia, setiap webhook ditolak — bukan tiruan yang mengembalikan true supaya "bisa dites". |
 | `SA-01` | View SQL untuk transaksi & audit + koneksi Retool… | A | W7 | 0,5 | `done` | #60 | 2026-09-17 | View admin_transactions menggabung 4 tabel + kolom paid_without_ledger (uang masuk tanpa koin keluar). Role strive_readonly diuji dengan SET LOCAL ROLE sungguhan: bisa baca view, TIDAK bisa menulis apa pun, TIDAK bisa membaca tabel mentah. |
@@ -117,6 +128,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `R-04` | Observability: log terstruktur, error tracking, a… | A | W8 | 1 | `todo` | — | — | — |
 | `SA-03` | Endpoint /admin/integrations/health + biaya vendo… | A | W8 | 0,5 | `todo` | — | — | — |
 | `SA-04` | Dasbor Retool: transaksi, harga, audit, health | A | W8 | 0,5 | `blocked` | — | 2026-09-20 | BLOCKED: butuh langganan Retool (blocker non-kode, `docs/reports/blocker-non-kode.pdf`) — isu #77. AC-nya "superadmin bisa bekerja tanpa membuka database" mustahil tanpa dasbornya. Panel `health` juga menunggu `SA-03`. Yang SUDAH ada: seluruh query-nya di `docs/retool/queries.sql`, diverifikasi berjalan sebagai role `strive_readonly` (6 test integrasi) dan tidak satu pun menyentuh tabel mentah. Saat lisensinya ada, perakitannya setengah jam. |
+| `SA-05` | PATCH /admin/users/:id/role — ubah peran pengguna | A | W7 | 0,5 | `todo` | — | — | Dari isu #88. Satu-satunya cara superadmin menunjuk mentor (§5 Q6 "penugasan oleh Superadmin"). Tidak ada item yang menjanjikannya, dan tanpa ini peran hanya bisa diubah lewat SQL langsung — yang justru dilarang SA-2. |
 | `R-05` | Cadangan perbaikan bug | AB | W8 | 2 | `todo` | — | — | — |
 | `MT-02` | Wawancara terpandu: bank soal statis + jawaban te… | B | W8 | 1,5 | `todo` | — | — | — |
 | `MT-03` | Review personal statement (LLM terstruktur) | B | W8 | 1 | `todo` | — | — | — |
@@ -135,12 +147,12 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 | | Jumlah | Dev-hari |
 |---|---:|---:|
-| Total | 76 | 75,5 |
+| Total | 80 | 78,5 |
 | `done` | 35 | 32,0 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 37 | 39,0 |
+| `todo` | 41 | 42,0 |
 
 ---
 ## Ringkasan per epik
@@ -292,11 +304,52 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 > **Jangan dicampur dengan `pnpm seed:content` (`F-11`, Dev B).** Yang itu mengimpor konten
 > belajar dari CSV/JSON dan sudah ada. Yang ini data dev untuk menjalankan aplikasi.
 
+### `F-14` — API baca riwayat milik sendiri (7 rute lintas domain)
+
+**1,5 hari** · Dev **A** · Minggu **W7** · Butuh: `L-03`, `K-02`, `PR-02`, `P-03`
+
+**Status:** lihat papan status di atas · **Selesai berarti:** Ketujuh rute mengembalikan HANYA baris milik pemanggil — dibuktikan dengan mencoba membaca milik orang lain lewat `:id` tebakan di setiap rute, bukan di satu rute contoh. Cursor pagination memakai pola yang sama dengan `C-02`, dan cursor yang tidak bisa didekode menjawab `INVALID_CURSOR`, bukan 500.
+
+> **Kenapa satu item, bukan tujuh.** Tujuh rute ini berbentuk **identik**: baca baris milik
+> sendiri, cursor-paginated, kepemilikan dicek di service. Memecahnya jadi tujuh item
+> menghasilkan tujuh PR yang menyalin pola yang sama tujuh kali; menggabungnya membuat polanya
+> ditulis sekali dan diuji tujuh kali.
+>
+> | Rute | Domain |
+> |---|---|
+> | `GET /attempts` | riwayat attempt |
+> | `GET /scans` | riwayat scan klinik |
+> | `GET /reviews/mine` | review yang kutulis |
+> | `GET /payments/orders/:id` | status order |
+> | `GET /career/cv/:id` | hasil CV |
+> | `GET /career/prompt-lab/history` | riwayat run |
+> | `GET /mastery/sessions` | riwayat sesi |
+>
+> **W7, bukan lebih awal.** Membaca riwayat dari tabel yang belum ada yang menulisinya tidak
+> bisa diuji dengan berarti. Dependensinya adalah item yang MENULIS barisnya.
+>
+> **Ditemukan penyisiran isu #88.** Tujuh-tujuhnya dijanjikan PRD §10.3 kepada klien dan tidak
+> dimiliki item mana pun — pola yang sama dengan `F-12`, `F-13`, dan `Q-06`.
+
 ### `A-01` — Integrasi Better-Auth + adapter PostgreSQL + rotasi refresh token
 
 **0,5 hari** · Dev **A** · Minggu **W2** · Butuh: `F-04`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Register, login, logout, refresh jalan. Refresh token yang dipakai ulang mencabut seluruh sesi turunannya. Password di-hash Argon2id.
+
+### `A-05` — API profil: `GET /me` + `PATCH /me`
+
+**0,5 hari** · Dev **A** · Minggu **W2** · Butuh: `A-01`
+
+**Status:** lihat papan status di atas · **Selesai berarti:** `GET /me` mengembalikan profil, peran, saldo koin, dan zona waktu dalam satu request. `PATCH /me` hanya menerima `display_name`, `timezone`, `avatar_url` — field lain diabaikan, bukan error. Zona waktu divalidasi IANA sama seperti registrasi (AU-7); nilai tidak dikenal ditolak, bukan diam-diam jadi Asia/Jakarta.
+
+> **Kenapa item ini ada.** Keduanya ada di `docs/PRD.md` §10.3, dan `GET /me` bahkan ada di
+> `ACCESS_MATRIX` — tapi **tidak ada item yang menjanjikan membangunnya** (isu #88). `A-01`
+> hanya menjanjikan "register, login, logout, refresh jalan".
+>
+> Ini yang paling mendasar dari dua belas rute yatim: **setiap klien butuh `/me`** untuk tahu
+> siapa yang sedang login. Tanpa itu, layar mana pun yang menampilkan nama atau saldo harus
+> menebaknya dari respons login — yang basi begitu pengguna mengubah apa pun.
 
 ### `A-02` — JwtGuard + RolesGuard + decorator @Roles + matriks akses ter-test
 
@@ -387,6 +440,22 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 **1,5 hari** · Dev **A** · Minggu **W3** · Butuh: `F-04`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Test lintas tiga zona waktu (Asia/Jakarta, Asia/Jayapura, Europe/London) dan lintas tengah malam lulus. Menyelesaikan task kedua di hari yang sama tidak menambah streak.
+
+### `S-05` — `POST /streak/freeze/purchase` — beli kredit freeze
+
+**0,5 hari** · Dev **A** · Minggu **W4** · Butuh: `S-01`, `C-01`
+
+**Status:** lihat papan status di atas · **Selesai berarti:** Pembelian kedua di bulan yang sama ditolak, dan batas itu dihitung dalam **bulan lokal pengguna** — bukan bulan UTC. Saldo kurang ditolak sebelum entri apa pun ditulis. Debit koin dan penambahan kredit terjadi dalam satu transaksi.
+
+> **Kenapa item ini ada.** `docs/PRD.md` §5 Q3 memutuskan kredit freeze "bisa dibeli: 200 koin
+> per kredit, maksimal 1 pembelian per bulan", dan §10.3 mencantumkan endpointnya. `S-01`
+> membangun `StreakService` termasuk kolom `freeze_credits` dan `freeze_purchased_month` —
+> tapi acceptance criteria-nya soal zona waktu dan streak, tidak pernah menyebut pembelian
+> (isu #88).
+>
+> **Ini jalur uang**, bukan layar: 200 koin berpindah, dan batas "1 per bulan" harus dihitung
+> di zona waktu pengguna (aturan keras 5). Bulan UTC akan membuat pengguna WIB kehilangan
+> jatah di hari terakhir bulan.
 
 ### `S-02` — GET /hub agregat: streak, quest, peringkat, saldo, kartu berikut
 
@@ -689,6 +758,20 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 ## E9 · Panel Superadmin
 
 > Beli, jangan bangun: Retool di atas view SQL.
+
+### `SA-05` — `PATCH /admin/users/:id/role` — ubah peran pengguna
+
+**0,5 hari** · Dev **A** · Minggu **W7** · Butuh: `A-02`
+
+**Status:** lihat papan status di atas · **Selesai berarti:** Hanya superadmin yang bisa memanggilnya. Setiap perubahan tercatat di `audit_log` **dengan pelakunya** dan peran lama. Superadmin tidak bisa menurunkan perannya sendiri — akun terakhir yang bisa menunjuk mentor tidak boleh bisa menghapus dirinya sendiri.
+
+> **Kenapa item ini ada.** `docs/PRD.md` §5 Q6 memutuskan "penugasan oleh Superadmin", dan
+> §10.3 mencantumkan endpointnya — tapi tidak ada item yang menjanjikannya (isu #88).
+>
+> Konsekuensinya sekarang: **peran hanya bisa diubah lewat SQL langsung**, dan itu justru yang
+> dilarang `SA-2` ("semua aksi tulis lewat endpoint resmi, bukan SQL langsung"). Role
+> `strive_readonly` yang dipakai Retool bahkan tidak bisa menulis sama sekali — jadi tidak ada
+> jalur sah apa pun untuk menunjuk mentor pertama.
 
 ### `SA-01` — View SQL untuk transaksi & audit + koneksi Retool read-only
 
