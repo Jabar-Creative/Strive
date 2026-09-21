@@ -1496,7 +1496,7 @@ Worker mengambil batch dengan `FOR UPDATE SKIP LOCKED` agar banyak instance aman
 | `lessons` | `id, module_id, title, est_seconds, base_points (10), base_coins (20), sort_order` |
 | `lesson_cards` | `id, lesson_id, kind, prompt, content jsonb, sort_order` |
 | `daily_quests` | PK `(user_id, quest_date)`, `target_tasks (3), done_tasks, completed_at` |
-| `squads` | `id, name, league_tier, mentor_id, season_id, max_members (12)` |
+| `squads` | `id, name, league_tier, mentor_id, `**`season_id NOT NULL`**`, max_members (12)` — `season_id` wajib sejak 008 (isu #84): kunci ZSET papan dan PK `league_standings` dibentuk darinya, jadi squad tanpa musim tidak bisa punya papan sama sekali |
 | `league_seasons` | `id, code UNIQUE ('2026-W37'), starts_at, ends_at, closed_at` |
 | `league_standings` | PK `(season_id, squad_id)`, `tier, points, rank, outcome, closed_at` |
 | `pricing_config` | `version PK, coin_price_idr, scan_cost_coins, scan_cached_cost_coins, lesson_reward_coins, cv_cost_coins, interview_cost_coins, statement_cost_coins, prompt_run_cost_coins, freeze_cost_coins, packages jsonb, created_by, active_from` |
@@ -2371,6 +2371,7 @@ Ditulis eksplisit agar tidak diam-diam masuk kembali.
 | 17 Sep 2026 | 2.3 | **`AC-AU-2` ditulis ulang.** Versi lama masih menuntut deteksi pemakaian ulang refresh token — AU-5 yang dibuang isu #18 — sehingga `A-01` punya kriteria yang mustahil dipenuhi. Diganti dengan pencabutan massal saat ganti password, dan apa yang HILANG ditulis di dalam kriterianya sendiri supaya tidak lenyap dari ingatan. | **Fatih Maulana** |
 | 17 Sep 2026 | 2.3 | **§10.2 menerima `INVALID_CURSOR`** (400). Cursor pagination tidak punya padanan di daftar lama, dan bukan cuma milik `N-01` — `C-02` akan butuh yang sama. Ditambahkan **sebelum** kontraknya dipakai, bukan sesudah; daftar itu tertutup. | **Fatih Maulana** |
 | 22 Sep 2026 | **2.4** | **§9 — sisi CONTRACT dari 004 dikerjakan (isu #47, migrasi 007).** `users.password_hash`, `users.email_verified_at`, dan tabel `refresh_tokens` **dibuang**; ketiganya ditandai USANG sejak 17 Sep dengan janji "dibuang di migrasi contract". Jumlah tabel domain **33 → 32**. Prasyarat lama ("A-01 stabil di staging") diganti bukti yang lebih kuat: seluruh repo disisir dan nol kode produksi membacanya. Yang membuktikan ini bukan kerapian — `A-05` ternyata membaca `email_verified_at`, kolom yang di-backfill sekali lalu tidak pernah ditulis lagi, sehingga `/me` melaporkan email BELUM terverifikasi selamanya dan AU-8 memblokir top-upnya. | **Fatih Maulana** |
+| 22 Sep 2026 | **2.4** | **§9 — `squads.season_id` jadi `NOT NULL` (isu #84, migrasi 008).** Mengunci keputusan yang sudah tersirat di §7 E5 tapi tidak pernah ditegakkan: **squad selalu milik satu musim.** FK `REFERENCES league_seasons(id)` menjamin musim yang DITUNJUK ada; ia tidak pernah menjamin ada musim yang ditunjuk. Squad tanpa musim bukan squad berpapan kosong — kunci ZSET (`lb:sq:<season_id>:<squad_id>`) dan PK `league_standings` tidak bisa dibentuk, dan `GET /squads/me` menjawab `null` yang terbaca "kamu belum punya squad". Nol baris melanggar saat diterapkan. Tidak ada squad lintas-musim atau squad sandbox; kalau itu berubah, ia butuh migrasi baru DAN baris di sini. | **Fatih Maulana** |
 | | | _Isi baris baru setiap kali ada keputusan yang mengubah dokumen ini._ | |
 
 ---

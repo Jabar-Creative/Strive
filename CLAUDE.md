@@ -119,6 +119,7 @@ strive-academy/
 │  │                           006 = view admin_* + role strive_readonly
 │  │                           007 = contract auth (buang password_hash,
 │  │                                 email_verified_at, refresh_tokens)
+│  │                           008 = squads.season_id NOT NULL
 │  └─ seeds/                   seed-dev.mjs (F-13) · seed-content.mjs (F-11)
 │                              + content/ contoh
 ├─ scripts/                    perkakas lintas-OS, Node murni, nol dependensi
@@ -560,6 +561,7 @@ migrasi 006:
 | Batas | Ditegakkan oleh | Artinya |
 |---|---|---|
 | Satu squad aktif per pengguna | Partial unique index `squad_members_one_active` | Aman dari **jalur mana pun** — Retool, psql manual, skrip perbaikan data |
+| Setiap squad punya musim | `squads.season_id NOT NULL` (migrasi 008) | Aman dari jalur mana pun **sejak isu #84**. Sebelumnya hanya dijaga `Q-01` (`formSquads`), dan `Q-06` menahan gejalanya dengan galat eksplisit |
 | Anggota squad <= `max_members` | Trigger `squad_members_capacity` (migrasi 002) | Aman dari jalur mana pun **sejak isu #26**. Sebelumnya hanya dijaga `SquadService.join()` |
 
 `squads_max_members_range` **tidak** menjaga apa yang namanya janjikan: ia membatasi
