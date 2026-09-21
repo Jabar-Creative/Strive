@@ -1593,6 +1593,7 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 | `ALREADY_IN_SQUAD` | 409 | Pengguna sudah aktif di squad lain — satu squad aktif per pengguna |
 | `SQUAD_MOVE_LIMIT` | 409 | Sudah memakai jatah 1 perpindahan squad musim ini (§5 Q5) |
 | `INVALID_CURSOR` | 400 | Cursor pagination tidak bisa didekode. `details: {cursor}` |
+| `ROLE_CHANGE_FORBIDDEN` | 403 | Perubahan peran ditolak oleh aturannya sendiri, bukan oleh peran pemanggil. `details: {reason}` — `self` (mengubah peran sendiri) atau `last_superadmin` (menyisakan nol superadmin) |
 
 > **Daftar ini TERTUTUP.** Kode yang tidak ada di sini tidak boleh dikirim API, karena
 > `packages/contracts` diturunkan dari tabel ini dan klien diminta bercabang pada `code`,
@@ -1601,6 +1602,17 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 >
 > Empat kode terakhir ditambahkan **setelah** dipakai di kode — urutan yang terbalik, dan
 > justru itu sebabnya catatan "tertutup" ini ada.
+>
+> `ROLE_CHANGE_FORBIDDEN` adalah yang **pertama** ditambahkan dengan urutan yang benar:
+> lewat PR tersendiri, sebelum ada satu baris kode pun yang mengirimnya (`SA-05`). Ia perlu
+> ada karena `FORBIDDEN_ROLE` menjawab pertanyaan yang berbeda — "peranmu tidak boleh masuk
+> rute ini" — dan klien yang bercabang padanya wajar menyimpulkan sesinya yang salah, lalu
+> melempar pengguna ke halaman login untuk penolakan yang sama sekali bukan soal sesi.
+>
+> **Enam kode lain masih melanggar daftar ini** dan menunggu keputusan di
+> [isu #92](https://github.com/Jabar-Creative/Strive/issues/92) — keenamnya sudah terlanjur
+> dipakai, jadi keputusannya retroaktif: menerima atau mengganti pemakaiannya. Yang di atas
+> tidak menunggu apa pun karena belum dipakai.
 
 
 ### 10.3 Endpoint
