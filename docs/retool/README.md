@@ -33,9 +33,13 @@ Di repo, ia:
 Retool menyambung sebagai role **`strive_readonly`** (migrasi 006, `SA-01`). Role itu:
 
 - hanya bisa `SELECT`, dan **hanya pada view `admin_*`**
-- **tidak bisa membaca tabel mentah** — `users` mentah akan menampilkan `password_hash`
-  di layar seseorang, dan `coin_ledger` mentah mengundang orang menghitung saldo sendiri
-  alih-alih membaca yang sudah dijamin
+- **tidak bisa membaca tabel mentah** — `users` mentah membawa email dan zona waktu
+  setiap orang ke layar yang dibuka sambil lalu, dan `coin_ledger` mentah mengundang orang
+  menghitung saldo sendiri alih-alih membaca yang sudah dijamin
+
+  > Sampai migrasi 007, alasan pertamanya lebih tajam lagi: `users` masih punya kolom
+  > `password_hash`. Kolomnya sudah tidak ada (isu #47), tapi batas ini tetap berlaku —
+  > ia menjaga PII, bukan satu kolom tertentu.
 - tidak bisa menulis apa pun (`SA-2`: semua aksi tulis lewat endpoint resmi)
 
 ```sql

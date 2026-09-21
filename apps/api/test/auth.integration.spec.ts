@@ -9,7 +9,8 @@ import { AuthService, createAuth, type StriveAuth } from '../src/modules/auth';
  *
  * Empat dari yang diuji di sini hidup di luar TypeScript dan tidak bisa
  * dibuktikan dengan mock: bentuk hash yang benar-benar tersimpan, trigger AU-6,
- * pencabutan sesi, dan bahwa `users.password_hash` TIDAK pernah tersentuh.
+ * pencabutan sesi, dan bahwa password tidak punya tempat KEDUA di `users`
+ * (kolomnya dibuang migrasi 007 — isu #47).
  *
  * Yang paling penting di berkas ini bukan "apakah login jalan" — itu tanggung
  * jawab Better-Auth. Yang diuji adalah **batas antara Better-Auth dan skema

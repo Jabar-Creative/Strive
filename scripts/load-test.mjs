@@ -108,8 +108,8 @@ async function seed(jumlah) {
       // disisipkan di sini. Menyisipkannya sendiri akan menyembunyikan kalau
       // triggernya rusak.
       await client.query(
-        `INSERT INTO users (id, email, password_hash, display_name, timezone, coin_balance)
-         VALUES ($1, $2, 'x', $3, 'Asia/Jakarta', 1000)`,
+        `INSERT INTO users (id, email, display_name, timezone, coin_balance)
+         VALUES ($1, $2, $3, 'Asia/Jakarta', 1000)`,
         [id, `load-test-${i}@uji.test`, `LT ${i}`],
       );
       await client.query(
