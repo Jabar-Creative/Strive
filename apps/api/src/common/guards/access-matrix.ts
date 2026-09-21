@@ -45,6 +45,7 @@ export const ACCESS_MATRIX: readonly AccessRule[] = [
     note: 'rute TANPA segmen (mis. probe). Bukan tercakup `/auth/*` — "/auth" tidak berada di bawah "/auth/". Ditemukan test drift isu #68, bukan oleh mata',
   },
   { route: 'GET /me', allow: SEMUA },
+  { route: 'PATCH /me', allow: SEMUA },
   { route: 'GET /hub', allow: BELAJAR },
   { route: 'GET /tracks', allow: BELAJAR },
   { route: 'GET /tracks/:id', allow: BELAJAR },
