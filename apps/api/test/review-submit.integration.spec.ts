@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { Kysely, sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -403,6 +403,36 @@ describe('PR-02 — submit review, poin berbobot, cap harian (database nyata)', 
     await expect(
       reviews.submit({ reviewerId: REVIEWER, attemptId: attempts[0]!, rubricScores: banyak }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('review KEDUA dari reviewer yang sama ditolak 409, BUKAN 500', async () => {
+    if (!reachable) return;
+    // Ditemukan review bermusuhan. UNIQUE (attempt_id, reviewer_id) memang
+    // menolak barisnya — integritasnya aman — tapi klien menerima
+    // `DatabaseError` pg 23505 mentah, yang jadi **500**. Untuk kondisi yang
+    // sepenuhnya normal: tombol dipencet dua kali.
+    //
+    // Test yang ada sebelumnya hanya memastikan tidak ada baris kedua. Itu
+    // benar, lewat jalur yang salah.
+    await reviews.submit({ reviewerId: REVIEWER, attemptId: attempts[0]!, rubricScores: nilai });
+
+    let galat: unknown;
+    try {
+      await reviews.submit({ reviewerId: REVIEWER, attemptId: attempts[0]!, rubricScores: nilai });
+    } catch (e) {
+      galat = e;
+    }
+
+    expect(galat, 'review duplikat DITERIMA').toBeInstanceOf(ConflictException);
+    const badan = (galat as ConflictException).getResponse() as { error: { code: string } };
+    expect(badan.error.code, 'klien menerima galat database mentah').toBe('ALREADY_PURCHASED');
+
+    const n = await db
+      .selectFrom('peer_reviews')
+      .select((eb) => eb.fn.countAll<string>().as('n'))
+      .where('reviewer_id', '=', REVIEWER)
+      .executeTakeFirstOrThrow();
+    expect(Number(n.n)).toBe(1);
   });
 
   // ── KONKURENSI: cap yang bocor di batasnya adalah cap yang tidak ada ────

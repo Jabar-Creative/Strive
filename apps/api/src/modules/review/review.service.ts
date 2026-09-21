@@ -304,6 +304,30 @@ export class ReviewService {
       // karyanya nomor 6 tidak pernah mendapat review kedua.
       const poin = capped ? 0 : Math.round(rubrik * Number(bobot?.weight ?? 1));
 
+      // UNIQUE `(attempt_id, reviewer_id)` menolak review kedua dari reviewer
+      // yang sama — benar, dan itu yang menjaga integritasnya. Tapi tanpa
+      // penanganan di sini, klien menerima **500** dari `DatabaseError` pg
+      // 23505 untuk kondisi yang sepenuhnya normal: tombol dipencet dua kali.
+      //
+      // Ditemukan lewat review bermusuhan. Test yang ada hanya memastikan
+      // tidak ada baris kedua — dan itu memang benar, lewat jalur yang salah.
+      const sudahDinilai = await trx
+        .selectFrom('peer_reviews')
+        .select('id')
+        .where('attempt_id', '=', input.attemptId)
+        .where('reviewer_id', '=', input.reviewerId)
+        .executeTakeFirst();
+
+      if (sudahDinilai) {
+        throw new ConflictException({
+          error: {
+            code: 'ALREADY_PURCHASED',
+            message: 'Kamu sudah menilai karya ini',
+            details: { review_id: sudahDinilai.id },
+          },
+        });
+      }
+
       const row = await trx
         .insertInto('peer_reviews')
         .values({

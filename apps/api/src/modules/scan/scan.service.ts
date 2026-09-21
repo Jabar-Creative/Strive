@@ -2,7 +2,7 @@ import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { type Kysely, sql } from 'kysely';
 
 import { DATABASE, type DB } from '../../infra/kysely';
-import { CoinLedgerService, InsufficientCoinsError, type Trx } from '../wallet';
+import { CoinLedgerService, type Trx } from '../wallet';
 import { PricingConfigService } from '../payment';
 import { DocumentUploadService, type UploadedDocument } from './document-upload.service';
 import type { WebhookSuccess } from './plagiarism-provider';
@@ -119,7 +119,63 @@ export class ScanService {
         .forUpdate()
         .executeTakeFirst();
 
-      // 2a · Dedup (KL-3). Yang dicari scan `done` dengan hash DAN provider
+      // 2a · Kunci idempotensi ini SUDAH dipakai?
+      //
+      // Ditemukan lewat review bermusuhan, bukan lewat test: versi pertama
+      // langsung melompat ke dedup. `coins.hold()` memang idempoten — kunci
+      // yang sama mengembalikan entri lama tanpa mendebit lagi — tapi baris
+      // `plagiarism_scans` TETAP dibuat sebelum hold dipanggil.
+      //
+      // Akibatnya, kunci yang sama dengan dokumen berbeda menghasilkan DUA
+      // baris scan yang berbagi SATU hold. Yang kedua tidak akan pernah bisa
+      // selesai: `settle()` mencari hold dengan `ref_id` = scan kedua dan
+      // tidak menemukannya. Pengguna mendapat scan yang menggantung selamanya,
+      // lalu ditandai `released` oleh reaper tanpa mengembalikan koin apa pun
+      // (memang tidak ada yang ditahan untuknya).
+      //
+      // Uangnya tidak pernah salah — yang salah janji ke penggunanya.
+      const sebelumnya = await trx
+        .selectFrom('coin_ledger')
+        .innerJoin('plagiarism_scans', 'plagiarism_scans.id', 'coin_ledger.ref_id')
+        .select([
+          'plagiarism_scans.id as scan_id',
+          'plagiarism_scans.status as status',
+          'plagiarism_scans.cost_coins as cost_coins',
+          'plagiarism_scans.document_sha256 as sha',
+          'plagiarism_scans.similarity_score as score',
+          'plagiarism_scans.cached_from as cached_from',
+        ])
+        .where('coin_ledger.idempotency_key', '=', input.idempotencyKey)
+        .executeTakeFirst();
+
+      if (sebelumnya) {
+        // Dokumen SAMA: ini percobaan ulang yang jujur — kembalikan hasil
+        // pertama, persis seperti yang diminta semantik Idempotency-Key.
+        if (sebelumnya.sha === doc.sha256) {
+          return {
+            scanId: sebelumnya.scan_id,
+            status: sebelumnya.status === 'done' ? ('done' as const) : ('queued' as const),
+            costCoins: sebelumnya.cost_coins,
+            needsVendor: sebelumnya.status !== 'done',
+            ...(sebelumnya.cached_from ? { cachedFrom: sebelumnya.cached_from } : {}),
+            ...(sebelumnya.score !== null ? { similarityScore: Number(sebelumnya.score) } : {}),
+          };
+        }
+
+        // Dokumen BERBEDA: hampir pasti bug klien. Mengembalikan hasil dokumen
+        // pertama akan memberi pengguna skor kemiripan milik berkas yang
+        // BUKAN ia unggah — lebih buruk daripada menolak.
+        throw new ConflictException({
+          error: {
+            code: 'ALREADY_PURCHASED',
+            message:
+              'Idempotency-Key ini sudah dipakai untuk dokumen lain. Pakai kunci baru untuk dokumen baru.',
+            details: { scan_id: sebelumnya.scan_id },
+          },
+        });
+      }
+
+      // 2b · Dedup (KL-3). Yang dicari scan `done` dengan hash DAN provider
       // yang sama — hasil dari vendor lain tidak bisa disalin, karena skornya
       // dihitung dengan indeks yang berbeda.
       const asal = await trx
@@ -133,7 +189,7 @@ export class ScanService {
 
       if (asal) return this.salinDariCache(trx, input, doc, harga, asal);
 
-      // 2b · Jalur normal: hold PENUH sebelum apa pun dienqueue (KL-5).
+      // 2c · Jalur normal: hold PENUH sebelum apa pun dienqueue (KL-5).
       const scan = await trx
         .insertInto('plagiarism_scans')
         .values({
@@ -148,27 +204,27 @@ export class ScanService {
         .returning('id')
         .executeTakeFirstOrThrow();
 
-      let hold;
-      try {
-        hold = await this.coins.hold(trx, {
-          userId: input.userId,
-          amount: harga.scan_cost_coins,
-          refType: 'scan',
-          refId: scan.id,
-          idempotencyKey: input.idempotencyKey,
-          note: `scan ${doc.sha256.slice(0, 12)}`,
-        });
-      } catch (e) {
-        // Saldo kurang: seluruh transaksi di-rollback, termasuk baris scan.
-        // KL-5 berbunyi "kalau saldo kurang, job tidak pernah dibuat" — dan
-        // yang menjaminnya rollback, bukan urutan pemanggilan.
-        if (e instanceof InsufficientCoinsError) throw e;
-        throw e;
-      }
+      // Saldo kurang melempar `InsufficientCoinsError`, dan seluruh transaksi
+      // di-rollback termasuk baris scan di atas. KL-5 ("kalau saldo kurang,
+      // job tidak pernah dibuat") dijamin ROLLBACK, bukan urutan pemanggilan.
+      //
+      // Versi pertama membungkus ini dengan try/catch yang kedua cabangnya
+      // `throw e` — nol perilaku, tapi terbaca seolah menangani sesuatu.
+      const hold = await this.coins.hold(trx, {
+        userId: input.userId,
+        amount: harga.scan_cost_coins,
+        refType: 'scan',
+        refId: scan.id,
+        idempotencyKey: input.idempotencyKey,
+        note: `scan ${doc.sha256.slice(0, 12)}`,
+      });
 
       await trx
         .updateTable('plagiarism_scans')
-        .set({ hold_ledger_id: Number(hold.id) })
+        // `hold_ledger_id` bigint; `LedgerEntry.id` string. `Number()` di sini
+        // kehilangan presisi di atas 2^53 — jauh, tapi salah secara prinsip,
+        // dan kolomnya bigint justru karena seseorang mengantisipasi jauh.
+        .set({ hold_ledger_id: sql<never>`${hold.id}::bigint` })
         .where('id', '=', scan.id)
         .execute();
 
