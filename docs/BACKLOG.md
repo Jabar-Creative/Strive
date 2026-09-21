@@ -90,7 +90,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `Q-02` | LeaderboardService: ZSET, rotasi kunci musim, reb… | A | W4 | 1,5 | `done` | #54 | 2026-09-17 | Redis melayani, Postgres memiliki. AC 'FLUSHALL lalu pulih dengan angka identik' diuji dengan FLUSHALL sungguhan — mock akan selalu pulih karena datanya tidak pernah benar-benar hilang. Service redis ditambahkan ke CI. |
 | `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINC… | A | W4 | 1 | `todo` | — | — | — |
 | `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `done` | #55 | 2026-09-17 | Job jalan tiap jam, memilih pengguna yang SAAT ITU pukul 20.00 di zonanya sendiri — perbandingan jam di dalam SQL. Idempoten per hari lokal. IS DISTINCT FROM, bukan <>: pengguna yang belum pernah aktif justru yang paling butuh diingatkan. |
-| `S-05` | POST /streak/freeze/purchase — beli kredit freeze | A | W4 | 0,5 | `todo` | — | — | Dari isu #88. JALUR UANG: 200 koin, maksimal 1 pembelian/bulan (§5 Q3). `S-01` membangun service freeze-nya, AC-nya tidak pernah menyebut pembelian. |
+| `S-05` | POST /streak/freeze/purchase — beli kredit freeze | A | W4 | 0,5 | `done` | #95 | 2026-09-21 | Bulan dihitung Postgres dari `streaks.timezone`, bukan UTC. Entri ledger SENGAJA tanpa ref: `coin_ledger_ref_uniq` akan membatasi pembelian jadi sekali seumur hidup. Konkurensi diverifikasi merah — yang bocor bukan kreditnya, tapi debit ganda 400 koin untuk 1 kredit. |
 | `AI-02` | Ekstraksi PDF/DOCX + penyusunan dari profil pengguna | B | W4 | 1 | `todo` | — | — | — |
 | `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `done` | #43 | 2026-09-17 | Ter-merge lewat #43. Review Dev A: guard JWT diganti guard sesi — A-01 menghapus JWT setelah item ini mulai. |
 | `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `done` | #42 | 2026-09-17 | Ter-merge lewat #42. Review Dev A: uang integer, append-only terbukti, advisory lock bernama. |
@@ -148,11 +148,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 35 | 32,0 |
+| `done` | 36 | 32,5 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 41 | 42,0 |
+| `todo` | 40 | 41,5 |
 
 ---
 ## Ringkasan per epik
