@@ -418,7 +418,7 @@ Prefiks aturan per epik: `AU` auth · `LE` learning · `SK` streak · `CO` coin 
 > - **`users.password_hash` jadi NULLABLE** dan berhenti dipakai. Sekarang ia `NOT NULL`;
 >   Better-Auth tidak akan mengisinya, jadi insert pengguna baru **gagal** kalau ini terlewat
 > - **`refresh_tokens` dipertahankan tapi tidak dipakai**, dibuang di migrasi terpisah setelah
->   `A-01` stabil (forward-only, expand/contract)
+>   `A-01` stabil (forward-only, expand/contract). **Sudah dibuang — migrasi 007, isu #47.**
 > - Pemetaan field **sudah selesai di `A-01`**: `name → display_name`, `image → avatar_url`,
 >   `createdAt → created_at`, `updatedAt → updated_at`, dan `emailVerified → email_verified`.
 >   Yang terakhir butuh **kolom baru bertipe boolean** (isu #35 opsi 1) — pemetaan field hanya
@@ -1293,7 +1293,7 @@ AC-NO-3
 
 ## 9. Skema database
 
-**31 tabel.** Tidak ada satu pun kolom organisasi/tenant. PostgreSQL 16.
+**32 tabel.** Tidak ada satu pun kolom organisasi/tenant. PostgreSQL 16.
 
 > Angka ini dihitung dari daftar §9.1 di bawah dan **harus tetap cocok dengannya**.
 > Dua tabel berdiri lebih dulu daripada fiturnya, dan itu disengaja:
@@ -1305,7 +1305,7 @@ AC-NO-3
 
 | Domain | Tabel |
 |---|---|
-| Identitas | `users` · `sessions` · `auth_accounts` · `auth_verifications` · ~~`refresh_tokens`~~ · `push_tokens` |
+| Identitas | `users` · `sessions` · `auth_accounts` · `auth_verifications` · `push_tokens` |
 | Pembelajaran | `tracks` · `modules` · `lessons` · `lesson_cards` · `lesson_attempts` |
 | Gamifikasi | `streaks` · `daily_quests` · `squads` · `squad_members` · `league_seasons` · `league_standings` |
 | Ekonomi | `coin_ledger` · `pricing_config` · `orders` · `payments` · `store_items` · `store_purchases` |
@@ -1334,15 +1334,13 @@ CREATE TYPE coin_entry  AS ENUM (
 |---|---|---|
 | `id` | `uuid PK` | `gen_random_uuid()` |
 | `email` | `citext UNIQUE NOT NULL` | case-insensitive |
-| ~~`password_hash`~~ | `text` **NULLABLE sejak 004** | **USANG.** Password ada di `auth_accounts.password` (Argon2id). Dibuang di migrasi contract |
 | `display_name` | `text NOT NULL` | |
 | `avatar_url` | `text` | |
 | `role` | `user_role NOT NULL DEFAULT 'student'` | |
 | `timezone` | `text NOT NULL DEFAULT 'Asia/Jakarta'` | IANA |
 | `coin_balance` | `integer NOT NULL DEFAULT 0` | **CACHE** — kebenaran = `SUM(coin_ledger.amount)` |
 | `status` | `text NOT NULL DEFAULT 'active'` | `active` \| `suspended` \| `deleted` |
-| `email_verified` | `boolean NOT NULL DEFAULT false` | **AU-8: `false` memblokir top-up.** Ditulis Better-Auth |
-| ~~`email_verified_at`~~ | `timestamptz` | **USANG sejak 004** (isu #35 opsi 1). Diganti `email_verified` karena `emailVerified` Better-Auth bertipe boolean dan tipenya tidak bisa dipetakan. Dibuang di migrasi contract |
+| `email_verified` | `boolean NOT NULL DEFAULT false` | **AU-8: `false` memblokir top-up.** Ditulis Better-Auth. **Satu-satunya sumber status verifikasi** sejak 007 membuang `email_verified_at` |
 | `created_at` / `updated_at` | `timestamptz NOT NULL DEFAULT now()` | |
 
 Constraint: `CHECK (coin_balance >= 0)`. Index: `(role) WHERE status='active'`.
@@ -1492,7 +1490,6 @@ Worker mengambil batch dengan `FOR UPDATE SKIP LOCKED` agar banyak instance aman
 | `sessions` | `id, user_id, expires_at, `**`token`**` UNIQUE, ip `**`text`**`, user_agent, created_at, `**`updated_at`**` ` — `token` & `updated_at` ditambahkan 004. `ip` dilebarkan inet → text: Better-Auth meneruskan `X-Forwarded-For` apa adanya, dan rantai proxy bukan `inet` yang sah |
 | `auth_accounts` | `id, account_id, provider_id, user_id, access_token, refresh_token, id_token, access_token_expires_at, refresh_token_expires_at, scope, password, created_at, updated_at` — UNIQUE `(provider_id, account_id)`. **Password Argon2id ada di sini**, provider_id `'credential'` |
 | `auth_verifications` | `id, identifier, value, expires_at, created_at, updated_at` — token verifikasi email & reset password |
-| ~~`refresh_tokens`~~ | **USANG sejak migrasi 004** (isu #18). AU-4 jadi sesi server Better-Auth; tabel ini tidak dipakai kode mana pun dan dibuang di migrasi contract. |
 | `push_tokens` | `id, user_id, endpoint, p256dh, auth` — UNIQUE `(user_id, endpoint)` |
 | `tracks` | `id, slug UNIQUE, title, description, category, is_published, sort_order` |
 | `modules` | `id, track_id, title, sort_order` |
@@ -2373,6 +2370,7 @@ Ditulis eksplisit agar tidak diam-diam masuk kembali.
 | 17 Sep 2026 | **2.3** | **`A-01` selesai — §7 E1 & §9 diselaraskan dengan skema yang benar-benar dibuat.** Tabelnya `auth_accounts` & `auth_verifications` (jamak + berprefiks, supaya tidak terbaca seperti tabel keuangan di sebelah `orders`/`payments`), bukan `account`/`verification`. `users.email_verified` boolean menggantikan `email_verified_at` (isu #35 opsi 1). `sessions` dapat `token` & `updated_at`, dan `ip` dilebarkan inet → text. `password_hash`, `email_verified_at`, dan `refresh_tokens` ditandai USANG — dibuang di migrasi contract, bukan sekarang. | **Fatih Maulana** |
 | 17 Sep 2026 | 2.3 | **`AC-AU-2` ditulis ulang.** Versi lama masih menuntut deteksi pemakaian ulang refresh token — AU-5 yang dibuang isu #18 — sehingga `A-01` punya kriteria yang mustahil dipenuhi. Diganti dengan pencabutan massal saat ganti password, dan apa yang HILANG ditulis di dalam kriterianya sendiri supaya tidak lenyap dari ingatan. | **Fatih Maulana** |
 | 17 Sep 2026 | 2.3 | **§10.2 menerima `INVALID_CURSOR`** (400). Cursor pagination tidak punya padanan di daftar lama, dan bukan cuma milik `N-01` — `C-02` akan butuh yang sama. Ditambahkan **sebelum** kontraknya dipakai, bukan sesudah; daftar itu tertutup. | **Fatih Maulana** |
+| 22 Sep 2026 | **2.4** | **§9 — sisi CONTRACT dari 004 dikerjakan (isu #47, migrasi 007).** `users.password_hash`, `users.email_verified_at`, dan tabel `refresh_tokens` **dibuang**; ketiganya ditandai USANG sejak 17 Sep dengan janji "dibuang di migrasi contract". Jumlah tabel domain **33 → 32**. Prasyarat lama ("A-01 stabil di staging") diganti bukti yang lebih kuat: seluruh repo disisir dan nol kode produksi membacanya. Yang membuktikan ini bukan kerapian — `A-05` ternyata membaca `email_verified_at`, kolom yang di-backfill sekali lalu tidak pernah ditulis lagi, sehingga `/me` melaporkan email BELUM terverifikasi selamanya dan AU-8 memblokir top-upnya. | **Fatih Maulana** |
 | | | _Isi baris baru setiap kali ada keputusan yang mengubah dokumen ini._ | |
 
 ---

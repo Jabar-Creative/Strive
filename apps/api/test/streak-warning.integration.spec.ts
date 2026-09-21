@@ -78,10 +78,7 @@ beforeEach(async () => {
 
 /** Membuat pengguna; trigger AU-6 membuat baris streaks dengan timezone-nya. */
 async function buat(id: string, email: string, tz: string) {
-  await db
-    .insertInto('users')
-    .values({ id, email, password_hash: 'x', display_name: 'Uji', timezone: tz })
-    .execute();
+  await db.insertInto('users').values({ id, email, display_name: 'Uji', timezone: tz }).execute();
 }
 
 describe('StreakWarningService (database nyata)', () => {

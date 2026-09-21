@@ -70,18 +70,16 @@ beforeEach(async () => {
       {
         id: SA1,
         email: 'a5-1@uji.test',
-        password_hash: 'x',
         display_name: 'SA1',
         role: 'superadmin',
       },
       {
         id: SA2,
         email: 'a5-2@uji.test',
-        password_hash: 'x',
         display_name: 'SA2',
         role: 'superadmin',
       },
-      { id: SISWA, email: 'a5-3@uji.test', password_hash: 'x', display_name: 'Siswa' },
+      { id: SISWA, email: 'a5-3@uji.test', display_name: 'Siswa' },
     ])
     .execute();
 });

@@ -48,10 +48,7 @@ beforeEach(async () => {
     [USER, 'w1@uji.test'],
     [LAIN, 'w2@uji.test'],
   ]) {
-    await db
-      .insertInto('users')
-      .values({ id: id!, email: email!, password_hash: 'x', display_name: 'Uji' })
-      .execute();
+    await db.insertInto('users').values({ id: id!, email: email!, display_name: 'Uji' }).execute();
   }
 });
 

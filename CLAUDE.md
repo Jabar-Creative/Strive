@@ -117,6 +117,8 @@ strive-academy/
 │  │                           003 = peer_reviews FK · 004 = Better-Auth (33)
 │  │                           005 = trigger AU-6
 │  │                           006 = view admin_* + role strive_readonly
+│  │                           007 = contract auth (buang password_hash,
+│  │                                 email_verified_at, refresh_tokens)
 │  └─ seeds/                   seed-dev.mjs (F-13) · seed-content.mjs (F-11)
 │                              + content/ contoh
 ├─ scripts/                    perkakas lintas-OS, Node murni, nol dependensi
@@ -493,6 +495,7 @@ memakan waktu nyata. Jangan diulang.
 | Memakai `Intl.supportedValuesOf('timeZone')` sebagai daftar izin zona waktu apa adanya | Daftar itu **TIDAK memuat `'UTC'`** — 418 nama kanonik, dan zona waktu paling umum di dunia bukan salah satunya. Validasi yang memakainya polos akan menolak `UTC` dengan pesan "zona waktu tidak dikenal", untuk nilai yang jelas-jelas dikenal PostgreSQL | Daftar izin = nama kanonik ICU **+ `'UTC'`**. Diverifikasi terhadap `pg_timezone_names` (599 nama) di PostgreSQL 16 repo ini: dari 419 nama itu, **nol** yang ditolak `AT TIME ZONE`. Lihat `apps/api/src/modules/auth/timezone.ts` |
 | Mengandaikan token Better-Auth ada di query string | Tautan reset password berbentuk `/api/v1/auth/reset-password/<token>?callbackURL=…` — tokennya **segmen path**, `callbackURL` yang jadi query. Tautan di email juga menunjuk **API**, bukan web: ia mengalihkan ke `${APP_URL}/reset/finish?token=…`. Kode yang mencari `?token=` di tautan email mendapat `null`, dan gejalanya baru terlihat oleh pengguna sungguhan yang lupa password | Baca tokennya dari segmen path terakhir, atau ikuti alihannya dulu. Diuji end-to-end di `apps/api/test/auth-email-timezone.integration.spec.ts` |
 | Mengandaikan `additionalFields` Better-Auth opsional untuk field yang sudah ada kolomnya | Better-Auth **membuang field yang tidak terdaftar** di `user.additionalFields` — diam-diam, tanpa error. `users.timezone` punya kolom, punya DEFAULT, dan punya trigger yang menyalinnya ke `streaks` — tapi selama field-nya tak terdaftar, SEMUA pendaftar jatuh ke default apa pun yang mereka kirim. Bukan validasi yang menolak: nilainya tidak pernah sampai | Setiap field registrasi di luar `email`/`password`/`name`/`image` WAJIB terdaftar di `additionalFields` dengan `input: true` |
+| Membaca kolom yang ditandai USANG karena ia masih bisa di-`SELECT` | `A-05` (`GET /me`) membaca `users.email_verified_at`, kolom yang di-backfill **sekali** di migrasi 004 lalu tidak pernah ditulis siapa pun — Better-Auth menulis `email_verified`. Migrasi 004 bahkan menuliskannya harfiah (*"Sampai saat itu, YANG DIBACA HANYA `email_verified`"*), dan komentar kolomnya juga. Tidak satu pun terbaca, karena yang dibuka saat menulis query adalah **`\d users`** — dan `COMMENT` tidak muncul di sana. Akibatnya pengguna yang memverifikasi emailnya tetap terbaca BELUM terverifikasi selamanya, dan AU-8 memblokir top-upnya | Kolom usang yang masih bisa di-`SELECT` **akan** di-`SELECT`. Expand/contract bukan opsional: sisi contract-nya wajib punya item sejak sisi expand-nya di-merge. Diselesaikan migrasi 007 (isu #47) |
 | `betterAuth({…}) as SomeType` | Objek literalnya menghasilkan tipe generik yang jauh lebih sempit daripada `Auth<BetterAuthOptions>`, jadi cast-nya berhenti bisa dikompilasi begitu ada opsi baru. Godaannya menambah `as unknown as` — yang menutup gejalanya **sekaligus mematikan pengecekan tipe atas seluruh objek konfigurasi**, termasuk salah ketik nama opsi yang lalu diabaikan diam-diam | Anotasi variabelnya `BetterAuthOptions` lalu `return betterAuth(opsi)` tanpa cast sama sekali. Dibuktikan menangkap salah ketik dengan `TS2353` |
 
 ---
@@ -513,8 +516,11 @@ Jangan bangun ulang; baca dulu.
 
 **Empat hal yang mudah salah dipahami soal skema:**
 
-1. **`public` memuat tepat 33 tabel domain.** Ledger migrasi tinggal di skema
-   `strive_meta`, dan `pnpm db:types` mengecualikannya. CI menolak kalau jumlahnya bukan 33.
+1. **`public` memuat tepat 32 tabel domain.** Ledger migrasi tinggal di skema
+   `strive_meta`, dan `pnpm db:types` mengecualikannya. CI menolak kalau jumlahnya bukan 32.
+   **33 → 32 sejak migrasi 007** membuang `refresh_tokens` (isu #47). Angka ini ditulis
+   tangan di TIGA tempat — `.github/workflows/ci.yml`, `admin-views.integration.spec.ts`,
+   dan baris ini. Mengubah satu tanpa dua lainnya akan menyimpang diam-diam.
 2. **`apps/api/src/infra/kysely/database.d.ts` ikut di-commit** dan **tidak boleh diedit tangan**.
    Job CI `node` tidak punya PostgreSQL, jadi typecheck butuh berkas itu ada di repo.
    CI menjalankan ulang codegen lalu `git diff --exit-code` — ubah skema tanpa

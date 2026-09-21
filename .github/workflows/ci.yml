@@ -172,7 +172,8 @@ jobs:
                       WHERE table_schema='public' AND table_type='BASE TABLE'
                         AND table_name NOT LIKE 'lesson_attempts\_%';")
           echo "tabel domain: $tables"
-          test "$tables" = "33" || { echo "::error::harus 33 tabel domain (docs/PRD.md §9.1), dapat $tables"; exit 1; }
+          # 33 → 32 sejak migrasi 007: `refresh_tokens` dibuang (isu #47).
+          test "$tables" = "32" || { echo "::error::harus 32 tabel domain (docs/PRD.md §9.1), dapat $tables"; exit 1; }
 
           trg=$(q "SELECT count(*) FROM pg_trigger WHERE tgname='coin_ledger_no_mutate';")
           test "$trg" = "1" || { echo "::error::trigger append-only coin_ledger tidak ada"; exit 1; }
@@ -184,8 +185,8 @@ jobs:
           # tidak pernah menyalakan trigger, dan psql keluar 0. Versi pertama
           # pemeriksaan ini jatuh persis di situ — lulus karena salah, bukan
           # karena benar.
-          q "INSERT INTO users (id, email, password_hash, display_name)
-             VALUES ('00000000-0000-4000-8000-0000000000c1', 'ci@strive.test', 'x', 'CI');" >/dev/null
+          q "INSERT INTO users (id, email, display_name)
+             VALUES ('00000000-0000-4000-8000-0000000000c1', 'ci@strive.test', 'CI');" >/dev/null
           q "INSERT INTO coin_ledger (user_id, entry_type, amount, balance_after)
              VALUES ('00000000-0000-4000-8000-0000000000c1', 'adjust', 1, 1);" >/dev/null
 
@@ -209,8 +210,8 @@ jobs:
              VALUES ('00000000-0000-4000-8000-0000000000d1','CI-W1', now(), now() + interval '7 days');" >/dev/null
           q "INSERT INTO squads (id, name, season_id, max_members)
              VALUES ('00000000-0000-4000-8000-0000000000d2','CI','00000000-0000-4000-8000-0000000000d1', 8);" >/dev/null
-          q "INSERT INTO users (id, email, password_hash, display_name)
-             SELECT ('00000000-0000-4000-8000-0000000000e' || i)::uuid, 'ci'||i||'@strive.test','x','CI'||i
+          q "INSERT INTO users (id, email, display_name)
+             SELECT ('00000000-0000-4000-8000-0000000000e' || i)::uuid, 'ci'||i||'@strive.test','CI'||i
              FROM generate_series(1,9) i;" >/dev/null
           q "INSERT INTO squad_members (squad_id, user_id)
              SELECT '00000000-0000-4000-8000-0000000000d2', ('00000000-0000-4000-8000-0000000000e' || i)::uuid

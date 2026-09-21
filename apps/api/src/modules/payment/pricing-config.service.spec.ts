@@ -114,7 +114,6 @@ describe('PricingConfigService (integrasi database nyata)', () => {
       .insertInto('users')
       .values({
         email: `strive-p01-pricing-test-${randomUUID()}@yopmail.com`,
-        password_hash: 'test-only-not-a-real-hash',
         display_name: 'P-01 Pricing Test Actor',
         role: 'superadmin',
       })

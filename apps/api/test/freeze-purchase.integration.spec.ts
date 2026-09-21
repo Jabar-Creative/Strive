@@ -83,14 +83,12 @@ beforeEach(async () => {
       {
         id: ADMIN,
         email: 's5a@uji.test',
-        password_hash: 'x',
         display_name: 'A',
         role: 'superadmin',
       },
       {
         id: USER,
         email: 's5u@uji.test',
-        password_hash: 'x',
         display_name: 'U',
         coin_balance: 1000,
       },
@@ -214,7 +212,7 @@ describe('S-05 — beli kredit freeze (database nyata)', () => {
     const LAIN = '00000000-0000-4000-8000-0000000f5e03';
     await db
       .insertInto('users')
-      .values({ id: LAIN, email: 's5l@uji.test', password_hash: 'x', display_name: 'L' })
+      .values({ id: LAIN, email: 's5l@uji.test', display_name: 'L' })
       .execute();
     await db
       .updateTable('streaks')

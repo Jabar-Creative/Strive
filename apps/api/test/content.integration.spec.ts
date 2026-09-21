@@ -55,8 +55,8 @@ beforeEach(async () => {
   await db
     .insertInto('users')
     .values([
-      { id: USER, email: 'c1@uji.test', password_hash: 'x', display_name: 'Uji' },
-      { id: LAIN, email: 'c2@uji.test', password_hash: 'x', display_name: 'Lain' },
+      { id: USER, email: 'c1@uji.test', display_name: 'Uji' },
+      { id: LAIN, email: 'c2@uji.test', display_name: 'Lain' },
     ])
     .execute();
 

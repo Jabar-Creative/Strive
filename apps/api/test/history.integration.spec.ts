@@ -294,12 +294,11 @@ beforeEach(async () => {
       {
         id: ADMIN,
         email: 'f14a@uji.test',
-        password_hash: 'x',
         display_name: 'A',
         role: 'superadmin',
       },
-      { id: AKU, email: 'f14aku@uji.test', password_hash: 'x', display_name: 'Aku' },
-      { id: LAIN, email: 'f14lain@uji.test', password_hash: 'x', display_name: 'Lain' },
+      { id: AKU, email: 'f14aku@uji.test', display_name: 'Aku' },
+      { id: LAIN, email: 'f14lain@uji.test', display_name: 'Lain' },
     ])
     .execute();
   await db.insertInto('tracks').values({ id: TRACK, slug: 'f14', title: 'T' }).execute();

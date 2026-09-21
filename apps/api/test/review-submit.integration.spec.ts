@@ -74,14 +74,12 @@ beforeEach(async () => {
       {
         id: PENULIS,
         email: 'p2a@uji.test',
-        password_hash: 'x',
         display_name: 'Penulis',
         timezone: 'Asia/Jakarta',
       },
       {
         id: REVIEWER,
         email: 'p2b@uji.test',
-        password_hash: 'x',
         display_name: 'Reviewer',
         timezone: TZ_REVIEWER,
       },
