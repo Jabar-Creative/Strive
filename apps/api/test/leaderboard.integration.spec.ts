@@ -73,7 +73,6 @@ beforeEach(async () => {
       Array.from({ length: 4 }, (_, i) => ({
         id: uid(i),
         email: `lb${i}@uji.test`,
-        password_hash: 'x',
         display_name: `U${i}`,
       })),
     )

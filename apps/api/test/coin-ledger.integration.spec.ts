@@ -46,7 +46,7 @@ const USER_B = '00000000-0000-4000-8000-00000000b002';
 async function seedUser(id: string, balance: number, email: string) {
   await db
     .insertInto('users')
-    .values({ id, email, password_hash: 'x', display_name: 'Uji', coin_balance: 0 })
+    .values({ id, email, display_name: 'Uji', coin_balance: 0 })
     .execute();
 
   if (balance !== 0) {

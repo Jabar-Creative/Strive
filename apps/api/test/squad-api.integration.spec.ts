@@ -103,25 +103,23 @@ beforeEach(async () => {
   await db
     .insertInto('users')
     .values([
-      { id: A1, email: 'q06a1@uji.test', password_hash: 'x', display_name: 'Ayu' },
-      { id: A2, email: 'q06a2@uji.test', password_hash: 'x', display_name: 'Budi' },
-      { id: A3, email: 'q06a3@uji.test', password_hash: 'x', display_name: 'Citra' },
-      { id: B1, email: 'q06b1@uji.test', password_hash: 'x', display_name: 'Dewi' },
+      { id: A1, email: 'q06a1@uji.test', display_name: 'Ayu' },
+      { id: A2, email: 'q06a2@uji.test', display_name: 'Budi' },
+      { id: A3, email: 'q06a3@uji.test', display_name: 'Citra' },
+      { id: B1, email: 'q06b1@uji.test', display_name: 'Dewi' },
       {
         id: MENTOR_A,
         email: 'q06m1@uji.test',
-        password_hash: 'x',
         display_name: 'Mentor A',
         role: 'mentor',
       },
       {
         id: MENTOR_LAIN,
         email: 'q06m2@uji.test',
-        password_hash: 'x',
         display_name: 'Mentor Lain',
         role: 'mentor',
       },
-      { id: SENDIRIAN, email: 'q06s@uji.test', password_hash: 'x', display_name: 'Sendirian' },
+      { id: SENDIRIAN, email: 'q06s@uji.test', display_name: 'Sendirian' },
     ])
     .execute();
 

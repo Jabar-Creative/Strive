@@ -114,19 +114,25 @@ describe('Auth (database nyata)', () => {
   });
 
   // ── AU-3 ──────────────────────────────────────────────────────────────────
-  it('AU-3: password di-hash Argon2id, dan users.password_hash TIDAK tersentuh', async () => {
+  it('AU-3: password di-hash Argon2id, dan HANYA ada di auth_accounts', async () => {
     if (!reachable) return;
     await daftar();
 
     const u = await db
       .selectFrom('users')
-      .select(['id', 'password_hash'])
+      .selectAll()
       .where('email', '=', EMAIL)
       .executeTakeFirstOrThrow();
 
-    // Kolom lama harus tetap NULL. Kalau suatu saat ia terisi, berarti ada dua
-    // tempat yang mengklaim menyimpan password — dan yang satu akan basi.
-    expect(u.password_hash).toBeNull();
+    // Versi lama test ini memastikan `users.password_hash` tetap NULL. Sejak
+    // migrasi 007 kolomnya TIDAK ADA lagi, dan bentuk assert yang benar ikut
+    // berubah: yang dijaga sekarang bukan "kolom itu kosong" tapi "tidak ada
+    // tempat KEDUA yang mengklaim menyimpan password". Dua tempat selalu
+    // berakhir dengan satu yang basi.
+    expect(
+      Object.keys(u).filter((k) => /password|secret|hash/i.test(k)),
+      'ada kolom mirip-password di `users` — password hanya boleh di auth_accounts',
+    ).toEqual([]);
 
     const akun = await db
       .selectFrom('auth_accounts')

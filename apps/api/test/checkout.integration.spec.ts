@@ -72,7 +72,6 @@ beforeEach(async () => {
       {
         id: ADMIN,
         email: 'padmin@uji.test',
-        password_hash: 'x',
         display_name: 'Admin',
         role: 'superadmin',
         email_verified: true,
@@ -80,7 +79,6 @@ beforeEach(async () => {
       {
         id: USER,
         email: 'p1@uji.test',
-        password_hash: 'x',
         display_name: 'Beli',
         email_verified: true,
       },

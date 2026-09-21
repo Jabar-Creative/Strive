@@ -172,7 +172,8 @@ jobs:
                       WHERE table_schema='public' AND table_type='BASE TABLE'
                         AND table_name NOT LIKE 'lesson_attempts\_%';")
           echo "tabel domain: $tables"
-          test "$tables" = "33" || { echo "::error::harus 33 tabel domain (docs/PRD.md §9.1), dapat $tables"; exit 1; }
+          # 33 → 32 sejak migrasi 007: `refresh_tokens` dibuang (isu #47).
+          test "$tables" = "32" || { echo "::error::harus 32 tabel domain (docs/PRD.md §9.1), dapat $tables"; exit 1; }
 
           trg=$(q "SELECT count(*) FROM pg_trigger WHERE tgname='coin_ledger_no_mutate';")
           test "$trg" = "1" || { echo "::error::trigger append-only coin_ledger tidak ada"; exit 1; }

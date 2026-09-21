@@ -124,7 +124,7 @@ describe('PartitionService (database nyata)', () => {
         const l = '00000000-0000-4000-8000-0000000f1204';
         await trx
           .insertInto('users')
-          .values({ id: u, email: 'f12@uji.test', password_hash: 'x', display_name: 'F' })
+          .values({ id: u, email: 'f12@uji.test', display_name: 'F' })
           .execute();
         await trx.insertInto('tracks').values({ id: t, slug: 'f12', title: 'T' }).execute();
         await trx.insertInto('modules').values({ id: m, track_id: t, title: 'M' }).execute();
