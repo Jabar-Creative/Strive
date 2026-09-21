@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 
 import { AdminPricingController } from './admin-pricing.controller';
 import { CheckoutService } from './checkout.service';
+import { OrderReadService } from './order-read.service';
+import { OrdersController } from './orders.controller';
 import { SnapClient } from './snap.client';
 import { PricingConfigService } from './pricing-config.service';
 import { PricingController } from './pricing.controller';
@@ -22,8 +24,8 @@ import { PricingController } from './pricing.controller';
  * redirect client (PA-5).
  */
 @Module({
-  controllers: [PricingController, AdminPricingController],
-  providers: [PricingConfigService, CheckoutService, SnapClient],
-  exports: [PricingConfigService, CheckoutService],
+  controllers: [PricingController, AdminPricingController, OrdersController],
+  providers: [PricingConfigService, CheckoutService, SnapClient, OrderReadService],
+  exports: [PricingConfigService, CheckoutService, OrderReadService],
 })
 export class PaymentModule {}
