@@ -403,7 +403,10 @@ export interface Squads {
   max_members: Generated<number>;
   mentor_id: string | null;
   name: string;
-  season_id: string | null;
+  /**
+   * WAJIB sejak 008 (isu #84). Kunci ZSET papan (lb:sq:<season_id>:<squad_id>) dan PK league_standings dibentuk darinya — squad tanpa musim tidak bisa punya papan, bukan punya papan kosong.
+   */
+  season_id: string;
 }
 
 export interface StoreItems {

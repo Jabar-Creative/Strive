@@ -1,10 +1,4 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { type Kysely, sql } from 'kysely';
 
 import { DATABASE, type DB } from '../../infra/kysely';
@@ -126,25 +120,19 @@ export class SquadReadService {
 
     await this.assertBolehMembaca(squad, actor);
 
-    // `squads.season_id` NULLABLE sejak migrasi 001 — `REFERENCES
-    // league_seasons(id)` tanpa NOT NULL. Squad tanpa musim tidak punya kunci
-    // ZSET sama sekali (`lb:sq:<musim>:<squad>`), jadi papannya bukan "kosong",
-    // ia tidak bisa dibentuk.
+    // `squads.season_id` `NOT NULL` sejak migrasi 008 (isu #84), jadi tidak ada
+    // lagi cabang "squad tanpa musim" di sini.
     //
-    // Dikembalikan sebagai galat eksplisit, BUKAN array kosong: array kosong
-    // terbaca "belum ada yang berpoin minggu ini" dan menyembunyikan keadaan
-    // data yang seharusnya tidak pernah ada. `Q-01` selalu mengisinya — kalau
-    // ini menyala, ada jalur lain yang membuat squad. Dicatat di isu #84.
-    if (squad.season_id === null) {
-      throw new ConflictException({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Squad ini tidak terhubung ke musim mana pun — papannya tidak bisa dibentuk',
-          details: { squad_id: squadId },
-        },
-      });
-    }
-
+    // Versi `Q-06` punya penolakan eksplisit untuk keadaan itu — benar pada
+    // waktunya, karena kolomnya memang nullable. Yang salah bukan penolakannya
+    // tapi TINGKATNYA: ia menahan gejala di satu jalur kode, sementara Retool,
+    // skrip perbaikan data, dan `psql` manual tidak lewat sini sama sekali.
+    // Pelajaran yang sama dengan isu #26 (kapasitas squad dijaga
+    // `SquadService.join()` saja, sampai dijadikan trigger).
+    //
+    // Cabangnya dibuang, bukan dipertahankan "untuk jaga-jaga": cabang yang
+    // tidak bisa lagi tercapai adalah cabang yang tidak bisa diuji, dan kode
+    // yang tidak bisa diuji membusuk tanpa ada yang tahu.
     const papan = await this.leaderboard.squadBoard(squad.season_id, squadId);
     if (papan.length === 0) return [];
 

@@ -346,15 +346,30 @@ describe('GET /squads/:id/leaderboard (Q-06)', () => {
     expect(cc, 'papan squad di-cache proxy bersama').toContain('private');
   });
 
-  it('squad tanpa musim ditolak eksplisit, bukan dijawab papan kosong', async () => {
+  it('squad tanpa musim MUSTAHIL — ditolak database, bukan oleh service', async () => {
     if (!reachable) return;
-    // `squads.season_id` NULLABLE sejak migrasi 001 (isu #84). Papan kosong
-    // terbaca "belum ada yang berpoin minggu ini" dan menyembunyikan keadaan
-    // data yang seharusnya tidak pernah ada.
-    await db.updateTable('squads').set({ season_id: null }).where('id', '=', SQUAD_A).execute();
+    // Versi pertama test ini menyetel `season_id: null` lalu memastikan
+    // service menjawab 4xx. Sejak migrasi 008 (isu #84) keadaan itu tidak bisa
+    // dibuat sama sekali, dan yang diuji ikut naik satu tingkat: bukan lagi
+    // "apa jawabannya kalau datanya rusak", tapi "datanya tidak bisa rusak".
+    //
+    // Barisnya SUNGGUHAN dan jumlahnya diverifikasi dulu — `UPDATE` yang
+    // menyentuh nol baris keluar sukses tanpa menyalakan constraint apa pun,
+    // dan test-nya akan lulus karena salah (jebakan yang sudah tercatat di
+    // CLAUDE.md untuk trigger `FOR EACH ROW`).
+    const sebelum = await db
+      .selectFrom('squads')
+      .select((eb) => eb.fn.countAll<string>().as('n'))
+      .where('id', '=', SQUAD_A)
+      .executeTakeFirstOrThrow();
+    expect(Number(sebelum.n), 'baris squad uji tidak ada — test tidak sahih').toBe(1);
 
+    await expect(
+      db.updateTable('squads').set({ season_id: null }).where('id', '=', SQUAD_A).execute(),
+    ).rejects.toThrow(/not-null|null value/i);
+
+    // Dan papannya tetap bisa dibentuk, karena musimnya masih ada.
     const res = await get(`/api/v1/squads/${SQUAD_A}/leaderboard`, A1);
-    expect(res.status).toBeGreaterThanOrEqual(400);
-    expect(res.status).toBeLessThan(500);
+    expect(res.status).toBe(200);
   });
 });
