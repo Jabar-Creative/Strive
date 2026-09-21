@@ -105,4 +105,7 @@ export const ACCESS_MATRIX: readonly AccessRule[] = [
   { route: 'POST /mentor/reviews/:id/validate', allow: ['mentor'] },
   { route: 'GET /admin/*', allow: ['superadmin'] },
   { route: 'PATCH /admin/pricing', allow: ['superadmin'] },
+  // SA-05 (isu #88). Rute inilah satu-satunya jalur sah menunjuk mentor:
+  // role `strive_readonly` milik Retool tidak bisa menulis apa pun.
+  { route: 'PATCH /admin/users/:id/role', allow: ['superadmin'] },
 ];

@@ -128,7 +128,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `R-04` | Observability: log terstruktur, error tracking, a… | A | W8 | 1 | `todo` | — | — | — |
 | `SA-03` | Endpoint /admin/integrations/health + biaya vendo… | A | W8 | 0,5 | `todo` | — | — | — |
 | `SA-04` | Dasbor Retool: transaksi, harga, audit, health | A | W8 | 0,5 | `blocked` | — | 2026-09-20 | BLOCKED: butuh langganan Retool (blocker non-kode, `docs/reports/blocker-non-kode.pdf`) — isu #77. AC-nya "superadmin bisa bekerja tanpa membuka database" mustahil tanpa dasbornya. Panel `health` juga menunggu `SA-03`. Yang SUDAH ada: seluruh query-nya di `docs/retool/queries.sql`, diverifikasi berjalan sebagai role `strive_readonly` (6 test integrasi) dan tidak satu pun menyentuh tabel mentah. Saat lisensinya ada, perakitannya setengah jam. |
-| `SA-05` | PATCH /admin/users/:id/role — ubah peran pengguna | A | W7 | 0,5 | `todo` | — | — | Dari isu #88. Satu-satunya cara superadmin menunjuk mentor (§5 Q6 "penugasan oleh Superadmin"). Tidak ada item yang menjanjikannya, dan tanpa ini peran hanya bisa diubah lewat SQL langsung — yang justru dilarang SA-2. |
+| `SA-05` | PATCH /admin/users/:id/role — ubah peran pengguna | A | W7 | 0,5 | `done` | #97 | 2026-09-21 | Butuh kode error baru: `ROLE_CHANGE_FORBIDDEN` ditambahkan ke PRD §10.2 lewat PR TERSENDIRI (#96) sebelum dipakai — yang pertama mengikuti urutan itu. Larangan 'ubah peran sendiri' saja TIDAK cukup: dua superadmin yang saling menurunkan bersamaan menyisakan NOL superadmin, permanen. Diverifikasi merah — tanpa advisory lock hitungannya nol di tengah jendela test. |
 | `R-05` | Cadangan perbaikan bug | AB | W8 | 2 | `todo` | — | — | — |
 | `MT-02` | Wawancara terpandu: bank soal statis + jawaban te… | B | W8 | 1,5 | `todo` | — | — | — |
 | `MT-03` | Review personal statement (LLM terstruktur) | B | W8 | 1 | `todo` | — | — | — |
@@ -148,11 +148,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 36 | 32,5 |
+| `done` | 37 | 33,0 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 40 | 41,5 |
+| `todo` | 39 | 41,0 |
 
 ---
 ## Ringkasan per epik
