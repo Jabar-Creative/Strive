@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 
 import { KyselyModule } from '../../infra/kysely';
+import { StreakModule } from '../streak';
+import { WalletModule } from '../wallet';
+import { AttemptsService } from './attempts.service';
+import { SubmitAttemptController } from './submit-attempt.controller';
 import { AttemptHistoryService } from './attempt-history.service';
 import { AttemptsController } from './attempts.controller';
 import { ContentController } from './content.controller';
@@ -21,9 +25,9 @@ import { GradingService } from './grading.service';
  * dilakukan di ContentService supaya tidak ada jalur yang bisa melewatkannya.
  */
 @Module({
-  imports: [KyselyModule],
-  controllers: [ContentController, AttemptsController],
-  providers: [ContentService, AttemptHistoryService, GradingService],
-  exports: [ContentService, AttemptHistoryService, GradingService],
+  imports: [KyselyModule, StreakModule, WalletModule],
+  controllers: [ContentController, AttemptsController, SubmitAttemptController],
+  providers: [ContentService, AttemptHistoryService, GradingService, AttemptsService],
+  exports: [ContentService, AttemptHistoryService, GradingService, AttemptsService],
 })
 export class LearningModule {}
