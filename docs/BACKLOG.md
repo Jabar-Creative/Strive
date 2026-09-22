@@ -100,7 +100,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `C-04` | Job rekonsiliasi harian + alert selisih | A | W4 | 0,5 | `done` | #53 | 2026-09-17 | Job hanya MEMBACA — tidak memperbaiki apa pun, karena menambal angkanya menghapus bukti penyebabnya. Baris audit ditulis meski nol selisih. Diuji dengan sengaja menulis coin_balance langsung, satu-satunya tempat di repo yang melakukannya. |
 | `Q-01` | Pembentukan squad otomatis (8-12 anggota) + gabun… | A | W4 | 0,5 | `done` | #24 | 2026-09-16 | Ter-merge lewat #24. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `Q-02` | LeaderboardService: ZSET, rotasi kunci musim, reb… | A | W4 | 1,5 | `done` | #54 | 2026-09-17 | Redis melayani, Postgres memiliki. AC 'FLUSHALL lalu pulih dengan angka identik' diuji dengan FLUSHALL sungguhan — mock akan selalu pulih karena datanya tidak pernah benar-benar hilang. Service redis ditambahkan ke CI. |
-| `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINC… | A | W4 | 1 | `todo` | — | — | — |
+| `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINCRBY, retry, dead-letter | A | W4 | 1 | `done` | #117 | 2026-09-22 | ZINCRBY SENGAJA diganti ZADD nilai MUTLAK dari Postgres: `bump()` versi Q-02 menghitung poin DUA KALI setelah Redis kosong (L-03 menaikkan `weekly_points` di transaksi yang sama dengan event, jadi rebuild sudah memuatnya), dan tidak idempoten terhadap pengantaran at-least-once (PRD §8.3). Test Q-02 lulus karena tidak pernah memodelkan urutan L-03. Test SKIP LOCKED versi pertama HIJAU untuk FOR UPDATE tanpa SKIP LOCKED — worker kedua tetap maju, hanya berurutan; sekarang kemajuannya diukur SELAGI worker pertama memegang kunci, dan kedua varian terbukti merah. Payload L-03 membawa squad & musim SAAT event ditulis. Topik tanpa konsumen (RT-01) tidak diambil supaya tidak menyumbat batch. |
 | `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `done` | #55 | 2026-09-17 | Job jalan tiap jam, memilih pengguna yang SAAT ITU pukul 20.00 di zonanya sendiri — perbandingan jam di dalam SQL. Idempoten per hari lokal. IS DISTINCT FROM, bukan <>: pengguna yang belum pernah aktif justru yang paling butuh diingatkan. |
 | `S-05` | POST /streak/freeze/purchase — beli kredit freeze | A | W4 | 0,5 | `done` | #95 | 2026-09-21 | Bulan dihitung Postgres dari `streaks.timezone`, bukan UTC. Entri ledger SENGAJA tanpa ref: `coin_ledger_ref_uniq` akan membatasi pembelian jadi sekali seumur hidup. Konkurensi diverifikasi merah — yang bocor bukan kreditnya, tapi debit ganda 400 koin untuk 1 kredit. |
 | `AI-02` | Ekstraksi PDF/DOCX + penyusunan dari profil pengguna | B | W4 | 1 | `todo` | — | — | — |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 43 | 40,0 |
+| `done` | 44 | 41,0 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 33 | 34,0 |
+| `todo` | 32 | 33,0 |
 
 ---
 ## Ringkasan per epik
@@ -182,7 +182,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E4` | Coin & Wallet | 4,0 | 4 | 3/4 · **75%** | — |
 | `E2` | Learning Engine | 7,5 | 5 | 3/5 · **60%** | — |
 | `E3` | Career Streak | 5,5 | 5 | 4/5 · **73%** | — |
-| `E5` | Squad & Liga | 6,0 | 6 | 4/6 · **58%** | — |
+| `E5` | Squad & Liga | 6,0 | 6 | 5/6 · **75%** | — |
 | `E15` | Realtime | 2,0 | 2 | 0/2 · **0%** | — |
 | `E16` | Notifikasi | 1,5 | 2 | 1/2 · **67%** | — |
 | `E6` | Payment | 3,5 | 4 | 1/4 · **14%** | 1 |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 3/5 · **60%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 1/5 · **17%** | — |
-| | **Total** | **78,5** | **80** | **43/80 · 51%** | **4** |
+| | **Total** | **78,5** | **80** | **44/80 · 52%** | **4** |
 
 ---
 

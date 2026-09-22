@@ -6,7 +6,9 @@ import { StorageModule } from '../infra/storage';
 import { ScanModule } from '../modules/scan';
 import { WalletModule } from '../modules/wallet';
 import { NotificationModule } from '../modules/notification';
+import { LeagueModule } from '../modules/league';
 import { LeagueRollupService } from './league-rollup.service';
+import { OutboxWorkerService } from './outbox.service';
 import { ReconcileBalanceService } from './reconcile-balance.service';
 import { PartitionService } from './partition.service';
 import { StreakWarningService } from './streak-warning.service';
@@ -16,7 +18,8 @@ import { StreakWarningService } from './streak-warning.service';
  * bukan satu deployment per jenis job (docs/PRD.md §8.2).
  *
  * Worker yang direncanakan:
- *   outbox             Q-03  poll outbox_events FOR UPDATE SKIP LOCKED -> ZINCRBY + WS
+ *   outbox             Q-03  poll outbox_events FOR UPDATE SKIP LOCKED -> ZADD mutlak
+ *                            SUDAH ADA — `OutboxWorkerService.runOnce()`. WS menyusul RT-01.
  *   scan               K-03  submit ke Copyleaks, proses webhook hasil
  *   ai-dispatch        AI-06 kirim ai_jobs ke AI service, catat biaya
  *   notify             N-01  email Resend + notifikasi in-app, retry 3x
@@ -53,12 +56,33 @@ import { StreakWarningService } from './streak-warning.service';
   // `StorageModule` ketahuan dengan cara yang sama, satu menit setelah test
   // `worker.module.spec.ts` ditulis — kelas kesalahan yang sama, modul yang
   // berbeda. Itu yang membuat test murah itu sepadan.
-  imports: [KyselyModule, RedisModule, StorageModule, WalletModule, NotificationModule, ScanModule],
-  providers: [ReconcileBalanceService, StreakWarningService, PartitionService, LeagueRollupService],
-  exports: [ReconcileBalanceService, StreakWarningService, PartitionService, LeagueRollupService],
+  imports: [
+    KyselyModule,
+    RedisModule,
+    StorageModule,
+    WalletModule,
+    NotificationModule,
+    ScanModule,
+    LeagueModule,
+  ],
+  providers: [
+    ReconcileBalanceService,
+    StreakWarningService,
+    PartitionService,
+    LeagueRollupService,
+    OutboxWorkerService,
+  ],
+  exports: [
+    ReconcileBalanceService,
+    StreakWarningService,
+    PartitionService,
+    LeagueRollupService,
+    OutboxWorkerService,
+  ],
 })
 export class WorkerModule {}
 export * from './reconcile-balance.service';
 export * from './streak-warning.service';
 export * from './partition.service';
 export * from './league-rollup.service';
+export * from './outbox.service';

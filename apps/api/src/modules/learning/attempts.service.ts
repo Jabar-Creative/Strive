@@ -256,12 +256,20 @@ export class AttemptsService {
       const quest = await this.bumpQuest(trx, userId, hariIni);
 
       // 5 · squad_members.weekly_points
-      await trx
-        .updateTable('squad_members')
-        .set({ weekly_points: sql`weekly_points + ${points}` })
-        .where('user_id', '=', userId)
-        .where('left_at', 'is', null)
-        .execute();
+      //
+      // `RETURNING` squad & musimnya DI SAAT INI, untuk payload outbox di
+      // bawah. Worker yang mencari squad pengguna SAAT memproses akan salah
+      // untuk pengguna yang pindah squad di antaranya: poinnya masuk ke baris
+      // squad lama, tapi papan yang diselaraskan milik squad baru.
+      const anggota = await trx
+        .updateTable('squad_members as m')
+        .set({ weekly_points: sql`m.weekly_points + ${points}` })
+        .from('squads as s')
+        .whereRef('s.id', '=', 'm.squad_id')
+        .where('m.user_id', '=', userId)
+        .where('m.left_at', 'is', null)
+        .returning(['m.squad_id as squad_id', 's.season_id as season_id'])
+        .executeTakeFirst();
 
       // 6 · outbox_events — BUKAN ZINCRBY langsung (aturan 6 & LE-7).
       //     Cache yang berisi poin dari transaksi yang di-rollback lebih
@@ -277,6 +285,10 @@ export class AttemptsService {
             points,
             coins,
             attempt_date: hariIni,
+            // `null` untuk pengguna yang belum punya squad — worker lalu tidak
+            // punya papan apa pun untuk diselaraskan, dan itu bukan galat.
+            squad_id: anggota?.squad_id ?? null,
+            season_id: anggota?.season_id ?? null,
           }),
         })
         .execute();
