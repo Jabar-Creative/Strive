@@ -1,8 +1,15 @@
 # BACKLOG — Strive Academy
 
 > **Versi:** 2.0 · semua fitur · kedalaman v0.1  
-> **Total:** 80 item · 78,5 dev-hari · Dev A 42,0 · Dev B 34,0 · Dev AB 2,5  
+> **Total:** 80 item · 78,5 dev-hari · Dev A 45,0 · Dev B 31,0 · Dev AB 2,5  
 > **Kapasitas:** 68 dev-hari efektif (2 dev × 8 minggu × 5 hari − 15% overhead) → **115% terisi**  
+> **Pembagian Dev A/B berubah 22 Sep:** `L-02`, `Q-04`, `ST-01` pindah dari Dev B ke Dev A
+> (3,0 hari). Ketiganya backend murni — penilaian di server (aturan 9), worker Redis, dan
+> pembelian store yang menyentuh `coin_ledger` (aturan 3). Alasannya bukan kualitas
+> pekerjaan siapa pun: pada 22 Sep lajur Dev B **96% terisi** (27,5 dari 28,5 dev-hari
+> tersisa) sementara lajur Dev A **33%**, dan enam item Dev A menunggu di belakang dua
+> item Dev B. Sesudah pemindahan: Dev B 86%, Dev A 44%.
+>
 > **Angka di baris ini DIHITUNG dari tabel papan, bukan ditulis tangan (2026-09-20).** Sebelum
 > ini tertulis `74 item · 73,0 dev-hari · Dev A 37,75 · Dev B 35,25` — tiga dari empat angkanya
 > salah, dan `Dev AB` (2,5 hari) tidak terhitung sama sekali. `assert` di `AGENTS.md` hanya
@@ -75,7 +82,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `done` | `a01261f` | 2026-09-17 | Handler HTTP Better-Auth dipasang di /api/v1/auth/* (cookie httpOnly, sesi 30 hari AU-4, disableOriginCheck dikunci) + 5 layar. AC terbukti test integrasi HTTP nyata: Set-Cookie + AU-6 lewat HTTP, get-session dengan cookie, origin asing 403. 75/75 integrasi + 8/8 unit web. Verifikasi visual browser tersisa ke manusia (DevTools MCP tidak terpasang di sesi). Callback email reset/verifikasi + additionalFields timezone = isu untuk Dev A. |
 | `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
 | `A-05` | API profil: GET /me + PATCH /me | A | W2 | 0,5 | `done` | #99 | 2026-09-21 | Daftar PUTIH field, bukan daftar hitam: `role` dan `coin_balance` kolom di tabel yang sama, dan daftar hitam melupakan kolom yang ditambahkan besok. Diverifikasi merah. Menemukan `users.timezone` vs `streaks.timezone` — dua sumber satu fakta, tidak ada yang menyinkronkan sejak trigger registrasi; keduanya ditulis satu transaksi. `avatar_url` dibatasi http(s): `javascript:` tersimpan apa adanya lalu dipasang klien di leaderboard. |
-| `L-02` | GradingService — penilaian sepenuhnya di server | B | W2 | 1 | `todo` | — | — | — |
+| `L-02` | GradingService — penilaian sepenuhnya di server | A | W2 | 1 | `todo` | — | — | Dipindah dari Dev B ke Dev A (keputusan Dev A, 22 Sep): backend murni, dan lajur Dev B 96% terisi sementara lajur Dev A 33%. Penilaian di server adalah aturan keras 9. Ia juga menyumbat `L-03` → `Q-03` → `RT-01`, 4,5 hari milik Dev A. |
 | `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `todo` | — | — | — |
 | `C-02` | GET /wallet + GET /wallet/ledger (cursor-paginated) | A | W3 | 0,5 | `done` | #50 | 2026-09-17 | Cursor buram berprefiks cl: — cursor dari endpoint lain ditolak, bukan diam-diam dipakai sebagai id. AC 'telusur sampai entri pertama' diuji dengan menelusuri 47 entri penuh dan mencocokkannya dengan isi tabel. |
 | `L-03` | POST /attempts: attempt + streak + koin + outbox … | A | W3 | 2 | `todo` | — | — | — |
@@ -103,7 +110,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `AI-03` | Penyusunan LLM -> JSON terstruktur, prompt berver… | B | W5 | 1,5 | `todo` | — | — | — |
 | `N-02` | UI lonceng notifikasi + banner peringatan streak | B | W5 | 0,5 | `todo` | — | — | — |
 | `P-04` | UI top-up: pilih paket, bayar, status, kembali ke… | B | W5 | 0,5 | `todo` | — | — | — |
-| `Q-04` | Job rollup mingguan + promosi/degradasi 20% | B | W5 | 1 | `todo` | — | — | — |
+| `Q-04` | Job rollup mingguan + promosi/degradasi 20% | A | W5 | 1 | `todo` | — | — | Dipindah dari Dev B ke Dev A (keputusan Dev A, 22 Sep): backend murni, dan lajur Dev B 96% terisi sementara lajur Dev A 33%. Worker + Redis, sekelas `Q-02` yang sudah dikerjakan Dev A. |
 | `RT-02` | Client hook useRealtime + fallback polling otomatis | B | W5 | 0,5 | `todo` | — | — | — |
 | `K-01` | Upload PDF/DOCX + SHA-256 + simpan ke object storage | A | W6 | 1 | `done` | — | 2026-09-20 | Tipe ditentukan dari BYTE berkasnya, bukan nama/Content-Type — keduanya dari klien. Magic `PK` saja tidak cukup untuk DOCX: setiap .zip/.jar/.xlsx punya empat byte pertama yang sama, jadi entri `word/document.xml` ikut dicari. AC "ditolak SEBELUM menyentuh storage" dibuktikan dengan menghitung panggilan `put` (nol), bukan dengan "objeknya tidak ada" — service yang menyimpan lalu menghapus akan lolos cara kedua. Dibalik urutannya jadi merah: 6 berkas ditolak sampai ke bucket. Kunci objek dari HASH, bukan nama berkas (`../../etc/passwd` diuji). |
 | `K-02` | ScanService: dedup, hold/settle/release, reaper 30… | A | W6 | 1,5 | `done` | — | 2026-09-20 | Aturan 2 (`coin_balance` = SUM(ledger)) di-assert di SETIAP titik, bukan sekali di akhir. Dedup hanya dari scan `done` — dibuktikan menggigit: hapus filternya, 3 test merah. Dua temuan dari menulis test: (1) hasil vendor yang tiba SETELAH reaper melepas koin dulu MELEMPAR Error mentah (500) dan membuang hasil yang vendornya sudah dibayar — sekarang tercatat sebagai anomali, status tetap `released` supaya tidak jadi sumber dedup di tarif yang tidak dibayar siapa pun; (2) `MODE=worker` GAGAL BOOT TOTAL sejak lama (isu #86) — `WorkerModule` tidak mengimpor `KyselyModule`, dan nol test pernah membangunnya. Diperbaiki + `worker.module.spec.ts` ditambahkan, yang langsung menangkap `StorageModule` hilang juga. |
@@ -112,7 +119,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `AI-04` | Skor ATS deterministik + daftar temuan konkret | B | W6 | 0,5 | `todo` | — | — | — |
 | `AI-05` | Render PDF satu kolom, ramah parser | B | W6 | 0,5 | `todo` | — | — | — |
 | `PL-01` | Form prompt terstruktur (role/context/task/format… | B | W6 | 1 | `todo` | — | — | — |
-| `ST-01` | store_items + pembelian transaksional (debit ledger) | B | W6 | 1 | `todo` | — | — | — |
+| `ST-01` | store_items + pembelian transaksional (debit ledger) | A | W6 | 1 | `todo` | — | — | Dipindah dari Dev B ke Dev A (keputusan Dev A, 22 Sep): backend murni, dan lajur Dev B 96% terisi sementara lajur Dev A 33%. MENYENTUH `coin_ledger`: aturan keras 3 mewajibkan seluruh perpindahan koin lewat `CoinLedgerService`, dan itu lajur Dev A. |
 | `ST-02` | UI etalase + unduh aset (signed URL 15 menit) | B | W6 | 1 | `todo` | — | — | Memiliki `GET /store/purchases/:id/download` — AC-nya ("URL unduh kedaluwarsa setelah 15 menit") sudah menjanjikannya; path-nya dicatat di sini supaya penyisiran `scripts/audit-rute.mjs` bisa melihatnya (isu #88). |
 | `AI-06` | Tabel ai_jobs + dispatcher di Node + pencatatan b… | A | W7 | 1 | `todo` | — | — | — |
 | `K-03` | Worker Copyleaks + webhook hasil + laporan terunduh | A | W7 | 1,5 | `blocked` | — | 2026-09-20 | BLOCKED: kredensial sandbox Copyleaks belum ada (isu #90) — vendor KETIGA yang menahan item, setelah Midtrans (#57) dan Retool (#77). AC-nya menuntut "tuntas end-to-end di sandbox vendor". YANG SUDAH ADA: antarmuka disesuaikan PRD §12.2 (versi K-02 menyimpang — `documentUrl`, bukan `documentKey`; vendor mengambil dokumennya sendiri lewat signed URL dan tidak boleh punya akses bucket kita), rute `POST /webhooks/copyleaks` + entri ACCESS_MATRIX yang ditemukan hilang oleh penyisiran #88, kabel ke settle/release, dan `rawBody: true` di main.ts. Provider GAGAL TERTUTUP: tanpa rahasia, setiap webhook ditolak — bukan tiruan yang mengembalikan true supaya "bisa dites". |
@@ -415,7 +422,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 ### `L-02` — GradingService — penilaian sepenuhnya di server
 
-**1 hari** · Dev **B** · Minggu **W2** · Butuh: `L-01`
+**1 hari** · Dev **A** · Minggu **W2** · Butuh: `L-01`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Skor yang dikirim client diabaikan sepenuhnya. Mengirim jawaban acak menghasilkan skor 0, bukan error.
 
@@ -505,7 +512,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 ### `Q-04` — Job rollup mingguan + promosi/degradasi 20%
 
-**1 hari** · Dev **B** · Minggu **W5** · Butuh: `Q-02`
+**1 hari** · Dev **A** · Minggu **W5** · Butuh: `Q-02`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Dijalankan dua kali untuk musim yang sama tidak menggeser tier dua langkah. Squad di Gold tidak bisa promosi, di Bronze tidak bisa degradasi.
 
@@ -605,7 +612,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 ### `ST-01` — store_items + pembelian transaksional (debit ledger)
 
-**1 hari** · Dev **B** · Minggu **W6** · Butuh: `C-01`
+**1 hari** · Dev **A** · Minggu **W6** · Butuh: `C-01`
 
 **Status:** lihat papan status di atas · **Selesai berarti:** Pembelian item yang sama dua kali ditolak (unique). Saldo kurang -> ditolak sebelum entri apa pun ditulis.
 
