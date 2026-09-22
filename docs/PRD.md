@@ -418,7 +418,7 @@ Prefiks aturan per epik: `AU` auth · `LE` learning · `SK` streak · `CO` coin 
 > - **`users.password_hash` jadi NULLABLE** dan berhenti dipakai. Sekarang ia `NOT NULL`;
 >   Better-Auth tidak akan mengisinya, jadi insert pengguna baru **gagal** kalau ini terlewat
 > - **`refresh_tokens` dipertahankan tapi tidak dipakai**, dibuang di migrasi terpisah setelah
->   `A-01` stabil (forward-only, expand/contract)
+>   `A-01` stabil (forward-only, expand/contract). **Sudah dibuang — migrasi 007, isu #47.**
 > - Pemetaan field **sudah selesai di `A-01`**: `name → display_name`, `image → avatar_url`,
 >   `createdAt → created_at`, `updatedAt → updated_at`, dan `emailVerified → email_verified`.
 >   Yang terakhir butuh **kolom baru bertipe boolean** (isu #35 opsi 1) — pemetaan field hanya
@@ -1293,7 +1293,7 @@ AC-NO-3
 
 ## 9. Skema database
 
-**31 tabel.** Tidak ada satu pun kolom organisasi/tenant. PostgreSQL 16.
+**32 tabel.** Tidak ada satu pun kolom organisasi/tenant. PostgreSQL 16.
 
 > Angka ini dihitung dari daftar §9.1 di bawah dan **harus tetap cocok dengannya**.
 > Dua tabel berdiri lebih dulu daripada fiturnya, dan itu disengaja:
@@ -1305,7 +1305,7 @@ AC-NO-3
 
 | Domain | Tabel |
 |---|---|
-| Identitas | `users` · `sessions` · `auth_accounts` · `auth_verifications` · ~~`refresh_tokens`~~ · `push_tokens` |
+| Identitas | `users` · `sessions` · `auth_accounts` · `auth_verifications` · `push_tokens` |
 | Pembelajaran | `tracks` · `modules` · `lessons` · `lesson_cards` · `lesson_attempts` |
 | Gamifikasi | `streaks` · `daily_quests` · `squads` · `squad_members` · `league_seasons` · `league_standings` |
 | Ekonomi | `coin_ledger` · `pricing_config` · `orders` · `payments` · `store_items` · `store_purchases` |
@@ -1334,15 +1334,13 @@ CREATE TYPE coin_entry  AS ENUM (
 |---|---|---|
 | `id` | `uuid PK` | `gen_random_uuid()` |
 | `email` | `citext UNIQUE NOT NULL` | case-insensitive |
-| ~~`password_hash`~~ | `text` **NULLABLE sejak 004** | **USANG.** Password ada di `auth_accounts.password` (Argon2id). Dibuang di migrasi contract |
 | `display_name` | `text NOT NULL` | |
 | `avatar_url` | `text` | |
 | `role` | `user_role NOT NULL DEFAULT 'student'` | |
 | `timezone` | `text NOT NULL DEFAULT 'Asia/Jakarta'` | IANA |
 | `coin_balance` | `integer NOT NULL DEFAULT 0` | **CACHE** — kebenaran = `SUM(coin_ledger.amount)` |
 | `status` | `text NOT NULL DEFAULT 'active'` | `active` \| `suspended` \| `deleted` |
-| `email_verified` | `boolean NOT NULL DEFAULT false` | **AU-8: `false` memblokir top-up.** Ditulis Better-Auth |
-| ~~`email_verified_at`~~ | `timestamptz` | **USANG sejak 004** (isu #35 opsi 1). Diganti `email_verified` karena `emailVerified` Better-Auth bertipe boolean dan tipenya tidak bisa dipetakan. Dibuang di migrasi contract |
+| `email_verified` | `boolean NOT NULL DEFAULT false` | **AU-8: `false` memblokir top-up.** Ditulis Better-Auth. **Satu-satunya sumber status verifikasi** sejak 007 membuang `email_verified_at` |
 | `created_at` / `updated_at` | `timestamptz NOT NULL DEFAULT now()` | |
 
 Constraint: `CHECK (coin_balance >= 0)`. Index: `(role) WHERE status='active'`.
@@ -1492,14 +1490,13 @@ Worker mengambil batch dengan `FOR UPDATE SKIP LOCKED` agar banyak instance aman
 | `sessions` | `id, user_id, expires_at, `**`token`**` UNIQUE, ip `**`text`**`, user_agent, created_at, `**`updated_at`**` ` — `token` & `updated_at` ditambahkan 004. `ip` dilebarkan inet → text: Better-Auth meneruskan `X-Forwarded-For` apa adanya, dan rantai proxy bukan `inet` yang sah |
 | `auth_accounts` | `id, account_id, provider_id, user_id, access_token, refresh_token, id_token, access_token_expires_at, refresh_token_expires_at, scope, password, created_at, updated_at` — UNIQUE `(provider_id, account_id)`. **Password Argon2id ada di sini**, provider_id `'credential'` |
 | `auth_verifications` | `id, identifier, value, expires_at, created_at, updated_at` — token verifikasi email & reset password |
-| ~~`refresh_tokens`~~ | **USANG sejak migrasi 004** (isu #18). AU-4 jadi sesi server Better-Auth; tabel ini tidak dipakai kode mana pun dan dibuang di migrasi contract. |
 | `push_tokens` | `id, user_id, endpoint, p256dh, auth` — UNIQUE `(user_id, endpoint)` |
 | `tracks` | `id, slug UNIQUE, title, description, category, is_published, sort_order` |
 | `modules` | `id, track_id, title, sort_order` |
 | `lessons` | `id, module_id, title, est_seconds, base_points (10), base_coins (20), sort_order` |
 | `lesson_cards` | `id, lesson_id, kind, prompt, content jsonb, sort_order` |
 | `daily_quests` | PK `(user_id, quest_date)`, `target_tasks (3), done_tasks, completed_at` |
-| `squads` | `id, name, league_tier, mentor_id, season_id, max_members (12)` |
+| `squads` | `id, name, league_tier, mentor_id, `**`season_id NOT NULL`**`, max_members (12)` — `season_id` wajib sejak 008 (isu #84): kunci ZSET papan dan PK `league_standings` dibentuk darinya, jadi squad tanpa musim tidak bisa punya papan sama sekali |
 | `league_seasons` | `id, code UNIQUE ('2026-W37'), starts_at, ends_at, closed_at` |
 | `league_standings` | PK `(season_id, squad_id)`, `tier, points, rank, outcome, closed_at` |
 | `pricing_config` | `version PK, coin_price_idr, scan_cost_coins, scan_cached_cost_coins, lesson_reward_coins, cv_cost_coins, interview_cost_coins, statement_cost_coins, prompt_run_cost_coins, freeze_cost_coins, packages jsonb, created_by, active_from` |
@@ -1594,6 +1591,7 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 | `SQUAD_MOVE_LIMIT` | 409 | Sudah memakai jatah 1 perpindahan squad musim ini (§5 Q5) |
 | `INVALID_CURSOR` | 400 | Cursor pagination tidak bisa didekode. `details: {cursor}` |
 | `ROLE_CHANGE_FORBIDDEN` | 403 | Perubahan peran ditolak oleh aturannya sendiri, bukan oleh peran pemanggil. `details: {reason}` — `self` (mengubah peran sendiri) atau `last_superadmin` (menyisakan nol superadmin) |
+| `CARD_NOT_IN_LESSON` | 422 | Jawaban menunjuk kartu yang bukan milik lesson itu. `details: {card_ids}` — dibedakan dari jawaban yang salah, yang bukan galat sama sekali |
 
 > **Daftar ini TERTUTUP.** Kode yang tidak ada di sini tidak boleh dikirim API, karena
 > `packages/contracts` diturunkan dari tabel ini dan klien diminta bercabang pada `code`,
@@ -1608,6 +1606,12 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 > ada karena `FORBIDDEN_ROLE` menjawab pertanyaan yang berbeda — "peranmu tidak boleh masuk
 > rute ini" — dan klien yang bercabang padanya wajar menyimpulkan sesinya yang salah, lalu
 > melempar pengguna ke halaman login untuk penolakan yang sama sekali bukan soal sesi.
+>
+> `CARD_NOT_IN_LESSON` menyusul dengan urutan yang sama (`L-02`, PR #106). Ia perlu ada karena
+> §7 E2 menuntut **422 "bukan skor 0 diam-diam"** untuk kasus ini, sementara jawaban yang salah
+> justru **bukan galat sama sekali** — dua kondisi yang terasa mirip dan harus bisa dibedakan
+> klien. Memakai `VALIDATION_ERROR` untuk yang pertama menyamakan "kamu menjawab ngawur"
+> dengan "aplikasimu bicara tentang lesson yang salah".
 >
 > **Enam kode lain masih melanggar daftar ini** dan menunggu keputusan di
 > [isu #92](https://github.com/Jabar-Creative/Strive/issues/92) — keenamnya sudah terlanjur
@@ -2373,6 +2377,9 @@ Ditulis eksplisit agar tidak diam-diam masuk kembali.
 | 17 Sep 2026 | **2.3** | **`A-01` selesai — §7 E1 & §9 diselaraskan dengan skema yang benar-benar dibuat.** Tabelnya `auth_accounts` & `auth_verifications` (jamak + berprefiks, supaya tidak terbaca seperti tabel keuangan di sebelah `orders`/`payments`), bukan `account`/`verification`. `users.email_verified` boolean menggantikan `email_verified_at` (isu #35 opsi 1). `sessions` dapat `token` & `updated_at`, dan `ip` dilebarkan inet → text. `password_hash`, `email_verified_at`, dan `refresh_tokens` ditandai USANG — dibuang di migrasi contract, bukan sekarang. | **Fatih Maulana** |
 | 17 Sep 2026 | 2.3 | **`AC-AU-2` ditulis ulang.** Versi lama masih menuntut deteksi pemakaian ulang refresh token — AU-5 yang dibuang isu #18 — sehingga `A-01` punya kriteria yang mustahil dipenuhi. Diganti dengan pencabutan massal saat ganti password, dan apa yang HILANG ditulis di dalam kriterianya sendiri supaya tidak lenyap dari ingatan. | **Fatih Maulana** |
 | 17 Sep 2026 | 2.3 | **§10.2 menerima `INVALID_CURSOR`** (400). Cursor pagination tidak punya padanan di daftar lama, dan bukan cuma milik `N-01` — `C-02` akan butuh yang sama. Ditambahkan **sebelum** kontraknya dipakai, bukan sesudah; daftar itu tertutup. | **Fatih Maulana** |
+| 22 Sep 2026 | **2.4** | **§9 — sisi CONTRACT dari 004 dikerjakan (isu #47, migrasi 007).** `users.password_hash`, `users.email_verified_at`, dan tabel `refresh_tokens` **dibuang**; ketiganya ditandai USANG sejak 17 Sep dengan janji "dibuang di migrasi contract". Jumlah tabel domain **33 → 32**. Prasyarat lama ("A-01 stabil di staging") diganti bukti yang lebih kuat: seluruh repo disisir dan nol kode produksi membacanya. Yang membuktikan ini bukan kerapian — `A-05` ternyata membaca `email_verified_at`, kolom yang di-backfill sekali lalu tidak pernah ditulis lagi, sehingga `/me` melaporkan email BELUM terverifikasi selamanya dan AU-8 memblokir top-upnya. | **Fatih Maulana** |
+| 22 Sep 2026 | **2.4** | **§9 — `squads.season_id` jadi `NOT NULL` (isu #84, migrasi 008).** Mengunci keputusan yang sudah tersirat di §7 E5 tapi tidak pernah ditegakkan: **squad selalu milik satu musim.** FK `REFERENCES league_seasons(id)` menjamin musim yang DITUNJUK ada; ia tidak pernah menjamin ada musim yang ditunjuk. Squad tanpa musim bukan squad berpapan kosong — kunci ZSET (`lb:sq:<season_id>:<squad_id>`) dan PK `league_standings` tidak bisa dibentuk, dan `GET /squads/me` menjawab `null` yang terbaca "kamu belum punya squad". Nol baris melanggar saat diterapkan. Tidak ada squad lintas-musim atau squad sandbox; kalau itu berubah, ia butuh migrasi baru DAN baris di sini. | **Fatih Maulana** |
+| 22 Sep 2026 | **2.4** | **§10.2 menerima `CARD_NOT_IN_LESSON`** (422). Dibutuhkan `L-02`: §7 E2 menuntut 422 untuk `card_id` di luar lesson-nya, sementara jawaban yang salah bukan galat sama sekali. Ditambahkan lewat PR tersendiri sebelum kodenya di-merge — urutan yang sama dengan `ROLE_CHANGE_FORBIDDEN`. | **Fatih Maulana** |
 | | | _Isi baris baru setiap kali ada keputusan yang mengubah dokumen ini._ | |
 
 ---

@@ -37,7 +37,6 @@ async function seedUsers(count: number) {
       Array.from({ length: count }, (_, i) => ({
         id: uid(i),
         email: `sq${i}@uji.test`,
-        password_hash: 'x',
         display_name: `Uji ${i}`,
       })),
     )

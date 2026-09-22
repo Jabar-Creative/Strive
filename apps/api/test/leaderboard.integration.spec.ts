@@ -73,7 +73,6 @@ beforeEach(async () => {
       Array.from({ length: 4 }, (_, i) => ({
         id: uid(i),
         email: `lb${i}@uji.test`,
-        password_hash: 'x',
         display_name: `U${i}`,
       })),
     )
@@ -155,23 +154,69 @@ describe('LeaderboardService (Redis + Postgres nyata)', () => {
     expect(await redis.exists(squadKey(SEASON, SQUAD))).toBe(1);
   });
 
-  it('bump menambah poin, dan membangun papan dulu kalau Redis kosong', async () => {
+  /**
+   * Menaikkan `weekly_points` di Postgres PERSIS seperti `L-03`: di transaksi
+   * yang sama dengan event outbox-nya, SEBELUM worker menyentuh Redis.
+   *
+   * Test `bump()` versi `Q-02` tidak melakukan ini — ia memanggil `bump(+15)`
+   * atas Postgres yang masih 30 — jadi ia menguji dunia yang urutannya tidak
+   * pernah ada, dan lulus untuk kode yang menghitung poin dua kali.
+   */
+  async function seperti_L03(n: number, tambah: number) {
+    await db
+      .updateTable('squad_members')
+      .set({ weekly_points: sql`weekly_points + ${tambah}` })
+      .where('user_id', '=', uid(n))
+      .where('left_at', 'is', null)
+      .execute();
+  }
+
+  it('syncMember setelah Redis KOSONG: poin TIDAK terhitung dua kali', async () => {
     if (!reachable) return;
     await redis.flushall();
+    await seperti_L03(0, 15); // Postgres sekarang 45 — sudah memuat event ini
 
-    // Kunci yang lahir dari `bump` saja akan TIDAK LENGKAP — ia hanya memuat
-    // pengguna yang kebetulan bergerak sejak Redis kosong. Anggota lain harus
-    // tetap ada.
-    await lb.bump(SEASON, SQUAD, uid(0), 15);
+    await lb.syncMember(SEASON, SQUAD, uid(0));
 
     const board = await lb.squadBoard(SEASON, SQUAD);
-    expect(board, 'anggota lain hilang — bump membuat papan setengah jadi').toHaveLength(4);
+    // `bump(+15)` di sini menghasilkan 60: rebuild membaca 45, lalu ZINCRBY
+    // menambah 15 lagi.
+    expect(board.find((r) => r.user_id === uid(0))?.points, 'poin dihitung dua kali').toBe(45);
+    expect(board, 'anggota lain hilang — papan setengah jadi').toHaveLength(4);
+  });
+
+  it('syncMember IDEMPOTEN — PRD §8.3: at-least-once, konsumen wajib idempoten', async () => {
+    if (!reachable) return;
+    await lb.squadBoard(SEASON, SQUAD); // kunci sudah ada
+    await seperti_L03(0, 15);
+
+    // Worker yang mati setelah menulis Redis tapi sebelum menandai event
+    // selesai akan memprosesnya LAGI. Hasilnya tidak boleh berubah.
+    for (let i = 0; i < 3; i++) await lb.syncMember(SEASON, SQUAD, uid(0));
+
+    const board = await lb.squadBoard(SEASON, SQUAD);
     expect(board.find((r) => r.user_id === uid(0))?.points).toBe(45);
+  });
+
+  it('anggota yang keluar SETELAH event ditulis dihapus dari papan', async () => {
+    if (!reachable) return;
+    await lb.squadBoard(SEASON, SQUAD);
+    await db
+      .updateTable('squad_members')
+      .set({ left_at: sql`now()` })
+      .where('user_id', '=', uid(2))
+      .execute();
+
+    await lb.syncMember(SEASON, SQUAD, uid(2));
+
+    const board = await lb.squadBoard(SEASON, SQUAD);
+    expect(board.find((r) => r.user_id === uid(2))).toBeUndefined();
   });
 
   it('poin selalu integer di respons, meski skor Redis bertipe double', async () => {
     if (!reachable) return;
-    await lb.bump(SEASON, SQUAD, uid(3), 7);
+    await seperti_L03(3, 7);
+    await lb.syncMember(SEASON, SQUAD, uid(3));
     const board = await lb.squadBoard(SEASON, SQUAD);
     for (const r of board) {
       expect(Number.isInteger(r.points), `poin ${r.points} bukan integer`).toBe(true);

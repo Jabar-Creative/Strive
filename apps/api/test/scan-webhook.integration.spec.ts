@@ -125,14 +125,12 @@ beforeEach(async () => {
       {
         id: ADMIN,
         email: 'k3a@uji.test',
-        password_hash: 'x',
         display_name: 'A',
         role: 'superadmin',
       },
       {
         id: USER,
         email: 'k3u@uji.test',
-        password_hash: 'x',
         display_name: 'U',
         coin_balance: 10000,
       },

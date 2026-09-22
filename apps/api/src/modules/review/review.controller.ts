@@ -53,8 +53,8 @@ export class ReviewController {
    * rute tetap, bukan nilai `:id`.
    *
    * Respons tidak memuat identitas reviewer — `ReceivedReview` tidak punya
-   * field-nya. Lihat catatan kelas `ReviewHistoryService`, termasuk
-   * pertentangan PRD vs papan soal arti "mine" (isu #100).
+   * field-nya. Arti "mine" diputuskan di isu #100: yang saya TERIMA, mengikuti
+   * PRD §10.3.
    */
   @Get('mine')
   async mine(

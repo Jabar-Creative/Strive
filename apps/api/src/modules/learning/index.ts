@@ -5,3 +5,6 @@ export * from './content.serializer';
 export * from './content.types';
 export * from './attempt-history.service';
 export * from './attempts.controller';
+export * from './grading.service';
+export * from './attempts.service';
+export * from './submit-attempt.controller';

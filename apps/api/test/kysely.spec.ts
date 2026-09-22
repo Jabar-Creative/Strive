@@ -19,13 +19,12 @@ describe('tipe Kysely hasil codegen', () => {
     expect(shape).toBeNull();
   });
 
-  it('memuat 31 tabel domain, tanpa ledger migrasi', () => {
+  it('memuat tabel domain, tanpa ledger migrasi', () => {
     // strive_meta.schema_migrations adalah perkakas; kalau ia muncul di sini,
     // artinya --exclude-pattern di scripts/db-types.mjs jebol.
     const keys: Array<keyof DB> = [
       'users',
       'sessions',
-      'refresh_tokens',
       'push_tokens',
       'tracks',
       'modules',
@@ -55,7 +54,10 @@ describe('tipe Kysely hasil codegen', () => {
       'notifications',
       'audit_log',
     ];
-    expect(keys).toHaveLength(31);
-    expect(new Set(keys).size).toBe(31);
+    // 30 = 31 tabel migrasi 001 − `refresh_tokens` yang dibuang 007 (isu #47).
+    // BUKAN 32: dua tabel Better-Auth (`auth_accounts`, `auth_verifications`)
+    // lahir di 004 dan tidak ada di daftar ini, yang memang daftar 001.
+    expect(keys).toHaveLength(30);
+    expect(new Set(keys).size).toBe(30);
   });
 });

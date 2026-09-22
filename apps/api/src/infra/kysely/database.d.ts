@@ -365,17 +365,6 @@ export interface PushTokens {
   user_id: string;
 }
 
-export interface RefreshTokens {
-  created_at: Generated<Timestamp>;
-  expires_at: Timestamp;
-  id: Generated<string>;
-  replaced_by: string | null;
-  revoked_at: Timestamp | null;
-  token_hash: string;
-  user_agent: string | null;
-  user_id: string;
-}
-
 export interface ReviewerWeights {
   avg_deviation: Numeric | null;
   samples: Generated<number>;
@@ -414,7 +403,10 @@ export interface Squads {
   max_members: Generated<number>;
   mentor_id: string | null;
   name: string;
-  season_id: string | null;
+  /**
+   * WAJIB sejak 008 (isu #84). Kunci ZSET papan (lb:sq:<season_id>:<squad_id>) dan PK league_standings dibentuk darinya — squad tanpa musim tidak bisa punya papan, bukan punya papan kosong.
+   */
+  season_id: string;
 }
 
 export interface StoreItems {
@@ -467,15 +459,10 @@ export interface Users {
   display_name: string;
   email: string;
   /**
-   * AU-8: false memblokir top-up. Ditulis Better-Auth. Menggantikan email_verified_at (isu #35 opsi 1) yang dibuang di migrasi contract.
+   * AU-8: false memblokir top-up. Ditulis Better-Auth. SATU-SATUNYA sumber status verifikasi sejak 007 membuang email_verified_at (isu #35 opsi 1, #47).
    */
   email_verified: Generated<boolean>;
-  email_verified_at: Timestamp | null;
   id: Generated<string>;
-  /**
-   * USANG sejak 004. Password ada di auth_accounts.password. Dibuang di migrasi contract.
-   */
-  password_hash: string | null;
   role: Generated<UserRole>;
   status: Generated<string>;
   timezone: Generated<string>;
@@ -508,7 +495,6 @@ export interface DB {
   pricing_config: PricingConfig;
   prompt_runs: PromptRuns;
   push_tokens: PushTokens;
-  refresh_tokens: RefreshTokens;
   reviewer_weights: ReviewerWeights;
   sessions: Sessions;
   squad_members: SquadMembers;
