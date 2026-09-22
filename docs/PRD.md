@@ -1591,6 +1591,7 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 | `SQUAD_MOVE_LIMIT` | 409 | Sudah memakai jatah 1 perpindahan squad musim ini (§5 Q5) |
 | `INVALID_CURSOR` | 400 | Cursor pagination tidak bisa didekode. `details: {cursor}` |
 | `ROLE_CHANGE_FORBIDDEN` | 403 | Perubahan peran ditolak oleh aturannya sendiri, bukan oleh peran pemanggil. `details: {reason}` — `self` (mengubah peran sendiri) atau `last_superadmin` (menyisakan nol superadmin) |
+| `CARD_NOT_IN_LESSON` | 422 | Jawaban menunjuk kartu yang bukan milik lesson itu. `details: {card_ids}` — dibedakan dari jawaban yang salah, yang bukan galat sama sekali |
 
 > **Daftar ini TERTUTUP.** Kode yang tidak ada di sini tidak boleh dikirim API, karena
 > `packages/contracts` diturunkan dari tabel ini dan klien diminta bercabang pada `code`,
@@ -1605,6 +1606,12 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 > ada karena `FORBIDDEN_ROLE` menjawab pertanyaan yang berbeda — "peranmu tidak boleh masuk
 > rute ini" — dan klien yang bercabang padanya wajar menyimpulkan sesinya yang salah, lalu
 > melempar pengguna ke halaman login untuk penolakan yang sama sekali bukan soal sesi.
+>
+> `CARD_NOT_IN_LESSON` menyusul dengan urutan yang sama (`L-02`, PR #106). Ia perlu ada karena
+> §7 E2 menuntut **422 "bukan skor 0 diam-diam"** untuk kasus ini, sementara jawaban yang salah
+> justru **bukan galat sama sekali** — dua kondisi yang terasa mirip dan harus bisa dibedakan
+> klien. Memakai `VALIDATION_ERROR` untuk yang pertama menyamakan "kamu menjawab ngawur"
+> dengan "aplikasimu bicara tentang lesson yang salah".
 >
 > **Enam kode lain masih melanggar daftar ini** dan menunggu keputusan di
 > [isu #92](https://github.com/Jabar-Creative/Strive/issues/92) — keenamnya sudah terlanjur
@@ -2372,6 +2379,7 @@ Ditulis eksplisit agar tidak diam-diam masuk kembali.
 | 17 Sep 2026 | 2.3 | **§10.2 menerima `INVALID_CURSOR`** (400). Cursor pagination tidak punya padanan di daftar lama, dan bukan cuma milik `N-01` — `C-02` akan butuh yang sama. Ditambahkan **sebelum** kontraknya dipakai, bukan sesudah; daftar itu tertutup. | **Fatih Maulana** |
 | 22 Sep 2026 | **2.4** | **§9 — sisi CONTRACT dari 004 dikerjakan (isu #47, migrasi 007).** `users.password_hash`, `users.email_verified_at`, dan tabel `refresh_tokens` **dibuang**; ketiganya ditandai USANG sejak 17 Sep dengan janji "dibuang di migrasi contract". Jumlah tabel domain **33 → 32**. Prasyarat lama ("A-01 stabil di staging") diganti bukti yang lebih kuat: seluruh repo disisir dan nol kode produksi membacanya. Yang membuktikan ini bukan kerapian — `A-05` ternyata membaca `email_verified_at`, kolom yang di-backfill sekali lalu tidak pernah ditulis lagi, sehingga `/me` melaporkan email BELUM terverifikasi selamanya dan AU-8 memblokir top-upnya. | **Fatih Maulana** |
 | 22 Sep 2026 | **2.4** | **§9 — `squads.season_id` jadi `NOT NULL` (isu #84, migrasi 008).** Mengunci keputusan yang sudah tersirat di §7 E5 tapi tidak pernah ditegakkan: **squad selalu milik satu musim.** FK `REFERENCES league_seasons(id)` menjamin musim yang DITUNJUK ada; ia tidak pernah menjamin ada musim yang ditunjuk. Squad tanpa musim bukan squad berpapan kosong — kunci ZSET (`lb:sq:<season_id>:<squad_id>`) dan PK `league_standings` tidak bisa dibentuk, dan `GET /squads/me` menjawab `null` yang terbaca "kamu belum punya squad". Nol baris melanggar saat diterapkan. Tidak ada squad lintas-musim atau squad sandbox; kalau itu berubah, ia butuh migrasi baru DAN baris di sini. | **Fatih Maulana** |
+| 22 Sep 2026 | **2.4** | **§10.2 menerima `CARD_NOT_IN_LESSON`** (422). Dibutuhkan `L-02`: §7 E2 menuntut 422 untuk `card_id` di luar lesson-nya, sementara jawaban yang salah bukan galat sama sekali. Ditambahkan lewat PR tersendiri sebelum kodenya di-merge — urutan yang sama dengan `ROLE_CHANGE_FORBIDDEN`. | **Fatih Maulana** |
 | | | _Isi baris baru setiap kali ada keputusan yang mengubah dokumen ini._ | |
 
 ---
