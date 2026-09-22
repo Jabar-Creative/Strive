@@ -124,7 +124,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `AI-04` | Skor ATS deterministik + daftar temuan konkret | B | W6 | 0,5 | `todo` | — | — | — |
 | `AI-05` | Render PDF satu kolom, ramah parser | B | W6 | 0,5 | `todo` | — | — | — |
 | `PL-01` | Form prompt terstruktur (role/context/task/format… | B | W6 | 1 | `todo` | — | — | — |
-| `ST-01` | store_items + pembelian transaksional (debit ledger) | A | W6 | 1 | `todo` | — | — | Dipindah dari Dev B ke Dev A (keputusan Dev A, 22 Sep): backend murni, dan lajur Dev B 96% terisi sementara lajur Dev A 33%. MENYENTUH `coin_ledger`: aturan keras 3 mewajibkan seluruh perpindahan koin lewat `CoinLedgerService`, dan itu lajur Dev A. |
+| `ST-01` | store_items + pembelian transaksional (debit ledger) | A | W6 | 1 | `done` | #113 | 2026-09-22 | Dipindah dari Dev B (22 Sep). Entri ledger menunjuk BARIS PEMBELIAN, bukan item: `coin_ledger_ref_uniq` tidak memuat `user_id`, dan `findExisting()` juga tidak — dengan ref ke item, pembeli KEDUA mendapat itemnya GRATIS (lapis idempotensi menemukan entri pembeli pertama lalu mengembalikannya tanpa mendebit siapa pun). Diverifikasi merah: saldo pembeli kedua tetap 1000. Baris pembelian disisipkan SEBELUM debit karena ref butuh idnya; SR-4 dijamin ROLLBACK, dan ada assert nol baris tersisa. `asset_key` tidak pernah keluar dari service (SR-5). |
 | `ST-02` | UI etalase + unduh aset (signed URL 15 menit) | B | W6 | 1 | `todo` | — | — | Memiliki `GET /store/purchases/:id/download` — AC-nya ("URL unduh kedaluwarsa setelah 15 menit") sudah menjanjikannya; path-nya dicatat di sini supaya penyisiran `scripts/audit-rute.mjs` bisa melihatnya (isu #88). |
 | `AI-06` | Tabel ai_jobs + dispatcher di Node + pencatatan b… | A | W7 | 1 | `todo` | — | — | — |
 | `K-03` | Worker Copyleaks + webhook hasil + laporan terunduh | A | W7 | 1,5 | `blocked` | — | 2026-09-20 | BLOCKED: kredensial sandbox Copyleaks belum ada (isu #90) — vendor KETIGA yang menahan item, setelah Midtrans (#57) dan Retool (#77). AC-nya menuntut "tuntas end-to-end di sandbox vendor". YANG SUDAH ADA: antarmuka disesuaikan PRD §12.2 (versi K-02 menyimpang — `documentUrl`, bukan `documentKey`; vendor mengambil dokumennya sendiri lewat signed URL dan tidak boleh punya akses bucket kita), rute `POST /webhooks/copyleaks` + entri ACCESS_MATRIX yang ditemukan hilang oleh penyisiran #88, kabel ke settle/release, dan `rawBody: true` di main.ts. Provider GAGAL TERTUTUP: tanpa rahasia, setiap webhook ditolak — bukan tiruan yang mengembalikan true supaya "bisa dites". |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 40 | 36,0 |
+| `done` | 41 | 37,0 |
 | `review` | 1 | 1,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 35 | 37,0 |
+| `todo` | 34 | 36,0 |
 
 ---
 ## Ringkasan per epik
@@ -186,7 +186,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E15` | Realtime | 2,0 | 2 | 0/2 · **0%** | — |
 | `E16` | Notifikasi | 1,5 | 2 | 1/2 · **67%** | — |
 | `E6` | Payment | 3,5 | 4 | 1/4 · **14%** | 1 |
-| `E14` | Strive Store | 2,0 | 2 | 0/2 · **0%** | — |
+| `E14` | Strive Store | 2,0 | 2 | 1/2 · **50%** | — |
 | `E7` | Klinik Plagiarisme | 5,0 | 4 | 2/4 · **50%** | 1 |
 | `E11` | Peer Review & Mentor | 4,0 | 4 | 2/4 · **50%** | — |
 | `E8` | ATS CV Builder | 6,5 | 7 | 0/7 · **0%** | — |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 3/5 · **60%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 1/5 · **17%** | — |
-| | **Total** | **78,5** | **80** | **40/80 · 46%** | **4** |
+| | **Total** | **78,5** | **80** | **41/80 · 47%** | **4** |
 
 ---
 
