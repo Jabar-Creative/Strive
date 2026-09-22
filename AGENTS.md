@@ -143,6 +143,23 @@ Hanya setelah langkah 7 lengkap:
 
 Perbarui juga tabel **Ringkasan progres** di bawah papan.
 
+#### Sebelum mengambil item: **periksa PR terbuka**
+
+```bash
+gh pr list --state open --json number,title,author,headRefName
+```
+
+Papan menunjukkan apa yang **sudah selesai**, bukan apa yang sedang dikerjakan orang lain
+di branch-nya. Status `todo` di papan tidak berarti item itu bebas.
+
+Sudah terjadi, 22 Sep: `L-02` dipindah dari lajur Dev B ke Dev A dengan alasan beban kerja
+yang benar dan angka yang benar — lalu dikerjakan sampai selesai, **padahal Kemal sudah
+membuka PR #106 untuk item yang sama tiga jam sebelumnya.** Satu hari kerja terbuang, dan
+yang menemukannya bukan papan maupun CI, tapi `git push` yang ditolak.
+
+Pemeriksaannya satu perintah. **Wajib dijalankan sebelum memindahkan lajur item mana pun**,
+karena memindahkan lajur adalah keputusan yang mengandaikan item itu belum disentuh.
+
 #### Ringkasan progres **dihitung**, tidak ditulis tangan
 
 `docs/BACKLOG.md` adalah satu file, jadi dua item yang dikerjakan di branch berbeda

@@ -1,14 +1,19 @@
 # BACKLOG — Strive Academy
 
 > **Versi:** 2.0 · semua fitur · kedalaman v0.1  
-> **Total:** 80 item · 78,5 dev-hari · Dev A 45,0 · Dev B 31,0 · Dev AB 2,5  
+> **Total:** 80 item · 78,5 dev-hari · Dev A 44,0 · Dev B 32,0 · Dev AB 2,5  
 > **Kapasitas:** 68 dev-hari efektif (2 dev × 8 minggu × 5 hari − 15% overhead) → **115% terisi**  
-> **Pembagian Dev A/B berubah 22 Sep:** `L-02`, `Q-04`, `ST-01` pindah dari Dev B ke Dev A
-> (3,0 hari). Ketiganya backend murni — penilaian di server (aturan 9), worker Redis, dan
-> pembelian store yang menyentuh `coin_ledger` (aturan 3). Alasannya bukan kualitas
-> pekerjaan siapa pun: pada 22 Sep lajur Dev B **96% terisi** (27,5 dari 28,5 dev-hari
-> tersisa) sementara lajur Dev A **33%**, dan enam item Dev A menunggu di belakang dua
-> item Dev B. Sesudah pemindahan: Dev B 86%, Dev A 44%.
+> **Pembagian Dev A/B berubah 22 Sep:** `Q-04` dan `ST-01` pindah dari Dev B ke Dev A
+> (2,0 hari). Keduanya backend murni — worker Redis, dan pembelian store yang menyentuh
+> `coin_ledger` (aturan 3). Alasannya bukan kualitas pekerjaan siapa pun: pada 22 Sep lajur
+> Dev B **96% terisi** (27,5 dari 28,5 dev-hari tersisa) sementara lajur Dev A **33%**, dan
+> enam item Dev A menunggu di belakang dua item Dev B.
+>
+> **`L-02` sempat ikut dipindah, lalu DIKEMBALIKAN.** Kemal sudah mengerjakannya dan
+> membuka PR #106 sebelum keputusan itu diambil; Dev A memindahkan lajurnya **tanpa
+> memeriksa PR terbuka lebih dulu**, lalu mengerjakan ulang hal yang sama. Pekerjaan
+> duplikatnya dibuang. Pelajarannya masuk `AGENTS.md`: **periksa PR terbuka sebelum
+> mengambil item mana pun**, terutama sebelum memindahkan lajur.
 >
 > **Angka di baris ini DIHITUNG dari tabel papan, bukan ditulis tangan (2026-09-20).** Sebelum
 > ini tertulis `74 item · 73,0 dev-hari · Dev A 37,75 · Dev B 35,25` — tiga dari empat angkanya
@@ -82,7 +87,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `done` | `a01261f` | 2026-09-17 | Handler HTTP Better-Auth dipasang di /api/v1/auth/* (cookie httpOnly, sesi 30 hari AU-4, disableOriginCheck dikunci) + 5 layar. AC terbukti test integrasi HTTP nyata: Set-Cookie + AU-6 lewat HTTP, get-session dengan cookie, origin asing 403. 75/75 integrasi + 8/8 unit web. Verifikasi visual browser tersisa ke manusia (DevTools MCP tidak terpasang di sesi). Callback email reset/verifikasi + additionalFields timezone = isu untuk Dev A. |
 | `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
 | `A-05` | API profil: GET /me + PATCH /me | A | W2 | 0,5 | `done` | #99 | 2026-09-21 | Daftar PUTIH field, bukan daftar hitam: `role` dan `coin_balance` kolom di tabel yang sama, dan daftar hitam melupakan kolom yang ditambahkan besok. Diverifikasi merah. Menemukan `users.timezone` vs `streaks.timezone` — dua sumber satu fakta, tidak ada yang menyinkronkan sejak trigger registrasi; keduanya ditulis satu transaksi. `avatar_url` dibatasi http(s): `javascript:` tersimpan apa adanya lalu dipasang klien di leaderboard. |
-| `L-02` | GradingService — penilaian sepenuhnya di server | A | W2 | 1 | `todo` | — | — | Dipindah dari Dev B ke Dev A (keputusan Dev A, 22 Sep): backend murni, dan lajur Dev B 96% terisi sementara lajur Dev A 33%. Penilaian di server adalah aturan keras 9. Ia juga menyumbat `L-03` → `Q-03` → `RT-01`, 4,5 hari milik Dev A. |
+| `L-02` | GradingService — penilaian sepenuhnya di server | B | W2 | 1 | `review` | #106 | — | DIKEMBALIKAN ke Dev B: pemindahan lajurnya (#108) keliru — Kemal sudah membukanya di #106 sebelum keputusan itu diambil, dan Dev A tidak memeriksa PR terbuka lebih dulu. Pekerjaan Dev A yang menduplikasinya dibuang. Menunggu tiga perbaikan review: pembungkus `error` (§10.1), `CARD_NOT_IN_LESSON` di luar §10.2, dan rebase ke `main` setelah migrasi 007. |
 | `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `todo` | — | — | — |
 | `C-02` | GET /wallet + GET /wallet/ledger (cursor-paginated) | A | W3 | 0,5 | `done` | #50 | 2026-09-17 | Cursor buram berprefiks cl: — cursor dari endpoint lain ditolak, bukan diam-diam dipakai sebagai id. AC 'telusur sampai entri pertama' diuji dengan menelusuri 47 entri penuh dan mencocokkannya dengan isi tabel. |
 | `L-03` | POST /attempts: attempt + streak + koin + outbox … | A | W3 | 2 | `todo` | — | — | — |
@@ -156,10 +161,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 80 | 78,5 |
 | `done` | 39 | 35,0 |
-| `review` | 0 | 0,0 |
+| `review` | 1 | 1,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 37 | 39,0 |
+| `todo` | 36 | 38,0 |
 
 ---
 ## Ringkasan per epik
