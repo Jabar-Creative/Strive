@@ -64,7 +64,6 @@ beforeEach(async () => {
       {
         id: AKU,
         email: 'a05-aku@uji.test',
-        password_hash: 'x',
         display_name: 'Aku',
         timezone: 'Asia/Jakarta',
         coin_balance: 500,
@@ -72,7 +71,6 @@ beforeEach(async () => {
       {
         id: ORANG_LAIN,
         email: 'a05-lain@uji.test',
-        password_hash: 'x',
         display_name: 'Orang Lain',
         role: 'mentor',
       },
@@ -106,19 +104,22 @@ describe('A-05 — GET /me + PATCH /me (database nyata)', () => {
     expect(me.created_at).toBeInstanceOf(Date);
   });
 
-  it('tanggal verifikasi TIDAK dikirim — hanya sudah/belum', async () => {
+  it('`email_verified` dibaca dari kolom yang BENAR-BENAR ditulis Better-Auth', async () => {
     if (!reachable) return;
-    await db
-      .updateTable('users')
-      .set({ email_verified_at: new Date() })
-      .where('id', '=', AKU)
-      .execute();
+    // Versi pertama `A-05` membaca `email_verified_at`, yang di-backfill SEKALI
+    // di migrasi 004 lalu tidak pernah ditulis siapa pun. Better-Auth menulis
+    // `email_verified`. Akibatnya pengguna yang baru memverifikasi emailnya
+    // tetap terbaca BELUM terverifikasi — dan AU-8 memblokir top-upnya.
+    //
+    // Yang membuat test ini menggigit: ia menulis lewat kolom yang dipakai
+    // Better-Auth, bukan kolom yang kebetulan dibaca service.
+    expect((await profil.me(AKU)).email_verified).toBe(false);
 
-    const me = await profil.me(AKU);
-    expect(me.email_verified).toBe(true);
-    expect(me).not.toHaveProperty('email_verified_at');
-    // Hash password tidak pernah ikut, bahkan ke pemiliknya sendiri.
-    expect(me).not.toHaveProperty('password_hash');
+    await db.updateTable('users').set({ email_verified: true }).where('id', '=', AKU).execute();
+
+    expect((await profil.me(AKU)).email_verified).toBe(true);
+    // Tanggalnya tidak pernah dikirim — klien cuma butuh sudah/belum.
+    expect(await profil.me(AKU)).not.toHaveProperty('email_verified_at');
   });
 
   // ── Daftar putih: ini bagian yang paling mahal kalau salah ─────────────
@@ -133,7 +134,6 @@ describe('A-05 — GET /me + PATCH /me (database nyata)', () => {
       coin_balance: 999999,
       email: 'pembajak@jahat.test',
       status: 'deleted',
-      password_hash: 'ditimpa',
       id: ORANG_LAIN,
     } as never);
 

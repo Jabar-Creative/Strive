@@ -79,11 +79,17 @@ describe('gradeAttempt — penilaian di server (L-02)', () => {
 
   it('cardId yang bukan milik lesson → 422 CARD_NOT_IN_LESSON, bukan skor 0 diam-diam', () => {
     const asing = '99999999-9999-4999-8999-999999999999';
+    // Bentuknya `{ error: { code, … } }` — PRD §10.1. Yang diuji BUKAN cuma
+    // kodenya tapi letaknya: klien bercabang pada `body.error.code`, dan kode
+    // yang benar di tempat yang salah tetap tidak terbaca siapa pun.
     expect(() => gradeAttempt(DUA_KARTU, [jawab(asing, 'a')])).toThrowError(
       expect.objectContaining({
         getStatus: expect.any(Function),
         response: expect.objectContaining({
-          code: 'CARD_NOT_IN_LESSON',
+          error: expect.objectContaining({
+            code: 'CARD_NOT_IN_LESSON',
+            details: expect.objectContaining({ card_ids: [asing] }),
+          }),
         }),
       }),
     );

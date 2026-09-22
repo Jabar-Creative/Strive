@@ -47,10 +47,7 @@ async function localDaysAgo(tz: string, n: number): Promise<string> {
 }
 
 async function seed(id: string, tz: string, email: string) {
-  await db
-    .insertInto('users')
-    .values({ id, email, password_hash: 'x', display_name: 'Uji', timezone: tz })
-    .execute();
+  await db.insertInto('users').values({ id, email, display_name: 'Uji', timezone: tz }).execute();
   // AU-6 TIDAK LAGI DISIMULASIKAN di sini: sejak migrasi 005, trigger
   // `users_registration_rows` membuat baris streaks + reviewer_weights dalam
   // transaksi yang sama dengan INSERT users — siapa pun yang meng-INSERT.

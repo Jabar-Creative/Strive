@@ -138,7 +138,9 @@ describe('GradingService.grade — jalur DB (integrasi)', () => {
         ),
     ).rejects.toThrowError(
       expect.objectContaining({
-        response: expect.objectContaining({ code: 'CARD_NOT_IN_LESSON' }),
+        response: expect.objectContaining({
+          error: expect.objectContaining({ code: 'CARD_NOT_IN_LESSON' }),
+        }),
       }),
     );
   });

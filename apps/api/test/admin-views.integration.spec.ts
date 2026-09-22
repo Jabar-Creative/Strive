@@ -48,11 +48,10 @@ beforeEach(async () => {
       {
         id: ADMIN,
         email: 'sa0@uji.test',
-        password_hash: 'x',
         display_name: 'Admin',
         role: 'superadmin',
       },
-      { id: USER, email: 'sa1@uji.test', password_hash: 'x', display_name: 'Beli' },
+      { id: USER, email: 'sa1@uji.test', display_name: 'Beli' },
     ])
     .execute();
   await db
@@ -241,7 +240,7 @@ describe('View admin + role read-only (database nyata)', () => {
   it('role read-only TIDAK BISA membaca tabel mentah — hanya view', async () => {
     if (!reachable) return;
     // Retool yang bisa membaca `users` langsung akan menampilkan
-    // password_hash di layar seseorang.
+    // kolom sensitif `users` di layar seseorang.
     await expect(
       sebagaiReadonly((trx) => sql`SELECT * FROM users LIMIT 1`.execute(trx)),
     ).rejects.toBeTruthy();
@@ -250,13 +249,14 @@ describe('View admin + role read-only (database nyata)', () => {
     ).rejects.toBeTruthy();
   });
 
-  it('jumlah tabel domain tetap 33 — view bukan tabel', async () => {
+  it('jumlah tabel domain tetap 32 — view bukan tabel', async () => {
     if (!reachable) return;
     const r = await sql<{ n: string }>`
       SELECT count(*)::text AS n FROM information_schema.tables
       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
         AND table_name NOT LIKE 'lesson_attempts\\_%'
     `.execute(db);
-    expect(Number(r.rows[0]!.n), 'view tidak boleh menambah hitungan tabel di CI').toBe(33);
+    // 33 → 32 sejak migrasi 007 membuang `refresh_tokens` (isu #47).
+    expect(Number(r.rows[0]!.n), 'view tidak boleh menambah hitungan tabel di CI').toBe(32);
   });
 });

@@ -64,7 +64,6 @@ beforeEach(async () => {
       [PENULIS, SESQUAD, LAIN1, LAIN2].map((id, i) => ({
         id,
         email: `pr${i}@uji.test`,
-        password_hash: 'x',
         display_name: `Orang ${i}`,
       })),
     )
@@ -204,7 +203,7 @@ describe('ReviewService (database nyata)', () => {
     const LAIN3 = '00000000-0000-4000-8000-0000000ba005';
     await db
       .insertInto('users')
-      .values({ id: LAIN3, email: 'pr9@uji.test', password_hash: 'x', display_name: 'O9' })
+      .values({ id: LAIN3, email: 'pr9@uji.test', display_name: 'O9' })
       .execute();
     await expect(
       reviews.submit({ reviewerId: LAIN3, attemptId, rubricScores: nilai }),
@@ -219,7 +218,7 @@ describe('ReviewService (database nyata)', () => {
     const LAIN3 = '00000000-0000-4000-8000-0000000ba006';
     await db
       .insertInto('users')
-      .values({ id: LAIN3, email: 'pr8@uji.test', password_hash: 'x', display_name: 'O8' })
+      .values({ id: LAIN3, email: 'pr8@uji.test', display_name: 'O8' })
       .execute();
     expect((await reviews.queueFor(LAIN3)).map((x) => x.attempt_id)).not.toContain(attemptId);
   });

@@ -149,7 +149,6 @@ describe('pnpm seed — data dev (F-13, database nyata)', () => {
       .insertInto('users')
       .values({
         email: 'nyata@uji.test',
-        password_hash: 'x',
         display_name: 'Pengguna Nyata',
       })
       .returning('id')
@@ -237,14 +236,17 @@ describe('pnpm seed — data dev (F-13, database nyata)', () => {
     jalankanSeed();
     const anchor = await db
       .selectFrom('users')
-      .select(['password_hash', 'role'])
+      .select('role')
       .where('email', '=', 'seed-anchor@strive.local')
       .executeTakeFirstOrThrow();
 
     expect(anchor.role).toBe('superadmin');
     // Menyemai kredensial yang bisa dipakai sama dengan menerbitkan kunci masuk
     // ke setiap lingkungan yang pernah menjalankan `pnpm seed`.
-    expect(anchor.password_hash, 'pengguna seed punya password').toBeNull();
+    //
+    // Sejak migrasi 007 `users.password_hash` tidak ada lagi, jadi satu-satunya
+    // tempat password bisa berada adalah `auth_accounts` — dan nol baris di
+    // sana adalah bukti yang lebih kuat daripada satu kolom yang NULL.
     const akun = await sql<{ n: string }>`
       SELECT count(*)::text AS n FROM auth_accounts a
       JOIN users u ON u.id = a.user_id WHERE u.email = 'seed-anchor@strive.local'

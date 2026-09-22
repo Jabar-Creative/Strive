@@ -6,12 +6,15 @@ import type { DB } from '../../infra/kysely';
 /**
  * Kode error untuk jawaban yang menunjuk kartu di luar lesson-nya.
  *
- * PRD §7 E2 kasus tepi meminta 422 "bukan skor 0 diam-diam", tapi `CARD_NOT_IN_LESSON`
- * belum ada di daftar TERTUTUP §10.2 — pola yang sama dengan `NOT_FOUND` di
- * `content.service.ts`: dipakai di sini secara lokal dan terang-terangan, dan
- * begitu §10.2 diperbarui, `API_ERROR_CODES` di `packages/contracts` ikut
- * ditambah lalu konstanta ini dipusatkan ke sana. Tidak diam-diam menciptakan
- * kontrak — lihat pula isu #92 soal disiplin daftar itu.
+ * PRD §7 E2 kasus tepi meminta **422 "bukan skor 0 diam-diam"**, dan kode ini
+ * sekarang **ada di daftar §10.2** — ditambahkan lewat PR tersendiri (#114)
+ * sebelum berkas ini di-merge, urutan yang diminta catatan "tertutup" itu.
+ *
+ * Kenapa bukan `VALIDATION_ERROR`: jawaban yang SALAH bukan galat sama sekali
+ * (AC item ini: "jawaban acak menghasilkan skor 0, bukan error"), sementara
+ * `card_id` asing berarti aplikasi klien bicara tentang lesson yang salah.
+ * Satu kode untuk keduanya membuat "kamu menjawab ngawur" dan "aplikasimu
+ * salah lesson" sampai ke layar yang sama.
  */
 const CARD_NOT_IN_LESSON = 'CARD_NOT_IN_LESSON';
 
@@ -104,10 +107,17 @@ export function gradeAttempt(
   const kartuById = new Map(kartu.map((k) => [k.id, k]));
   const asing = jawaban.find((j) => !kartuById.has(j.card_id));
   if (asing) {
+    // Dibungkus `error` — bentuknya dikunci PRD §10.1:
+    // `{ error: { code, message, details } }`. Tanpa pembungkusnya, klien yang
+    // bercabang pada `body.error.code` (yang diminta PRD) mendapat `undefined`
+    // dan jatuh ke cabang "galat tak dikenal" untuk kondisi yang justru kita
+    // jelaskan dengan rapi.
     throw new UnprocessableEntityException({
-      code: CARD_NOT_IN_LESSON,
-      message: 'Jawaban menunjuk kartu yang bukan milik lesson ini',
-      details: { cardId: asing.card_id },
+      error: {
+        code: CARD_NOT_IN_LESSON,
+        message: 'Jawaban menunjuk kartu yang bukan milik lesson ini',
+        details: { card_ids: [asing.card_id] },
+      },
     });
   }
 

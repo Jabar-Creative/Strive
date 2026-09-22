@@ -35,21 +35,21 @@ export interface ReceivedReview {
 /**
  * `GET /reviews/mine` — `F-14` (isu #88).
  *
- * ── PRD dan papan BERTENTANGAN soal rute ini ──
+ * ── "mine" = yang saya TERIMA. Diputuskan, bukan disimpulkan ──
  *
- * `docs/PRD.md` §10.3 baris 1719: **"Review yang saya terima"**.
- * `docs/BACKLOG.md` tabel `F-14`: *"review yang kutulis"*.
+ * PRD §10.3 dan `docs/BACKLOG.md` sempat bertentangan: §10.3 menulis *"Review
+ * yang saya terima"*, papan menulis *"review yang kutulis"*. Keduanya tidak
+ * bisa benar — `author_id` dan `reviewer_id` dua arah yang berlawanan, dan
+ * `peer_reviews` punya indeks untuk masing-masing.
  *
- * Keduanya tidak bisa benar — `author_id` dan `reviewer_id` adalah dua arah
- * yang berlawanan, dan `peer_reviews` punya indeks untuk masing-masing.
+ * **Keputusan Dev A, 2026-09-21 (isu #100): ikuti PRD.** Papan sudah
+ * diperbaiki supaya berhenti bertentangan; nol perubahan kode.
  *
- * Yang diikuti **PRD**, karena `CLAUDE.md` menetapkannya: *"PRD menang untuk
- * perilaku"*. Dan pembacaan itu juga yang lebih masuk akal — kalau
- * `/reviews/mine` berarti "yang kutulis", maka **umpan balik atas karya
- * sendiri tidak punya endpoint sama sekali** di seluruh §10.3, padahal itu
- * seluruh gunanya peer review bagi yang dinilai.
- *
- * Pertanyaannya tetap ditulis, bukan diputuskan diam-diam: isu #100.
+ * Alasan yang menguatkannya, di luar urutan dokumen: kalau `/reviews/mine`
+ * berarti "yang kutulis", maka **umpan balik atas karya sendiri tidak punya
+ * endpoint sama sekali** di seluruh §10.3 — padahal itu seluruh gunanya peer
+ * review bagi yang dinilai. "Review yang kutulis" belum punya rute, dan
+ * memang belum dijanjikan siapa pun.
  *
  * ── Reviewer tetap ANONIM di arah ini juga ──
  *

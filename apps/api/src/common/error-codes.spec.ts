@@ -34,6 +34,20 @@ import { describe, expect, it } from 'vitest';
  *
  * **Jangan menambah entri ke karantina tanpa isu yang menyertainya.** Daftar
  * pengecualian yang tumbuh diam-diam adalah daftar yang berhenti berarti.
+ *
+ * ── Lubang yang pernah ada di pemindai ini (22 Sep) ──
+ *
+ * Versi pertama hanya mencari `code: '...'` — **string literal saja**. Kode
+ * yang ditulis sebagai konstanta (`code: NOT_FOUND`) lolos TOTAL.
+ *
+ * Itu bukan bentuk penulisan yang aneh; ia yang lebih rapi, dan
+ * `content.service.ts` memakainya sejak `L-01`. PR #106 mengirimkan
+ * `CARD_NOT_IN_LESSON` — kode yang tidak ada di §10.2 — dan berkas ini
+ * **hijau**. Penjaga yang hanya mengenali satu cara menulis adalah penjaga
+ * yang dilewati orang yang menulis lebih baik.
+ *
+ * Sekarang keduanya dikenali, dan `code: X` yang nilainya TIDAK bisa dilacak
+ * memerahkan test tersendiri alih-alih dilewati diam-diam.
  */
 
 const AKAR = join(__dirname, '..', '..');
@@ -74,12 +88,46 @@ function berkasSumber(dir: string, out: string[] = []): string[] {
 
 const sah = kodeSahDariPrd();
 const dipakai = new Map<string, Set<string>>();
-for (const berkas of berkasSumber(join(AKAR, 'src'))) {
+/** `code: X` yang X-nya tidak bisa dilacak ke sebuah string. */
+const takTerlacak: string[] = [];
+
+/**
+ * Peta konstanta → nilainya, dari SELURUH `src`.
+ *
+ * Dibangun lintas-berkas, bukan per-berkas, karena konstanta kode error bisa
+ * diekspor dari satu modul dan dipakai di modul lain.
+ */
+const konstanta = new Map<string, string>();
+const berkas2 = berkasSumber(join(AKAR, 'src'));
+for (const berkas of berkas2) {
+  for (const m of readFileSync(berkas, 'utf8').matchAll(
+    /\bconst\s+([A-Z][A-Z0-9_]*)\s*(?::\s*[^=]+)?=\s*'([A-Z_]+)'/g,
+  )) {
+    konstanta.set(m[1]!, m[2]!);
+  }
+}
+
+for (const berkas of berkas2) {
   const isi = readFileSync(berkas, 'utf8');
-  for (const m of isi.matchAll(/code: '([A-Z_]+)'/g)) {
-    const k = m[1]!;
+  const nama = berkas.slice(AKAR.length + 1);
+  const catat = (k: string) => {
     if (!dipakai.has(k)) dipakai.set(k, new Set());
-    dipakai.get(k)!.add(berkas.slice(AKAR.length + 1));
+    dipakai.get(k)!.add(nama);
+  };
+
+  // Bentuk 1 — string literal: `code: 'INSUFFICIENT_COINS'`
+  for (const m of isi.matchAll(/code: '([A-Z_]+)'/g)) catat(m[1]!);
+
+  // Bentuk 2 — konstanta: `code: NOT_FOUND`
+  //
+  // Bentuk inilah yang dulu lolos TOTAL. Ia bukan bentuk yang aneh — ia
+  // bentuk yang lebih rapi, dan `content.service.ts` memakainya sejak `L-01`.
+  // Penjaga yang hanya mengenali satu cara menulis adalah penjaga yang
+  // dilewati orang yang menulis lebih baik.
+  for (const m of isi.matchAll(/code: ([A-Z][A-Z0-9_]*)\b/g)) {
+    const nilai = konstanta.get(m[1]!);
+    if (nilai === undefined) takTerlacak.push(`${m[1]} (${nama})`);
+    else catat(nilai);
   }
 }
 
@@ -113,6 +161,19 @@ describe('Kode error vs daftar TERTUTUP di PRD §10.2', () => {
     // adalah daftar yang berhenti dibaca orang.
     const mati = [...KARANTINA].filter((k) => !dipakai.has(k));
     expect(mati, 'kode ini sudah tidak dipakai — hapus dari KARANTINA').toEqual([]);
+  });
+
+  it('setiap `code:` bisa dilacak ke sebuah string — yang tidak, tidak terjaga', () => {
+    // Kalau sebuah `code: X` tidak bisa dilacak, ia TIDAK ikut diperiksa test
+    // di atas — dan diam-diam lolos. Itu persis cara `CARD_NOT_IN_LESSON`
+    // lolos di PR #106: konstantanya ada, pemindainya yang tidak melihatnya.
+    //
+    // Gagal di sini berarti pemindai yang perlu diperluas, bukan kode yang
+    // salah. Jangan matikan test ini untuk melewatinya.
+    expect(
+      takTerlacak,
+      'nilainya tidak bisa dilacak — perluas pemindai, jangan biarkan lolos',
+    ).toEqual([]);
   });
 
   it('karantina tidak memuat kode yang ternyata SAH', () => {

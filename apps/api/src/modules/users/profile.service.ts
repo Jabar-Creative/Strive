@@ -75,7 +75,7 @@ export class ProfileService {
         'role',
         'timezone',
         'coin_balance',
-        'email_verified_at',
+        'email_verified',
         'status',
         'created_at',
       ])
@@ -146,7 +146,7 @@ export class ProfileService {
           'role',
           'timezone',
           'coin_balance',
-          'email_verified_at',
+          'email_verified',
           'status',
           'created_at',
         ])
@@ -248,7 +248,7 @@ function serialize(row: {
   role: string;
   timezone: string;
   coin_balance: number;
-  email_verified_at: Date | null;
+  email_verified: boolean;
   status: string;
   created_at: Date;
 }): MyProfile {
@@ -260,9 +260,15 @@ function serialize(row: {
     role: row.role as MyProfile['role'],
     timezone: row.timezone,
     coin_balance: row.coin_balance,
-    // Tanggalnya sendiri tidak dikirim: klien cuma butuh tahu sudah atau
-    // belum, dan AU-8 memblokir top-up berdasarkan itu.
-    email_verified: row.email_verified_at !== null,
+    // `users.email_verified` (boolean), BUKAN `email_verified_at`.
+    //
+    // Versi pertama `A-05` membaca yang kedua, dan itu bug: kolom itu
+    // di-backfill SEKALI di migrasi 004 lalu tidak pernah ditulis siapa pun.
+    // Better-Auth menulis `email_verified` (lihat pemetaan `emailVerified` di
+    // `auth.config.ts`). Akibatnya pengguna yang baru memverifikasi emailnya
+    // tetap terbaca BELUM terverifikasi — dan `AU-8` memblokir top-upnya
+    // berdasarkan itu. Kolom usangnya dibuang di migrasi 007.
+    email_verified: row.email_verified,
     status: row.status,
     created_at: row.created_at,
   };
