@@ -157,26 +157,32 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 ---
 ## Ringkasan per epik
 
-| Epik | Nama | Hari | Item |
-|---|---|---:|---:|
-| `E0` | Fondasi & Setup | 10,5 | 12 |
-| `E1` | Auth & RBAC | 2,5 | 4 |
-| `E4` | Coin & Wallet | 4 | 4 |
-| `E2` | Learning Engine | 7,5 | 5 |
-| `E3` | Career Streak | 5 | 4 |
-| `E5` | Squad & Liga | 5,5 | 5 |
-| `E15` | Realtime | 2 | 2 |
-| `E16` | Notifikasi | 1,5 | 2 |
-| `E6` | Payment | 3,5 | 4 |
-| `E14` | Strive Store | 2 | 2 |
-| `E7` | Klinik Plagiarisme | 5 | 4 |
-| `E11` | Peer Review & Mentor | 4 | 4 |
-| `E8` | ATS CV Builder | 6,5 | 7 |
-| `E12` | International Mastery Track | 4 | 4 |
-| `E13` | Prompt Lab | 1,5 | 2 |
-| `E9` | Panel Superadmin | 2 | 4 |
-| `E10` | Pengerasan & Rilis | 6 | 5 |
-| | **Total** | **73,0** | **74** |
+> **DIHITUNG dari baris papan, bukan ditulis tangan (2026-09-22).** Sebelum ini tertulis
+> `73,0 hari · 74 item` — angka sebelum tujuh item sisipan masuk, dan ia menyimpang diam-diam
+> selama dua hari. Kegagalan yang sama persis dengan header backlog di 20 Sep, di tabel yang
+> berbeda: `assert` di `AGENTS.md` memeriksa papan status, dan tabel INI tidak ikut diperiksa.
+> Kolom **Selesai** ditambahkan supaya progres per epik tidak perlu dihitung manual lagi.
+
+| Epik | Nama | Hari | Item | Selesai | Blocked |
+|---|---|---:|---:|---:|---:|
+| `E0` | Fondasi & Setup | 10,5 | 12 | 11/12 · **86%** | 1 |
+| `E1` | Auth & RBAC | 6,5 | 7 | 6/7 · **92%** | — |
+| `E4` | Coin & Wallet | 4,0 | 4 | 3/4 · **75%** | — |
+| `E2` | Learning Engine | 7,5 | 5 | 1/5 · **20%** | — |
+| `E3` | Career Streak | 5,5 | 5 | 4/5 · **73%** | — |
+| `E5` | Squad & Liga | 6,0 | 6 | 3/6 · **42%** | — |
+| `E15` | Realtime | 2,0 | 2 | 0/2 · **0%** | — |
+| `E16` | Notifikasi | 1,5 | 2 | 1/2 · **67%** | — |
+| `E6` | Payment | 3,5 | 4 | 1/4 · **14%** | 1 |
+| `E14` | Strive Store | 2,0 | 2 | 0/2 · **0%** | — |
+| `E7` | Klinik Plagiarisme | 5,0 | 4 | 2/4 · **50%** | 1 |
+| `E11` | Peer Review & Mentor | 4,0 | 4 | 2/4 · **50%** | — |
+| `E8` | ATS CV Builder | 6,5 | 7 | 0/7 · **0%** | — |
+| `E12` | International Mastery Track | 4,0 | 4 | 1/4 · **12%** | — |
+| `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
+| `E9` | Panel Superadmin | 2,5 | 5 | 3/5 · **60%** | 1 |
+| `E10` | Pengerasan & Rilis | 6,0 | 5 | 1/5 · **17%** | — |
+| | **Total** | **78,5** | **80** | **39/80 · 45%** | **4** |
 
 ---
 
