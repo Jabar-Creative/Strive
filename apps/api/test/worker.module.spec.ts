@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { Test } from '@nestjs/testing';
 
-import { LeagueRollupService, PartitionService, WorkerModule } from '../src/workers';
+import {
+  LeagueRollupService,
+  OutboxWorkerService,
+  PartitionService,
+  WorkerModule,
+} from '../src/workers';
 
 /**
  * `MODE=worker` adalah SEPARUH deployment — PRD §8.1, "satu image, dua peran".
@@ -27,6 +32,9 @@ describe('WorkerModule', () => {
     // diambil tidak membuktikan yang lain bisa. `StorageModule` dulu ketahuan
     // hilang persis begitu — lewat provider yang belum pernah diambil.
     expect(moduleRef.get(LeagueRollupService)).toBeInstanceOf(LeagueRollupService);
+    // `Q-03` mengimpor `LeagueModule` — modul BARU di WorkerModule. Kelas
+    // kesalahan yang sama dengan isu #86: diambil, bukan cuma dikompilasi.
+    expect(moduleRef.get(OutboxWorkerService)).toBeInstanceOf(OutboxWorkerService);
     await moduleRef.close();
   });
 });

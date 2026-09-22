@@ -64,20 +64,61 @@ export class LeaderboardService {
   }
 
   /**
-   * Menambah poin. **Dipanggil outbox worker, bukan request** (SQ-7).
+   * Menyelaraskan skor SATU anggota dengan Postgres. **Dipanggil outbox
+   * worker, bukan request** (SQ-7). Menggantikan `bump()` (`Q-03`).
    *
-   * Aman dipanggil pada kunci yang belum ada: `ZINCRBY` membuatnya. Tapi kunci
-   * yang lahir dari `bump` saja akan TIDAK LENGKAP — ia hanya memuat pengguna
-   * yang kebetulan bergerak sejak Redis kosong. Karena itu ia di-rebuild dulu
-   * kalau kuncinya belum ada, dan TTL selalu diperbarui.
+   * ── Kenapa bukan `ZINCRBY` ──
+   *
+   * `bump()` versi `Q-02` menambah poin dengan `ZINCRBY`, dan itu salah di dua
+   * tempat sekaligus — keduanya baru terlihat begitu `L-03` benar-benar
+   * menulis event:
+   *
+   * 1. **Poin terhitung DUA KALI setelah Redis kosong.** `L-03` menaikkan
+   *    `squad_members.weekly_points` di transaksi yang SAMA dengan event
+   *    outbox-nya. Saat worker memproses event itu dan kuncinya tidak ada,
+   *    rebuild membaca `weekly_points` — yang SUDAH memuat poin event ini —
+   *    lalu `ZINCRBY` menambahkannya lagi. Test `Q-02` lulus karena ia tidak
+   *    pernah menulis `weekly_points` sebelum `bump`, jadi ia menguji dunia
+   *    yang urutannya tidak pernah ada.
+   *
+   * 2. **Tidak idempoten.** PRD §8.3: pengantaran outbox *at-least-once*, dan
+   *    konsumen **wajib idempoten**. Worker yang mati tepat setelah menulis
+   *    Redis tapi sebelum menandai event selesai akan memprosesnya lagi, dan
+   *    `ZINCRBY` kedua menambah poin yang tidak pernah diperoleh.
+   *
+   * Yang dipakai karena itu `ZADD` dengan nilai **mutlak** dari Postgres —
+   * sumber kebenarannya (SQ-4). Dijalankan sekali, dua kali, atau sepuluh kali:
+   * hasilnya sama. Urutan pemrosesan pun tidak lagi penting, karena yang
+   * ditulis selalu nilai terbaru, bukan selisih.
    */
-  async bump(seasonId: string, squadId: string, userId: string, points: number): Promise<void> {
+  async syncMember(seasonId: string, squadId: string, userId: string): Promise<void> {
     const key = squadKey(seasonId, squadId);
     if ((await this.redis.exists(key)) === 0) {
+      // Rebuild sudah memuat nilai terbaru pengguna ini — tidak ada yang perlu
+      // ditambahkan sesudahnya. Justru menambah di sini asal double-count.
       await this.rebuildSquad(seasonId, squadId);
+      return;
     }
-    await this.redis.zincrby(key, points, userId);
-    await this.redis.expire(key, LB_TTL_SECONDS);
+
+    const row = await this.db
+      .selectFrom('squad_members')
+      .select('weekly_points')
+      .where('squad_id', '=', squadId)
+      .where('user_id', '=', userId)
+      .where('left_at', 'is', null)
+      .executeTakeFirst();
+
+    if (!row) {
+      // Sudah keluar sejak event ditulis. Papan tidak memuat anggota yang
+      // keluar (sama dengan `rebuildSquad`), jadi yang benar menghapusnya.
+      await this.redis.zrem(key, userId);
+      return;
+    }
+
+    const pipe = this.redis.pipeline();
+    pipe.zadd(key, row.weekly_points, userId);
+    pipe.expire(key, LB_TTL_SECONDS);
+    await pipe.exec();
   }
 
   /**
