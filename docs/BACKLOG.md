@@ -115,7 +115,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `AI-03` | Penyusunan LLM -> JSON terstruktur, prompt berver… | B | W5 | 1,5 | `todo` | — | — | — |
 | `N-02` | UI lonceng notifikasi + banner peringatan streak | B | W5 | 0,5 | `todo` | — | — | — |
 | `P-04` | UI top-up: pilih paket, bayar, status, kembali ke… | B | W5 | 0,5 | `todo` | — | — | — |
-| `Q-04` | Job rollup mingguan + promosi/degradasi 20% | A | W5 | 1 | `todo` | — | — | Dipindah dari Dev B ke Dev A (keputusan Dev A, 22 Sep): backend murni, dan lajur Dev B 96% terisi sementara lajur Dev A 33%. Worker + Redis, sekelas `Q-02` yang sudah dikerjakan Dev A. |
+| `Q-04` | Job rollup mingguan + promosi/degradasi 20% | A | W5 | 1 | `done` | #112 | 2026-09-22 | Dipindah dari Dev B (22 Sep). Idempotensi SQ-9 ditegakkan `UPDATE … WHERE closed_at IS NULL RETURNING`, bukan periksa-dulu-lalu-tutup — diverifikasi merah, 3 test. Bug yang ditangkap TEST SENDIRI: versi pertama membaca squad per tier DI DALAM loop yang juga menulis tier, jadi squad yang baru naik dari bronze ikut terbaca lagi di silver dan naik DUA KALI dalam satu panggilan. Poin dibaca dari Postgres, bukan ZSET (SQ-4: Redis melayani, Postgres memiliki). Menemukan isu #111: SQ-8 bertentangan dengan §5 Q4 — squad dibentuk ulang tiap minggu, jadi promosi tidak berpengaruh pada apa pun. |
 | `RT-02` | Client hook useRealtime + fallback polling otomatis | B | W5 | 0,5 | `todo` | — | — | — |
 | `K-01` | Upload PDF/DOCX + SHA-256 + simpan ke object storage | A | W6 | 1 | `done` | — | 2026-09-20 | Tipe ditentukan dari BYTE berkasnya, bukan nama/Content-Type — keduanya dari klien. Magic `PK` saja tidak cukup untuk DOCX: setiap .zip/.jar/.xlsx punya empat byte pertama yang sama, jadi entri `word/document.xml` ikut dicari. AC "ditolak SEBELUM menyentuh storage" dibuktikan dengan menghitung panggilan `put` (nol), bukan dengan "objeknya tidak ada" — service yang menyimpan lalu menghapus akan lolos cara kedua. Dibalik urutannya jadi merah: 6 berkas ditolak sampai ke bucket. Kunci objek dari HASH, bukan nama berkas (`../../etc/passwd` diuji). |
 | `K-02` | ScanService: dedup, hold/settle/release, reaper 30… | A | W6 | 1,5 | `done` | — | 2026-09-20 | Aturan 2 (`coin_balance` = SUM(ledger)) di-assert di SETIAP titik, bukan sekali di akhir. Dedup hanya dari scan `done` — dibuktikan menggigit: hapus filternya, 3 test merah. Dua temuan dari menulis test: (1) hasil vendor yang tiba SETELAH reaper melepas koin dulu MELEMPAR Error mentah (500) dan membuang hasil yang vendornya sudah dibayar — sekarang tercatat sebagai anomali, status tetap `released` supaya tidak jadi sumber dedup di tarif yang tidak dibayar siapa pun; (2) `MODE=worker` GAGAL BOOT TOTAL sejak lama (isu #86) — `WorkerModule` tidak mengimpor `KyselyModule`, dan nol test pernah membangunnya. Diperbaiki + `worker.module.spec.ts` ditambahkan, yang langsung menangkap `StorageModule` hilang juga. |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 39 | 35,0 |
+| `done` | 40 | 36,0 |
 | `review` | 1 | 1,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 36 | 38,0 |
+| `todo` | 35 | 37,0 |
 
 ---
 ## Ringkasan per epik
@@ -182,7 +182,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E4` | Coin & Wallet | 4,0 | 4 | 3/4 · **75%** | — |
 | `E2` | Learning Engine | 7,5 | 5 | 1/5 · **20%** | — |
 | `E3` | Career Streak | 5,5 | 5 | 4/5 · **73%** | — |
-| `E5` | Squad & Liga | 6,0 | 6 | 3/6 · **42%** | — |
+| `E5` | Squad & Liga | 6,0 | 6 | 4/6 · **58%** | — |
 | `E15` | Realtime | 2,0 | 2 | 0/2 · **0%** | — |
 | `E16` | Notifikasi | 1,5 | 2 | 1/2 · **67%** | — |
 | `E6` | Payment | 3,5 | 4 | 1/4 · **14%** | 1 |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 3/5 · **60%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 1/5 · **17%** | — |
-| | **Total** | **78,5** | **80** | **39/80 · 45%** | **4** |
+| | **Total** | **78,5** | **80** | **40/80 · 46%** | **4** |
 
 ---
 
