@@ -171,7 +171,37 @@ blok = ['| | Jumlah | Dev-hari |', '|---|---:|---:|', f'| Total | {sum(n.values(
 for st in ['done', 'review', 'in_progress', 'blocked', 'todo']:
     blok.append(f'| `{st}` | {n[st]} | {f(hari[st])} |')
 awal = s.index('| | Jumlah | Dev-hari |'); akhir = s.index('\n\n', awal)
-p.write_text(s[:awal] + '\n'.join(blok) + s[akhir:])
+s = s[:awal] + '\n'.join(blok) + s[akhir:]
+
+# ── Ringkasan per epik, dihitung dari baris yang SAMA ──────────────────────
+# Tabel ini punya angkanya sendiri, dan karena assert di bawah hanya memeriksa
+# papan status, ia pernah menyimpang diam-diam selama dua hari (73,0/74 vs
+# 78,5/80). Dihitung ulang di sini supaya keduanya tidak bisa berbeda lagi.
+baris = {}
+for l in s.splitlines():
+    if not re.match(r'^\| `[A-Z]+-\d+` \|', l): continue
+    c = [x.strip() for x in l.split('|')[1:-1]]
+    if len(c) == 9: baris[c[0].strip('`')] = (float(c[4].replace(',', '.')), c[5].strip('`'))
+epik, nama, urut, kini = {}, {}, [], None
+for l in s.splitlines():
+    m = re.match(r'^## (E\d+) · (.+)$', l)
+    if m: kini = m.group(1); nama[kini] = m.group(2); urut.append(kini); continue
+    m = re.match(r'^### `([A-Z]+-\d+)`', l)
+    if m and kini: epik[m.group(1)] = kini
+assert not set(baris) ^ set(epik), 'baris papan dan bagian detail tidak sepadan'
+ag = collections.defaultdict(lambda: [0, 0.0, 0, 0.0, 0])   # n, hari, done, doneHari, blocked
+for i, (h, st) in baris.items():
+    a = ag[epik[i]]; a[0] += 1; a[1] += h
+    if st == 'done': a[2] += 1; a[3] += h
+    if st == 'blocked': a[4] += 1
+tab = ['| Epik | Nama | Hari | Item | Selesai | Blocked |', '|---|---|---:|---:|---:|---:|']
+for e in urut:
+    a = ag[e]
+    tab.append(f'| `{e}` | {nama[e]} | {f(a[1])} | {a[0]} | {a[2]}/{a[0]} · **{round(100*a[3]/a[1])}%** | {a[4] or "—"} |')
+dn = sum(a[2] for a in ag.values()); dh = sum(a[3] for a in ag.values())
+tab.append(f'| | **Total** | **{f(total)}** | **{sum(n.values())}** | **{dn}/{sum(n.values())} · {round(100*dh/total)}%** | **{n["blocked"]}** |')
+awal = s.index('| Epik | Nama | Hari | Item |'); akhir = s.index('\n\n', awal)
+p.write_text(s[:awal] + '\n'.join(tab) + s[akhir:])
 # INI yang menangkap baris item yang hilang saat resolusi konflik — bukan mata.
 assert sum(n.values()) == 80, f'jumlah item {sum(n.values())}, harus 80'
 # Hari juga. Baris item yang ANGKA HARINYA berubah tidak mengubah jumlah item,
@@ -182,6 +212,12 @@ assert abs(total - 78.5) < 0.01, f'total {total} dev-hari, harus 78,5'
 print('\n'.join(blok))
 EOF
 ```
+
+Potongan itu menulis ulang **dua** tabel: papan status dan **Ringkasan per epik**. Tabel
+kedua ditambahkan 22 Sep setelah ia ketahuan menyimpang sendiri — `73,0 hari · 74 item`
+sementara barisnya `78,5 · 80`, selama dua hari. Assert di bawah hanya memeriksa papan
+status, jadi tabel kedua lolos begitu saja. Sekarang keduanya lahir dari baris yang sama
+dan tidak bisa berbeda.
 
 Total harus tetap **80 item / 78,5 dev-hari**. Kedua `assert` itu bukan hiasan, dan
 masing-masing sudah menangkap kegagalan yang berbeda:
