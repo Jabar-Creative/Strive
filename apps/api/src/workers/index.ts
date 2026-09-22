@@ -6,6 +6,7 @@ import { StorageModule } from '../infra/storage';
 import { ScanModule } from '../modules/scan';
 import { WalletModule } from '../modules/wallet';
 import { NotificationModule } from '../modules/notification';
+import { LeagueRollupService } from './league-rollup.service';
 import { ReconcileBalanceService } from './reconcile-balance.service';
 import { PartitionService } from './partition.service';
 import { StreakWarningService } from './streak-warning.service';
@@ -20,6 +21,8 @@ import { StreakWarningService } from './streak-warning.service';
  *   ai-dispatch        AI-06 kirim ai_jobs ke AI service, catat biaya
  *   notify             N-01  email Resend + notifikasi in-app, retry 3x
  *   league-rollup      Q-04  tutup musim, promosi/degradasi 20%, IDEMPOTEN
+ *                            SUDAH ADA — `LeagueRollupService.run()`. Belum
+ *                            dijadwalkan, alasan yang sama dengan C-04.
  *   reconcile-balance  C-04  bandingkan users.coin_balance vs SUM(coin_ledger)
  *   reaper             K-02  lepas hold menggantung > 30 menit — SUDAH ADA,
  *                            `ScanService.releaseStale()`. Belum dijadwalkan;
@@ -51,10 +54,11 @@ import { StreakWarningService } from './streak-warning.service';
   // `worker.module.spec.ts` ditulis — kelas kesalahan yang sama, modul yang
   // berbeda. Itu yang membuat test murah itu sepadan.
   imports: [KyselyModule, RedisModule, StorageModule, WalletModule, NotificationModule, ScanModule],
-  providers: [ReconcileBalanceService, StreakWarningService, PartitionService],
-  exports: [ReconcileBalanceService, StreakWarningService, PartitionService],
+  providers: [ReconcileBalanceService, StreakWarningService, PartitionService, LeagueRollupService],
+  exports: [ReconcileBalanceService, StreakWarningService, PartitionService, LeagueRollupService],
 })
 export class WorkerModule {}
 export * from './reconcile-balance.service';
 export * from './streak-warning.service';
 export * from './partition.service';
+export * from './league-rollup.service';

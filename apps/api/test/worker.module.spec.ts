@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Test } from '@nestjs/testing';
 
-import { PartitionService, WorkerModule } from '../src/workers';
+import { LeagueRollupService, PartitionService, WorkerModule } from '../src/workers';
 
 /**
  * `MODE=worker` adalah SEPARUH deployment — PRD §8.1, "satu image, dua peran".
@@ -23,6 +23,10 @@ describe('WorkerModule', () => {
     // Satu provider diambil sungguhan, bukan cuma `compile()`: kompilasi bisa
     // lolos sementara resolusi dependensi baru gagal saat provider dipakai.
     expect(moduleRef.get(PartitionService)).toBeInstanceOf(PartitionService);
+    // Provider KEDUA, ditambahkan bersama `Q-04`: satu provider yang bisa
+    // diambil tidak membuktikan yang lain bisa. `StorageModule` dulu ketahuan
+    // hilang persis begitu — lewat provider yang belum pernah diambil.
+    expect(moduleRef.get(LeagueRollupService)).toBeInstanceOf(LeagueRollupService);
     await moduleRef.close();
   });
 });
