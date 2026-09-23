@@ -197,6 +197,14 @@ describe('P-03 — POST /webhooks/payment (database nyata)', () => {
     expect(jejak).toHaveLength(3);
     expect(jejak.every((p) => p.signature_ok)).toBe(true);
 
+    // Temuan audit R-03: `raw_payload` diekspos view `admin_transactions`
+    // (migrasi 006) ke role read-only yang dibaca Retool. Tanda tangan tidak
+    // boleh ikut — tidak ada yang membutuhkannya di sana, dan ia berdampingan
+    // dengan `order_id` dan `amount_idr` di baris view yang sama.
+    const mentah = JSON.stringify(jejak.map((p) => p.raw_payload));
+    expect(mentah).not.toContain(badan.signature_key);
+    expect(mentah).toContain('[dibuang — R-03]');
+
     // Dan tepat SATU entri ledger 'purchase'.
     const entri = await db
       .selectFrom('coin_ledger')

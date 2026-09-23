@@ -155,7 +155,7 @@ export class PaymentWebhookService {
           order_id: order.id,
           provider: 'midtrans',
           event_type: n.transaction_status,
-          raw_payload: JSON.stringify(body),
+          raw_payload: JSON.stringify(tanpaTandaTangan(body)),
           signature_ok: true,
         })
         .execute();
@@ -238,6 +238,31 @@ export class PaymentWebhookService {
       })
       .execute();
   }
+}
+
+/**
+ * Salinan payload TANPA `signature_key` — temuan audit `R-03`.
+ *
+ * `payments.raw_payload` diekspos view `admin_transactions` (migrasi 006) ke
+ * role `strive_readonly` yang dibaca Retool. Menyimpan tanda tangan di sana
+ * menaruh `order_id`, `gross_amount`, dan digest-nya dalam SATU baris yang
+ * bisa dibaca operator — tiga dari empat bahan `SHA512(... + server_key)`
+ * berdampingan dengan hasilnya.
+ *
+ * Kunci server Midtrans acak ~40 karakter, jadi ini bukan kebocoran yang bisa
+ * dipakai memulihkan kuncinya, dan replay-nya sudah mati oleh idempotensi
+ * `PA-7`. Tapi §16.1 menuliskannya tanpa syarat — *"Secret tidak pernah masuk
+ * log, error message, atau respons API"* — dan menyimpan authenticator
+ * turunan rahasia di tabel beraudiens lebih luas tidak punya pembenaran sama
+ * sekali: tidak ada yang pernah membutuhkannya di sana.
+ *
+ * Bidangnya DIGANTI, bukan dihapus: jejak harus tetap menunjukkan bahwa
+ * webhook itu memang membawa tanda tangan.
+ */
+function tanpaTandaTangan(body: unknown): unknown {
+  if (typeof body !== 'object' || body === null) return body;
+  const { signature_key: _rahasia, ...sisa } = body as Record<string, unknown>;
+  return { ...sisa, signature_key: '[dibuang — R-03]' };
 }
 
 /** `transaction_status` yang mengakhiri order tanpa koin — PRD §7 E6. */

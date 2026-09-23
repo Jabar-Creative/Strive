@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Emitter } from '@socket.io/redis-emitter';
 import type Redis from 'ioredis';
 
-import { createRedis } from '../infra/redis';
+import { createRedis, redisSiap } from '../infra/redis';
 
 /** Nama ruang Socket.IO untuk satu squad — PRD RT-1: `squad:{squad_id}`. */
 export const squadRoom = (squadId: string): string => `squad:${squadId}`;
@@ -74,20 +74,11 @@ export class RealtimeEmitter implements OnModuleDestroy {
       this.log.warn(`Koneksi Redis realtime bermasalah: ${err.message}`);
     });
 
-    this.siap = new Promise<void>((resolve) => {
-      if (this.redis.status === 'ready') {
-        resolve();
-        return;
-      }
-      const selesai = (): void => {
-        clearTimeout(batas);
-        resolve();
-      };
-      const batas = setTimeout(selesai, TUNGGU_SIAP_MS);
-      // Jangan menahan proses tetap hidup hanya karena timer ini.
-      batas.unref();
-      this.redis.once('ready', selesai);
-    });
+    // Penolakannya diabaikan DENGAN SENGAJA: Redis yang tidak pernah siap
+    // berarti event realtime hilang, dan itu sudah ditangani `.catch()` di
+    // bawah. Yang tidak boleh terjadi adalah menumpuk event di memori
+    // selamanya menunggu koneksi yang tidak akan datang.
+    this.siap = redisSiap(this.redis, TUNGGU_SIAP_MS).catch(() => undefined);
 
     this.emitter = new Emitter({
       publish: (channel: string, msg: unknown): void => {

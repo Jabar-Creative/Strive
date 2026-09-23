@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { appOrigins, headerKeamanan } from './common';
 import { RedisIoAdapter } from './realtime';
 import { WorkerModule } from './workers';
 
@@ -42,15 +43,20 @@ async function bootstrapApi(): Promise<void> {
   // orkestrator tidak ikut terpengaruh saat versi API naik.
   app.setGlobalPrefix('api/v1', { exclude: ['health'] });
 
+  // Header keamanan §16.1 — DIPASANG SEBELUM rute apa pun, supaya respons
+  // galat dan 404 ikut membawanya.
+  app.use(headerKeamanan());
+
   // CORS SEKALI DI SINI, terbatas ketat (A-03): web dan API berjalan di port
   // berbeda, dan cookie sesi httpOnly hanya terkirim lintas origin kalau
   // respons eksplisit mengizinkan origin + credentials. Origin dipin ke
   // APP_URL — BUKAN true/false, memakai `origin: true` berarti CORS longgar
   // dan itu masuk daftar jebakan keamanan repo ini.
-  app.enableCors({
-    origin: process.env['APP_URL'] ?? 'http://localhost:3000',
-    credentials: true,
-  });
+  //
+  // `appOrigins()`, bukan `process.env['APP_URL'] ?? …` — `??` meloloskan
+  // string KOSONG, dan paket `cors` membaca origin falsy sebagai `*`
+  // (temuan audit R-03).
+  app.enableCors({ origin: appOrigins(), credentials: true });
 
   // Adapter Redis pub/sub untuk WebSocket (RT-2) — DITUNGGU sebelum listen.
   // Tanpa adapter, event hanya sampai ke klien di instance yang sama; dengan
