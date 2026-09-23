@@ -3,3 +3,5 @@
 export * from './admin.module';
 export * from './user-role.service';
 export * from './admin-users.controller';
+export * from './integrations-health.service';
+export * from './admin-integrations.controller';
