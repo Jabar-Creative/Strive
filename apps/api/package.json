@@ -24,6 +24,7 @@
     "@socket.io/redis-emitter": "5.1.0",
     "@strive/contracts": "workspace:*",
     "better-auth": "1.7.5",
+    "bullmq": "^6.3.8",
     "ioredis": "^6.0.0",
     "kysely": "^0.27.5",
     "pg": "^8.13.1",

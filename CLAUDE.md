@@ -94,6 +94,9 @@ strive-academy/
 │        │                     interceptor idempotency, filter, zod pipe
 │        ├─ infra/             kysely, redis, bullmq, storage, http clients
 │        ├─ modules/
+│        │  ├─ ai/                     ai_jobs + klien layanan AI (AI-06).
+│        │  │                          SATU-SATUNYA penulis ai_jobs — itu yang
+│        │  │                          membuat aturan 8 benar secara konstruksi
 │        │  ├─ auth/ users/ learning/ streak/ squad/ league/
 │        │  ├─ wallet/ payment/ store/ scan/
 │        │  ├─ career/ mastery/       (proxy tipis ke AI service)
