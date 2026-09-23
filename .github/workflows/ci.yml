@@ -52,6 +52,14 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # R-03, PRD §16.1 "Dependency audit nol kerentanan tinggi".
+      # Bukan `pnpm audit` mentah: setiap advisory tinggi/kritis yang
+      # dibiarkan WAJIB tertulis di security/pengecualian.json dengan
+      # alasannya dan tanggal tinjau ulang. Advisory BARU dan pengecualian
+      # yang kedaluwarsa sama-sama memerahkan langkah ini.
+      - name: Audit dependensi
+        run: pnpm audit:kebijakan
+
   ai:
     name: ai service · test
     runs-on: ubuntu-latest

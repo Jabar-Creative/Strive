@@ -1,0 +1,166 @@
+{
+  "_catatan": "Pengecualian audit dependensi — R-03, PRD §16.1. Setiap baris WAJIB punya alasan yang menyebut KENAPA advisory-nya tidak bisa dicapai, bukan sekadar 'belum sempat'. `tinjau_ulang` yang lewat memerahkan CI sama seperti advisory baru: pengecualian harus punya biaya. Dijalankan oleh scripts/audit-deps.mjs.",
+  "_dibuat": "2026-09-23",
+  "dikecualikan": [
+    {
+      "id": "GHSA-5j98-mcp5-4vw2",
+      "paket": "glob",
+      "severity": "high",
+      "judul": "glob CLI: Command injection via -c/--cmd executes matches with shell:true",
+      "tambal_ke": ">=10.5.0",
+      "jalur": "dev/build",
+      "alasan": "Hanya perkakas build/test. Kerentanannya di CLI-nya (flag -c/--cmd), yang tidak dipakai.",
+      "tinjau_ulang": "2026-12-23"
+    },
+    {
+      "id": "GHSA-8cpq-38p9-67gx",
+      "paket": "kysely",
+      "severity": "high",
+      "judul": "Kysely has a MySQL SQL Injection via Insufficient Backslash Escaping in `sql.lit(string)` ",
+      "tambal_ke": ">=0.28.14",
+      "jalur": "runtime",
+      "alasan": "Query builder runtime, versi 0.27.6. Ketiga advisory-nya menyentuh fitur JSON path (`jsonPath`/`->>`) dan escaping MySQL. Repo ini memakai PostgreSQL, dan penyisiran R-03 tidak menemukan SATU PUN pemakaian JSON path di apps/api maupun packages — jadi tidak ada jalur kode yang bisa dicapai. Naik ke 0.28.x adalah isu #48 (kompatibilitas better-auth), sekarang dengan alasan tambahan.",
+      "tinjau_ulang": "2026-10-21"
+    },
+    {
+      "id": "GHSA-pv5w-4p9q-p3v2",
+      "paket": "kysely",
+      "severity": "high",
+      "judul": "Kysely: JSON-path traversal injection via unsanitized path-leg metacharacters in `JSONPath",
+      "tambal_ke": ">=0.28.17",
+      "jalur": "runtime",
+      "alasan": "Query builder runtime, versi 0.27.6. Ketiga advisory-nya menyentuh fitur JSON path (`jsonPath`/`->>`) dan escaping MySQL. Repo ini memakai PostgreSQL, dan penyisiran R-03 tidak menemukan SATU PUN pemakaian JSON path di apps/api maupun packages — jadi tidak ada jalur kode yang bisa dicapai. Naik ke 0.28.x adalah isu #48 (kompatibilitas better-auth), sekarang dengan alasan tambahan.",
+      "tinjau_ulang": "2026-10-21"
+    },
+    {
+      "id": "GHSA-wmrf-hv6w-mr66",
+      "paket": "kysely",
+      "severity": "high",
+      "judul": "SQL Injection via unsanitized JSON path keys when ignoring/silencing compilation errors or",
+      "tambal_ke": ">=0.28.12",
+      "jalur": "runtime",
+      "alasan": "Query builder runtime, versi 0.27.6. Ketiga advisory-nya menyentuh fitur JSON path (`jsonPath`/`->>`) dan escaping MySQL. Repo ini memakai PostgreSQL, dan penyisiran R-03 tidak menemukan SATU PUN pemakaian JSON path di apps/api maupun packages — jadi tidak ada jalur kode yang bisa dicapai. Naik ke 0.28.x adalah isu #48 (kompatibilitas better-auth), sekarang dengan alasan tambahan.",
+      "tinjau_ulang": "2026-10-21"
+    },
+    {
+      "id": "GHSA-535w-7cp7-47q4",
+      "paket": "multer",
+      "severity": "high",
+      "judul": "multer vulnerable to Denial of Service via oversized array index in field names",
+      "tambal_ke": ">=2.3.0",
+      "jalur": "runtime",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "tinjau_ulang": "2026-10-21"
+    },
+    {
+      "id": "GHSA-5528-5vmv-3xc2",
+      "paket": "multer",
+      "severity": "high",
+      "judul": "Multer Vulnerable to Denial of Service via Uncontrolled Recursion",
+      "tambal_ke": ">=2.1.1",
+      "jalur": "runtime",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "tinjau_ulang": "2026-10-21"
+    },
+    {
+      "id": "GHSA-72gw-mp4g-v24j",
+      "paket": "multer",
+      "severity": "high",
+      "judul": "Multer vulnerable to Denial of Service via deeply nested field names",
+      "tambal_ke": ">=2.2.0",
+      "jalur": "runtime",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "tinjau_ulang": "2026-10-21"
+    },
+    {
+      "id": "GHSA-v52c-386h-88mc",
+      "paket": "multer",
+      "severity": "high",
+      "judul": "Multer vulnerable to Denial of Service via resource exhaustion",
+      "tambal_ke": ">=2.1.0",
+      "jalur": "runtime",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "tinjau_ulang": "2026-10-21"
+    },
+    {
+      "id": "GHSA-wc9g-mqfw-jrwm",
+      "paket": "multer",
+      "severity": "high",
+      "judul": "multer vulnerable to Denial of Service via crafted multipart field names",
+      "tambal_ke": ">=2.3.0",
+      "jalur": "runtime",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "tinjau_ulang": "2026-10-21"
+    },
+    {
+      "id": "GHSA-xf7r-hgr6-v32p",
+      "paket": "multer",
+      "severity": "high",
+      "judul": "Multer vulnerable to Denial of Service via incomplete cleanup",
+      "tambal_ke": ">=2.1.0",
+      "jalur": "runtime",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "tinjau_ulang": "2026-10-21"
+    },
+    {
+      "id": "GHSA-c2c7-rcm5-vvqj",
+      "paket": "picomatch",
+      "severity": "high",
+      "judul": "Picomatch has a ReDoS vulnerability via extglob quantifiers",
+      "tambal_ke": ">=4.0.4",
+      "jalur": "dev/build",
+      "alasan": "Hanya perkakas build/test (glob matching konfigurasi), bukan input pengguna.",
+      "tinjau_ulang": "2026-12-23"
+    },
+    {
+      "id": "GHSA-6g55-p6wh-862q",
+      "paket": "postcss",
+      "severity": "high",
+      "judul": "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMapp",
+      "tambal_ke": ">=8.5.12",
+      "jalur": "dev/build",
+      "alasan": "Waktu build saja, lewat Tailwind. Tidak ikut ke bundel runtime.",
+      "tinjau_ulang": "2026-12-23"
+    },
+    {
+      "id": "GHSA-r28c-9q8g-f849",
+      "paket": "postcss",
+      "severity": "high",
+      "judul": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Ar",
+      "tambal_ke": ">=8.5.18",
+      "jalur": "dev/build",
+      "alasan": "Waktu build saja, lewat Tailwind. Tidak ikut ke bundel runtime.",
+      "tinjau_ulang": "2026-12-23"
+    },
+    {
+      "id": "GHSA-ph9p-34f9-6g65",
+      "paket": "tmp",
+      "severity": "high",
+      "judul": "tmp has Path Traversal via unsanitized prefix/postfix that enables directory escape",
+      "tambal_ke": ">=0.2.6",
+      "jalur": "dev/build",
+      "alasan": "Hanya perkakas build/test.",
+      "tinjau_ulang": "2026-12-23"
+    },
+    {
+      "id": "GHSA-fx2h-pf6j-xcff",
+      "paket": "vite",
+      "severity": "high",
+      "judul": "vite: `server.fs.deny` bypass on Windows alternate paths",
+      "tambal_ke": ">=6.4.3",
+      "jalur": "dev/build",
+      "alasan": "Hanya dev/test, lewat vitest. Tidak ada artefak vite di jalur produksi API.",
+      "tinjau_ulang": "2026-12-23"
+    },
+    {
+      "id": "GHSA-5xrq-8626-4rwp",
+      "paket": "vitest",
+      "severity": "critical",
+      "judul": "When Vitest UI server is listening, arbitrary file can be read and executed",
+      "tambal_ke": ">=3.2.6",
+      "jalur": "dev/build",
+      "alasan": "Hanya dev/test. Kerentanannya pada UI server Vitest, yang tidak pernah dijalankan di CI maupun produksi.",
+      "tinjau_ulang": "2026-12-23"
+    }
+  ]
+}

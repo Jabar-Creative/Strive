@@ -4,7 +4,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import type Redis from 'ioredis';
 import type { Server, ServerOptions } from 'socket.io';
 
-import { createRedis } from '../infra/redis';
+import { createRedis, redisSiap } from '../infra/redis';
 
 /**
  * Adapter Socket.IO di atas Redis pub/sub — `RT-01`, PRD RT-2.
@@ -48,7 +48,7 @@ export class RedisIoAdapter extends IoAdapter {
   async connect(): Promise<void> {
     this.pub = createRedis(this.redisUrl);
     this.sub = this.pub.duplicate();
-    await Promise.all([siap(this.pub), siap(this.sub)]);
+    await Promise.all([redisSiap(this.pub), redisSiap(this.sub)]);
     this.adapter = createAdapter(this.pub, this.sub);
   }
 
@@ -71,12 +71,4 @@ export class RedisIoAdapter extends IoAdapter {
     this.pub?.disconnect();
     this.sub?.disconnect();
   }
-}
-
-function siap(r: Redis): Promise<void> {
-  if (r.status === 'ready') return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    r.once('ready', () => resolve());
-    r.once('error', reject);
-  });
 }

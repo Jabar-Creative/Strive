@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 
 import { KyselyModule } from './infra/kysely';
 import { RedisModule } from './infra/redis';
@@ -23,6 +24,7 @@ import { MentorModule } from './modules/mentor';
 import { AdminModule } from './modules/admin';
 import { NotificationModule } from './modules/notification';
 import { HealthModule } from './modules/health';
+import { RateLimitInterceptor } from './common/interceptors';
 import { RealtimeModule } from './realtime';
 
 /**
@@ -59,6 +61,12 @@ import { RealtimeModule } from './realtime';
     AdminModule,
     NotificationModule,
     HealthModule,
+  ],
+  providers: [
+    // Rate limit GLOBAL — R-03, PRD §16.1. Interceptor, bukan guard: ia harus
+    // berjalan setelah `SessionGuard` supaya bisa membatasi per PENGGUNA,
+    // bukan per koneksi. Lihat alasan lengkapnya di kelasnya.
+    { provide: APP_INTERCEPTOR, useClass: RateLimitInterceptor },
   ],
 })
 export class AppModule {}

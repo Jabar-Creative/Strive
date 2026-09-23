@@ -10,6 +10,7 @@ import {
 import type { Kysely } from 'kysely';
 import type { Server, Socket } from 'socket.io';
 
+import { appOrigins } from '../common/app-origin';
 import { resolveSessionToken, type UserRole } from '../common/guards';
 import { DATABASE, type DB } from '../infra/kysely';
 import { SquadReadService } from '../modules/squad';
@@ -64,7 +65,11 @@ export interface SubscribeAck {
  */
 @WebSocketGateway({
   path: WS_PATH,
-  cors: { origin: process.env['APP_URL'] ?? 'http://localhost:3000', credentials: true },
+  // `appOrigins()`, sumber yang sama dengan REST. Sebelumnya ekspresi
+  // `process.env['APP_URL'] ?? …` disalin ke sini — dan lubang string
+  // kosongnya (`cors` membaca origin falsy sebagai `*`) ikut tersalin
+  // (temuan audit R-03).
+  cors: { origin: appOrigins(), credentials: true },
 })
 export class SquadGateway implements OnGatewayInit {
   private readonly log = new Logger(SquadGateway.name);

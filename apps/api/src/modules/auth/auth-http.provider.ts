@@ -1,5 +1,6 @@
 import type { SendAuthEmail, StriveAuth } from './auth.types';
 import { createAuth } from './auth.config';
+import { appOrigins } from '../../common/app-origin';
 
 /**
  * Instance Better-Auth untuk proses API nyata (A-03).
@@ -36,7 +37,7 @@ export function createAuthFromEnv(sendEmail?: SendAuthEmail): StriveAuth {
     secret,
     baseURL: process.env['API_URL'] ?? 'http://localhost:3001',
     basePath: AUTH_HTTP_BASE_PATH,
-    trustedOrigins: [process.env['APP_URL'] ?? 'http://localhost:3000'],
+    trustedOrigins: appOrigins(),
     sendEmail,
   });
 }

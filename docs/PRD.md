@@ -2098,24 +2098,33 @@ Setiap warna aksen dipatok ke **satu makna** dan tidak boleh dipinjam. Ini atura
 
 ### 16.1 Checklist wajib sebelum rilis (`R-03`)
 
-- [ ] TLS 1.3, HSTS aktif
-- [ ] Password Argon2id, tidak pernah di log
-- [ ] JWT ditandatangani dengan secret ≥ 32 byte dari env
-- [ ] Refresh token disimpan sebagai **hash**, bukan plaintext
-- [ ] Deteksi token reuse aktif dan mencabut rantai sesi
-- [ ] Rate limit 120 req/menit per pengguna, lebih ketat untuk `/auth/*` (10/menit)
-- [ ] Webhook memverifikasi signature **sebelum** memproses apa pun
-- [ ] Upload divalidasi tipe **dan** magic bytes, bukan hanya ekstensi
-- [ ] Upload disimpan di luar webroot, diakses hanya lewat signed URL
-- [ ] Tidak ada bucket publik untuk dokumen pengguna
-- [ ] Query memakai parameter binding (Kysely), tidak ada string concat
-- [ ] Header keamanan: `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`
-- [ ] CORS whitelist eksplisit, bukan `*`
-- [ ] Secret tidak pernah masuk log, error message, atau respons API
-- [ ] Dependency audit (`pnpm audit`, `pip-audit`) nol kerentanan tinggi
-- [ ] Kepemilikan sumber daya dicek di service, bukan hanya di guard
-- [ ] Reviewer tidak bisa melihat identitas penulis di respons API mana pun
-- [ ] OWASP ASVS Level 1 tuntas
+> **Diaudit 23 Sep 2026 (`R-03`). Bukti per baris ada di `docs/reports/R-03/README.md`;
+> centang di bawah HANYA untuk yang buktinya ada di sana.** Empat baris diperbaiki di
+> audit itu sendiri (rate limit, header, CORS, rahasia), dan lima temuan yang butuh
+> keputusan dibuka sebagai isu #123–#127. Baris yang tidak bisa diperiksa tanpa
+> deployment ditandai ⏸ — `F-05` masih `blocked`, jadi belum ada TLS untuk diperiksa.
+
+- [ ] ⏸ TLS 1.3, HSTS aktif — *kodenya siap (HSTS dikirim saat `x-forwarded-proto: https`); menunggu `F-05`*
+- [x] Password Argon2id, tidak pernah di log
+- [ ] ➖ JWT ditandatangani dengan secret ≥ 32 byte dari env — *tidak berlaku: tidak ada JWT, sesi berbasis tabel `sessions` (`A-01`)*
+- [ ] ➖ Refresh token disimpan sebagai **hash**, bukan plaintext — *tidak berlaku: `refresh_tokens` dibuang migrasi 007. Soal `sessions.token` plaintext: isu #124*
+- [ ] ➖ Deteksi token reuse aktif dan mencabut rantai sesi — *tidak berlaku, sama seperti di atas*
+- [x] Rate limit 120 req/menit per pengguna, lebih ketat untuk `/auth/*` (10/menit) — *`RateLimitInterceptor`; bentuk kunci §9.4 bertentangan, isu #126*
+- [x] Webhook memverifikasi signature **sebelum** memproses apa pun
+- [x] Upload divalidasi tipe **dan** magic bytes, bukan hanya ekstensi
+- [x] Upload disimpan di luar webroot, diakses hanya lewat signed URL
+- [x] Tidak ada bucket publik untuk dokumen pengguna — *nama `strive-public` menyesatkan, isu #127*
+- [x] Query memakai parameter binding (Kysely), tidak ada string concat
+- [x] Header keamanan: `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` — *CSP `apps/web` menunggu nonce App Router, isu #125*
+- [x] CORS whitelist eksplisit, bukan `*`
+- [x] Secret tidak pernah masuk log, error message, atau respons API
+- [x] Dependency audit (`pnpm audit`, `pip-audit`) nol kerentanan tinggi — *16 advisory ditriase; nol yang bisa dicapai. Digerbangi `pnpm audit:kebijakan` di CI*
+- [x] Kepemilikan sumber daya dicek di service, bukan hanya di guard
+- [x] Reviewer tidak bisa melihat identitas penulis di respons API mana pun
+- [ ] ⏸ OWASP ASVS Level 1 tuntas — *bagian yang ada di dalam kode: tuntas. Kontrol transport & konfigurasi menunggu `F-05`*
+
+**Belum boleh rilis sebelum ini juga selesai:** retensi 90 dokumen sensitif (§16.2) tidak
+ada implementasinya sama sekali — isu #123.
 
 ### 16.2 Data pribadi
 
@@ -2235,7 +2244,7 @@ AI_SERVICE_PORT=8000      # FastAPI
 
 # Core
 NODE_ENV=                 # development | production
-APP_URL=                  # https://app.striveacademy.id
+APP_URL=                  # https://app.striveacademy.id  <- WAJIB diisi: kosong = CORS jatuh ke origin dev, frontend ditolak (R-03)
 API_URL=
 DATABASE_URL=             # postgres://...
 REDIS_URL=                # redis://...
