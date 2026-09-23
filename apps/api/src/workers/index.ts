@@ -4,6 +4,7 @@ import { BullmqModule } from '../infra/bullmq';
 import { KyselyModule } from '../infra/kysely';
 import { RedisModule } from '../infra/redis';
 import { StorageModule } from '../infra/storage';
+import { AdminModule } from '../modules/admin';
 import { AiModule } from '../modules/ai';
 import { ScanModule } from '../modules/scan';
 import { WalletModule } from '../modules/wallet';
@@ -11,6 +12,7 @@ import { NotificationModule } from '../modules/notification';
 import { LeagueModule } from '../modules/league';
 import { RealtimeEmitterModule } from '../realtime/realtime.module';
 import { AiDispatchService } from './ai-dispatch.service';
+import { MetricsService } from './metrics.service';
 import { LeagueRollupService } from './league-rollup.service';
 import { OutboxWorkerService } from './outbox.service';
 import { ReconcileBalanceService } from './reconcile-balance.service';
@@ -71,6 +73,7 @@ import { StreakWarningService } from './streak-warning.service';
     StorageModule,
     BullmqModule,
     AiModule,
+    AdminModule,
     WalletModule,
     NotificationModule,
     ScanModule,
@@ -84,6 +87,7 @@ import { StreakWarningService } from './streak-warning.service';
     LeagueRollupService,
     OutboxWorkerService,
     AiDispatchService,
+    MetricsService,
   ],
   exports: [
     ReconcileBalanceService,
@@ -92,6 +96,7 @@ import { StreakWarningService } from './streak-warning.service';
     LeagueRollupService,
     OutboxWorkerService,
     AiDispatchService,
+    MetricsService,
   ],
 })
 export class WorkerModule {}
@@ -101,3 +106,4 @@ export * from './partition.service';
 export * from './league-rollup.service';
 export * from './outbox.service';
 export * from './ai-dispatch.service';
+export * from './metrics.service';
