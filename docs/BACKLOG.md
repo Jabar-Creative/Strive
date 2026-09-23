@@ -136,7 +136,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `PR-03` | UI antrean review + form rubrik | B | W7 | 1 | `todo` | — | — | — |
 | `PR-04` | Konsol mentor: antrean validasi, approve/tolak, c… | B | W7 | 1 | `todo` | — | — | — |
 | `R-02` | Load test /hub & leaderboard — target p95 <250 ms… | A | W8 | 1 | `done` | — | 2026-09-20 | p95 **6 ms @ 500 rps** (target 250) — margin ~40×. Kurva dicatat, bukan satu titik: 1000 rps masih lulus (20 ms), 1500 rps tidak (353 ms), 3000 rps jenuh di ~1617 rps dengan 15.389 gagal. Headroom nyata 2–3×, bukan tak terbatas. Beban OPEN-LOOP — closed-loop mengurangi laju kirim saat server melambat dan melaporkan p95 yang terlalu bagus (coordinated omission). Leaderboard TIDAK terukur: endpointnya tidak ada dan tidak dimiliki item mana pun (isu #79). |
-| `R-03` | Audit keamanan: auth, webhook, upload, rate limit… | A | W8 | 1 | `in_progress` | — | 2026-09-23 | — |
+| `R-03` | Audit keamanan: auth, webhook, upload, rate limit… | A | W8 | 1 | `done` | #129 | 2026-09-23 | Empat dari 19 baris §16.1 GAGAL dan diperbaiki di sini; laporan per baris dengan bukti di `docs/reports/R-03/`. **Rate limit tidak ada sama sekali** — yang dikira ada adalah bawaan Better-Auth: mati kecuali `NODE_ENV=production`, 600 req/menit, storage `memory` (counter tidak dibagi antar-instance), hanya rute auth. Kunci `rl:` §9.4 tidak pernah ditulis siapa pun. Diganti interceptor berbasis Redis — interceptor BUKAN guard, karena guard global jalan sebelum `SessionGuard`, dan middleware yang resolve sesi sendiri menambah satu query Postgres per request (penguat serangan). Redis mati = MEMBIARKAN LEWAT (aturan 7). **Nol dari empat header keamanan**, di API maupun web. **`APP_URL` kosong = `Access-Control-Allow-Origin: *`** — `??` tidak menangkap string kosong dan paket `cors` membaca origin falsy sebagai `*`; ekspresinya tersalin di tiga berkas dan template env produksi PRD §17 mengirimkannya kosong. **`signature_key` Midtrans** tersimpan di `payments.raw_payload` dan terekspos view Retool — di kode `P-03` yang baru merge; severity sedang, bukan tinggi. Audit dependensi: 16 advisory tinggi/kritis ditriase, **nol yang bisa dicapai**, digerbangi kebijakan pengecualian berjangka waktu di CI. Lima penjaga dibuktikan merah. ASVS L1 di dalam kode tuntas; kontrol transport menunggu `F-05`. Isu: #123 retensi 90 hari (tidak ada sama sekali), #124 `sessions.token` plaintext, #125 CSP web, #126 §9.4 bertentangan dengan §7/§10.1, #127 bucket `strive-public`, #128 `pricing-config.service.spec.ts` tidak pernah jalan di CI. |
 | `R-04` | Observability: log terstruktur, error tracking, a… | A | W8 | 1 | `todo` | — | — | — |
 | `SA-03` | Endpoint /admin/integrations/health + biaya vendo… | A | W8 | 0,5 | `todo` | — | — | — |
 | `SA-04` | Dasbor Retool: transaksi, harga, audit, health | A | W8 | 0,5 | `blocked` | — | 2026-09-20 | BLOCKED: butuh langganan Retool (blocker non-kode, `docs/reports/blocker-non-kode.pdf`) — isu #77. AC-nya "superadmin bisa bekerja tanpa membuka database" mustahil tanpa dasbornya. Panel `health` juga menunggu `SA-03`. Yang SUDAH ada: seluruh query-nya di `docs/retool/queries.sql`, diverifikasi berjalan sebagai role `strive_readonly` (6 test integrasi) dan tidak satu pun menyentuh tabel mentah. Saat lisensinya ada, perakitannya setengah jam. |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 46 | 44,0 |
+| `done` | 47 | 45,0 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 30 | 30,0 |
+| `todo` | 29 | 29,0 |
 
 ---
 ## Ringkasan per epik
@@ -193,8 +193,8 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E12` | International Mastery Track | 4,0 | 4 | 1/4 · **12%** | — |
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 3/5 · **60%** | 1 |
-| `E10` | Pengerasan & Rilis | 6,0 | 5 | 1/5 · **17%** | — |
-| | **Total** | **78,5** | **80** | **46/80 · 56%** | **4** |
+| `E10` | Pengerasan & Rilis | 6,0 | 5 | 2/5 · **33%** | — |
+| | **Total** | **78,5** | **80** | **47/80 · 57%** | **4** |
 
 ---
 
