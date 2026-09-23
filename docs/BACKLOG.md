@@ -138,7 +138,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `R-02` | Load test /hub & leaderboard — target p95 <250 ms… | A | W8 | 1 | `done` | — | 2026-09-20 | p95 **6 ms @ 500 rps** (target 250) — margin ~40×. Kurva dicatat, bukan satu titik: 1000 rps masih lulus (20 ms), 1500 rps tidak (353 ms), 3000 rps jenuh di ~1617 rps dengan 15.389 gagal. Headroom nyata 2–3×, bukan tak terbatas. Beban OPEN-LOOP — closed-loop mengurangi laju kirim saat server melambat dan melaporkan p95 yang terlalu bagus (coordinated omission). Leaderboard TIDAK terukur: endpointnya tidak ada dan tidak dimiliki item mana pun (isu #79). |
 | `R-03` | Audit keamanan: auth, webhook, upload, rate limit… | A | W8 | 1 | `done` | #129 | 2026-09-23 | Empat dari 19 baris §16.1 GAGAL dan diperbaiki di sini; laporan per baris dengan bukti di `docs/reports/R-03/`. **Rate limit tidak ada sama sekali** — yang dikira ada adalah bawaan Better-Auth: mati kecuali `NODE_ENV=production`, 600 req/menit, storage `memory` (counter tidak dibagi antar-instance), hanya rute auth. Kunci `rl:` §9.4 tidak pernah ditulis siapa pun. Diganti interceptor berbasis Redis — interceptor BUKAN guard, karena guard global jalan sebelum `SessionGuard`, dan middleware yang resolve sesi sendiri menambah satu query Postgres per request (penguat serangan). Redis mati = MEMBIARKAN LEWAT (aturan 7). **Nol dari empat header keamanan**, di API maupun web. **`APP_URL` kosong = `Access-Control-Allow-Origin: *`** — `??` tidak menangkap string kosong dan paket `cors` membaca origin falsy sebagai `*`; ekspresinya tersalin di tiga berkas dan template env produksi PRD §17 mengirimkannya kosong. **`signature_key` Midtrans** tersimpan di `payments.raw_payload` dan terekspos view Retool — di kode `P-03` yang baru merge; severity sedang, bukan tinggi. Audit dependensi: 16 advisory tinggi/kritis ditriase, **nol yang bisa dicapai**, digerbangi kebijakan pengecualian berjangka waktu di CI. Lima penjaga dibuktikan merah. ASVS L1 di dalam kode tuntas; kontrol transport menunggu `F-05`. Isu: #123 retensi 90 hari (tidak ada sama sekali), #124 `sessions.token` plaintext, #125 CSP web, #126 §9.4 bertentangan dengan §7/§10.1, #127 bucket `strive-public`, #128 `pricing-config.service.spec.ts` tidak pernah jalan di CI. |
 | `R-04` | Observability: log terstruktur, error tracking, a… | A | W8 | 1 | `todo` | — | — | — |
-| `SA-03` | Endpoint /admin/integrations/health + biaya vendo… | A | W8 | 0,5 | `todo` | — | — | — |
+| `SA-03` | Endpoint /admin/integrations/health + biaya vendo… | A | W8 | 0,5 | `done` | #134 | 2026-09-23 | Status vendor diturunkan dari PENGALAMAN KITA (`ai_jobs`, `plagiarism_scans`, `payments`, `notifications`), bukan ping ke vendor: vendor bisa membalas `/health` 200 sementara setiap panggilan sungguhan gagal karena kuota/kredensial. Efek sampingnya benar juga — membuka dasbor admin tidak menembak Midtrans. LIMA status, bukan tiga: `not_configured` dan `unknown` ditambahkan karena tanpanya jawabannya BOHONG — kredensial kosong bukan salah vendor, dan nol kegagalan dari nol percobaan bukan bukti sehat. "Akurat" di AC yang menuntutnya. Midtrans dibaca dari `payments`, BUKAN `orders`: order pending yang menumpuk itu pengguna yang menutup Snap. "Hari ini" SENGAJA `Asia/Jakarta`, bukan zona waktu pengguna (aturan 5 tetap berlaku untuk streak/quest/kuota) — ini biaya vendor untuk tim ops, dan UTC akan membuat hari berakhir pukul 07.00 WIB. Nilainya ikut dikirim di respons supaya tidak ambigu. Alert butuh rasio >= 3x DAN biaya >= $0,50; rasio saja membuat 0,000001 → 0,000010 berbunyi, dan alarm yang sering berbunyi adalah alarm yang dimatikan orang. Kedua angka itu tebakan pertama, bukan turunan data — konstanta bernama di satu berkas. Empat sabotase merah, termasuk batas hari UTC vs WIB. |
 | `SA-04` | Dasbor Retool: transaksi, harga, audit, health | A | W8 | 0,5 | `blocked` | — | 2026-09-20 | BLOCKED: butuh langganan Retool (blocker non-kode, `docs/reports/blocker-non-kode.pdf`) — isu #77. AC-nya "superadmin bisa bekerja tanpa membuka database" mustahil tanpa dasbornya. Panel `health` juga menunggu `SA-03`. Yang SUDAH ada: seluruh query-nya di `docs/retool/queries.sql`, diverifikasi berjalan sebagai role `strive_readonly` (6 test integrasi) dan tidak satu pun menyentuh tabel mentah. Saat lisensinya ada, perakitannya setengah jam. |
 | `SA-05` | PATCH /admin/users/:id/role — ubah peran pengguna | A | W7 | 0,5 | `done` | #97 | 2026-09-21 | Butuh kode error baru: `ROLE_CHANGE_FORBIDDEN` ditambahkan ke PRD §10.2 lewat PR TERSENDIRI (#96) sebelum dipakai — yang pertama mengikuti urutan itu. Larangan 'ubah peran sendiri' saja TIDAK cukup: dua superadmin yang saling menurunkan bersamaan menyisakan NOL superadmin, permanen. Diverifikasi merah — tanpa advisory lock hitungannya nol di tengah jendela test. |
 | `R-05` | Cadangan perbaikan bug | AB | W8 | 2 | `todo` | — | — | — |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 48 | 46,0 |
+| `done` | 49 | 46,5 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 28 | 28,0 |
+| `todo` | 27 | 27,5 |
 
 ---
 ## Ringkasan per epik
@@ -192,9 +192,9 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E8` | ATS CV Builder | 6,5 | 7 | 1/7 · **15%** | — |
 | `E12` | International Mastery Track | 4,0 | 4 | 1/4 · **12%** | — |
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
-| `E9` | Panel Superadmin | 2,5 | 5 | 3/5 · **60%** | 1 |
+| `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 2/5 · **33%** | — |
-| | **Total** | **78,5** | **80** | **48/80 · 59%** | **4** |
+| | **Total** | **78,5** | **80** | **49/80 · 59%** | **4** |
 
 ---
 
