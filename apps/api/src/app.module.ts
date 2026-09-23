@@ -23,6 +23,7 @@ import { MentorModule } from './modules/mentor';
 import { AdminModule } from './modules/admin';
 import { NotificationModule } from './modules/notification';
 import { HealthModule } from './modules/health';
+import { RealtimeModule } from './realtime';
 
 /**
  * Seluruh modul di CLAUDE.md "Struktur repo" sudah terdaftar sejak awal, meski
@@ -50,6 +51,7 @@ import { HealthModule } from './modules/health';
     WalletModule,
     PaymentModule,
     StoreModule,
+    RealtimeModule,
     ScanModule,
     CareerModule,
     MasteryModule,
