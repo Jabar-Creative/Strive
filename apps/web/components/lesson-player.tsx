@@ -168,7 +168,10 @@ export function LessonPlayer({ lessonId }: { lessonId: string }) {
   const lagi = fase === 'mengirim';
 
   return (
-    <div className="mx-auto flex w-full max-w-sm flex-col gap-4 px-4 pb-8 pt-4">
+    <div
+      className="mx-auto flex w-full max-w-sm flex-col gap-4 px-4 pb-8 pt-4"
+      data-reduced-motion={reduksi ? 'ya' : 'tidak'}
+    >
       <header className="flex items-center justify-between">
         <p className="font-mono text-label uppercase text-ink-500">{lesson.title}</p>
         <p className="font-mono text-label text-ink-500 tabular-nums">
