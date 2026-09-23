@@ -1,0 +1,28 @@
+{
+  // Cakupan typecheck untuk BERKAS TEST — isu #120.
+  //
+  // `tsconfig.json` memakai `include: ["src/**/*.ts"]` karena itu yang
+  // dikompilasi `nest build`. Akibat sampingannya: `apps/api/test/` adalah
+  // satu-satunya TypeScript di repo ini yang tidak pernah diperiksa siapa
+  // pun — Vitest mentranspilasi lewat swc, yang membuang tipe tanpa
+  // memeriksanya.
+  //
+  // Itu bukan kekhawatiran teoretis. Saat `RT-01` menambah parameter ketiga
+  // ke konstruktor `OutboxWorkerService`, empat pemanggilan di
+  // `outbox.integration.spec.ts` tetap mengirim dua argumen dan `pnpm
+  // typecheck` HIJAU. Gejalanya bukan galat tipe, melainkan `undefined` yang
+  // meledak di dalam `try/catch` dan membuat event dihitung GAGAL — kegagalan
+  // test yang menunjuk ke tempat yang salah.
+  //
+  // Konfigurasi TERPISAH, bukan menambah `test` ke `include` utama: `include`
+  // yang memuat `test/` membuat `tsc` menghitung ulang `rootDir`, dan repo ini
+  // sudah pernah kehilangan seluruh isi `dist/` karena perubahan sejenis
+  // (`incremental`). Berkas ini `noEmit`, jadi ia tidak bisa menyentuh build.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "emitDeclarationOnly": false
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

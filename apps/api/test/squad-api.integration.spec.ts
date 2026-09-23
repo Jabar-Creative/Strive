@@ -365,7 +365,14 @@ describe('GET /squads/:id/leaderboard (Q-06)', () => {
     expect(Number(sebelum.n), 'baris squad uji tidak ada — test tidak sahih').toBe(1);
 
     await expect(
-      db.updateTable('squads').set({ season_id: null }).where('id', '=', SQUAD_A).execute(),
+      // Cast disengaja: yang diuji justru bahwa DATABASE menolak null.
+      // Tipenya memang melarang, dan itu lapis pertama — migrasi 008 lapis
+      // keduanya, dan lapis kedua itu yang dibuktikan di sini.
+      db
+        .updateTable('squads')
+        .set({ season_id: null as unknown as string })
+        .where('id', '=', SQUAD_A)
+        .execute(),
     ).rejects.toThrow(/not-null|null value/i);
 
     // Dan papannya tetap bisa dibentuk, karena musimnya masih ada.

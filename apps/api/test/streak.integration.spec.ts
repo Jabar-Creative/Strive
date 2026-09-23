@@ -60,7 +60,7 @@ async function seed(id: string, tz: string, email: string) {
 
 beforeAll(async () => {
   db = createDatabase(url);
-  streaks = new StreakService(db);
+  streaks = new StreakService();
   try {
     await db.selectFrom('streaks').select('user_id').limit(1).execute();
     reachable = true;

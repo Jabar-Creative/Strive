@@ -5,9 +5,9 @@ import { Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { DB } from '../../infra/kysely';
-import type { PublishPricingInput } from './pricing-config.service';
-import { PricingConfigService } from './pricing-config.service';
+import type { DB } from '../src/infra/kysely';
+import type { PublishPricingInput } from '../src/modules/payment/pricing-config.service';
+import { PricingConfigService } from '../src/modules/payment/pricing-config.service';
 
 /**
  * Test integrasi P-01 — MEMBUKTIKAN acceptance criteria backlog secara
@@ -25,17 +25,31 @@ import { PricingConfigService } from './pricing-config.service';
  * CI/agent), SELURUH describe di bawah DILEWATI dengan peringatan eksplisit
  * lewat `dbAvailable` — bukan dianggap lulus diam-diam.
  *
- * CATATAN GAP INFRA (bukan scope P-01, dilaporkan apa adanya): job CI `node`
- * (.github/workflows/ci.yml) yang menjalankan `pnpm test` TIDAK menyediakan
- * service Postgres — hanya job `migrations` yang punya. Karena describe di
- * bawah auto-skip tanpa DB, test ini tidak membuat job `node` merah, tapi
- * juga tidak benar-benar tereksekusi di sana. Sampai ada keputusan
- * arsitektur test (testcontainers, atau menambah service Postgres ke job
- * `node`), test ini efektif hanya berjalan di mesin developer yang
- * menjalankan `docker compose up -d` sendiri.
+ * ── Kenapa berkas ini pindah ke `test/` (isu #128) ──
+ *
+ * Gap yang dicatat penulis aslinya di sini ternyata bukan gap sementara,
+ * melainkan lubang penuh: berkas ini **tidak pernah dijalankan CI, di job
+ * mana pun**. Job `node` memilihnya (`include: src/**\/*.spec.ts`) tapi tidak
+ * punya Postgres, jadi setiap test men-skip dirinya sendiri; job
+ * `migrasi kering` punya Postgres tapi menjalankan `pnpm test:integration`,
+ * yang hanya memilih `test/**\/*.integration.spec.ts` — dan berkas ini ada di
+ * `src/`. Jadi advisory lock yang mencegah dua publish harga bersamaan
+ * menghasilkan `version` yang sama — jalur uang — hijau berminggu-minggu
+ * tanpa pernah dieksekusi di CI.
+ *
+ * Sekarang ia berjalan bersama 38 berkas integrasi lain. `dbAvailable` tetap
+ * dipertahankan sebagai jaring pengaman untuk mesin developer tanpa Docker,
+ * bukan lagi sebagai satu-satunya perilaku.
  */
+// `DATABASE_URL` IKUT DIBACA — itu inti perbaikan isu #128. Sebelumnya
+// hanya `PRICING_TEST_DATABASE_URL`, jadi meski job CI suatu saat diberi
+// Postgres, berkas ini tetap mencari port 55432 milik docker-compose lokal
+// dan tetap men-skip dirinya sendiri. Urutannya sama dengan berkas integrasi
+// lain, dengan override khususnya tetap didahulukan.
 const TEST_DATABASE_URL =
   process.env['PRICING_TEST_DATABASE_URL'] ??
+  process.env['DATABASE_URL_TEST'] ??
+  process.env['DATABASE_URL'] ??
   'postgres://strive:strive_dev_only@127.0.0.1:55432/strive';
 
 async function pingDatabase(connectionString: string): Promise<boolean> {
