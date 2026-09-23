@@ -6,6 +6,7 @@ import { RedisModule } from './infra/redis';
 import { BullmqModule } from './infra/bullmq';
 import { StorageModule } from './infra/storage';
 
+import { AiModule } from './modules/ai';
 import { AuthModule } from './modules/auth';
 import { UsersModule } from './modules/users';
 import { HubModule } from './modules/hub';
@@ -42,6 +43,7 @@ import { RealtimeModule } from './realtime';
     StorageModule,
 
     // Domain
+    AiModule,
     AuthModule,
     UsersModule,
     HubModule,
