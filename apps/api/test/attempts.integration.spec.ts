@@ -6,6 +6,7 @@ import { createDatabase, type DB } from '../src/infra/kysely';
 import { AttemptsService, GradingService } from '../src/modules/learning';
 import { StreakService } from '../src/modules/streak';
 import { CoinLedgerService } from '../src/modules/wallet';
+import type { LedgerEntry, Trx, WriteParams } from '../src/modules/wallet';
 
 /**
  * `L-03` terhadap DATABASE NYATA — PRD §7 E2 `LE-4` … `LE-8`, AC-LE-1…5.
@@ -119,7 +120,7 @@ beforeAll(async () => {
   attempts = new AttemptsService(
     db,
     new GradingService(),
-    new StreakService(db),
+    new StreakService(),
     new CoinLedgerService(),
   );
   try {
@@ -292,7 +293,10 @@ describe('L-03 — POST /attempts (database nyata)', () => {
     // Exception dilempar SETELAH insert coin_ledger, persis seperti bunyi
     // AC-nya. Caranya: `CoinLedgerService` yang meledak tepat sesudah menulis.
     class LedgerMeledak extends CoinLedgerService {
-      override async write(trx: never, params: never) {
+      // Tanda tangan SUNGGUHAN, bukan `never`: tiruan yang tipenya dilonggarkan
+      // berhenti ikut berubah saat yang ditiru berubah, dan sejak isu #120
+      // berkas test ikut diperiksa `tsc`.
+      override async write(trx: Trx, params: WriteParams): Promise<LedgerEntry> {
         await super.write(trx, params);
         throw new Error('meledak tepat setelah insert coin_ledger');
       }
@@ -300,7 +304,7 @@ describe('L-03 — POST /attempts (database nyata)', () => {
     const rapuh = new AttemptsService(
       db,
       new GradingService(),
-      new StreakService(db),
+      new StreakService(),
       new LedgerMeledak(),
     );
 

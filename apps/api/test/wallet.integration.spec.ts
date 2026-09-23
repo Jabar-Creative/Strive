@@ -60,7 +60,10 @@ async function semai(userId: string, n: number) {
         userId,
         entryType: 'earn_lesson',
         amount: 10,
-        refType: 'lesson',
+        // `'attempt'`, bukan `'lesson'`: `RefType` tidak memuat `'lesson'`,
+        // jadi fixture lama memakai nilai yang PRODUKSI tidak pernah bisa
+        // menulis — dan kolomnya `text`, jadi database tidak menolaknya.
+        refType: 'attempt',
         refId: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
       }),
     );
@@ -94,7 +97,7 @@ describe('WalletService (database nyata)', () => {
       entry_type: 'earn_lesson',
       amount: 10,
       balance_after: 10,
-      ref_type: 'lesson',
+      ref_type: 'attempt',
     });
     expect(e!.ref_id).toBeTruthy();
     expect(e!.created_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
