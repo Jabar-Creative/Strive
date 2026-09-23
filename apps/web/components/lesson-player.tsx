@@ -33,6 +33,16 @@ import { answerCard, attemptPayload, startPlayer, type PlayerState } from '@/lib
 const T_BASE = 0.32; // cermin --t-base 320ms (§14.3)
 const T_CEL = 0.64; // cermin --t-cel 640ms (§14.3)
 
+/**
+ * Kegagalan yang bukan ApiError (koneksi putus, DNS) tetap harus membawa
+ * pengguna ke layar gagal dengan tombol ulang — tanpa ini, TypeError polos
+ * membuat `galat` null dan layarnya buntu di kartu terakhir.
+ * `NETWORK_ERROR` adalah kode TAMPILAN sisi client, bukan kontrak API §10.2.
+ */
+function galatJaringan() {
+  return new ApiError('NETWORK_ERROR', 0, 'Koneksi ke server terputus. Coba lagi.');
+}
+
 /** Ambang geser (px) agar swipe dianggap jawaban — bukan usapan jempol. */
 const AMBANG_SWIPE = 80;
 
@@ -71,7 +81,7 @@ export function LessonPlayer({ lessonId }: { lessonId: string }) {
         setFase('bermain');
       })
       .catch((e: unknown) => {
-        setGalat(e instanceof ApiError ? e : null);
+        setGalat(e instanceof ApiError ? e : galatJaringan());
         setFase('gagal-muat');
       });
   }, [api, lessonId]);
@@ -90,7 +100,7 @@ export function LessonPlayer({ lessonId }: { lessonId: string }) {
       })
       .catch((e: unknown) => {
         terkirimRef.current = false;
-        setGalat(e instanceof ApiError ? e : null);
+        setGalat(e instanceof ApiError ? e : galatJaringan());
         setFase('gagal-kirim');
       });
   }, [api, lesson, lessonId, player]);
@@ -316,7 +326,6 @@ function HasilAttempt({
             initial={reduksi ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: reduksi ? 0 : T_CEL }}
-            aria-hidden={reduksi ? undefined : true}
           >
             +{hasil.coins} koin · +{hasil.points} poin
           </motion.p>
