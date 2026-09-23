@@ -3,6 +3,7 @@ import type { Kysely } from 'kysely';
 
 import { DATABASE, type DB } from '../infra/kysely';
 import { LeaderboardService } from '../modules/league';
+import { RealtimeEmitter } from '../realtime/realtime.emitter';
 
 /** `Q-03` AC: event gagal 5× masuk `audit_log`, dan antrean tidak macet. */
 export const MAX_ATTEMPTS = 5;
@@ -74,6 +75,7 @@ export class OutboxWorkerService {
   constructor(
     @Inject(DATABASE) private readonly db: Kysely<DB>,
     private readonly leaderboard: LeaderboardService,
+    private readonly realtime: RealtimeEmitter,
   ) {
     this.handlers = {
       'points.awarded': (p) => this.pointsAwarded(p),
@@ -174,6 +176,15 @@ export class OutboxWorkerService {
     if (typeof squadId !== 'string' || typeof seasonId !== 'string') return;
 
     await this.leaderboard.syncMember(seasonId, squadId, userId);
+
+    // RT-1/RT-4: kabar ke kanal squad, SETELAH papan diselaraskan — klien
+    // yang bereaksi dengan membaca ulang papan harus menemukan angka baru.
+    //
+    // Payload-nya cuma penanda, bukan skor: WS adalah pelengkap, dan REST
+    // yang memberi keadaan (PRD §7 E15). Skor di dalam event akan jadi SUMBER
+    // KEDUA untuk satu angka — dan event yang tiba tidak berurutan akan
+    // menimpa skor baru dengan yang lama di layar pengguna.
+    this.realtime.toSquad(squadId, 'score.updated', { squad_id: squadId, user_id: userId });
   }
 }
 

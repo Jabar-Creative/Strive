@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createDatabase, type DB } from '../src/infra/kysely';
 import { createRedis } from '../src/infra/redis';
 import { LeaderboardService, squadKey } from '../src/modules/league';
+import { RealtimeEmitter } from '../src/realtime';
 import { MAX_ATTEMPTS, OutboxWorkerService } from '../src/workers';
 
 /**
@@ -31,6 +32,10 @@ const SQUAD = '00000000-0000-4000-8000-0000000103d3';
 
 let db: Kysely<DB>;
 let redis: Redis;
+// Emitter SUNGGUHAN, bukan tiruan: handler `points.awarded` memanggilnya di
+// jalur produksi, dan tiruan tidak akan pernah memperlihatkan kalau
+// pengirimannya melempar.
+let rt: RealtimeEmitter;
 let reachable = false;
 
 /** Menyisipkan `n` event `points.awarded` berpayload lengkap. */
@@ -68,7 +73,7 @@ class LeaderboardMata {
 
 /** Worker yang mencatat event MANA yang ia proses. */
 function workerDenganCatatan(lb: LeaderboardMata) {
-  const w = new OutboxWorkerService(db, lb as unknown as LeaderboardService);
+  const w = new OutboxWorkerService(db, lb as unknown as LeaderboardService, rt);
   const diproses: string[] = [];
   const asli = (
     w as unknown as { handlers: Record<string, (p: Record<string, unknown>) => Promise<void>> }
@@ -85,6 +90,7 @@ function workerDenganCatatan(lb: LeaderboardMata) {
 beforeAll(async () => {
   db = createDatabase(url);
   redis = createRedis(redisUrl);
+  rt = new RealtimeEmitter();
   try {
     await db.selectFrom('outbox_events').select('id').limit(1).execute();
     await redis.ping();
@@ -97,6 +103,7 @@ beforeAll(async () => {
 afterAll(async () => {
   if (db) await db.destroy();
   if (redis) redis.disconnect();
+  if (rt) rt.onModuleDestroy();
 });
 
 beforeEach(async () => {
@@ -271,7 +278,7 @@ describe('Q-03 — worker outbox (database + Redis nyata)', () => {
   it('papan squad selaras dengan Postgres, dan memproses DUA KALI tidak menggandakan', async () => {
     if (!reachable) return;
     const lb = new LeaderboardService(db, redis);
-    const w = new OutboxWorkerService(db, lb);
+    const w = new OutboxWorkerService(db, lb, rt);
 
     await lb.squadBoard(MUSIM, SQUAD); // kunci ada, AKU = 40
     // Seperti L-03: weekly_points naik di transaksi yang sama dengan event.
@@ -303,7 +310,7 @@ describe('Q-03 — worker outbox (database + Redis nyata)', () => {
   it('setelah Redis KOSONG, poin event tidak terhitung dua kali', async () => {
     if (!reachable) return;
     const lb = new LeaderboardService(db, redis);
-    const w = new OutboxWorkerService(db, lb);
+    const w = new OutboxWorkerService(db, lb, rt);
 
     await redis.del(squadKey(MUSIM, SQUAD));
     await db
@@ -329,7 +336,7 @@ describe('Q-03 — worker outbox (database + Redis nyata)', () => {
         payload: JSON.stringify({ user_id: AKU, squad_id: null, season_id: null, points: 5 }),
       })
       .execute();
-    const w = new OutboxWorkerService(db, new LeaderboardService(db, redis));
+    const w = new OutboxWorkerService(db, new LeaderboardService(db, redis), rt);
 
     // Pengguna baru belum punya squad sampai job mingguan (Q-01). Tidak ada
     // papan untuk diselaraskan — itu keadaan sah, bukan kegagalan yang

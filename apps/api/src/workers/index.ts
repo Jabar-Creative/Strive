@@ -7,6 +7,7 @@ import { ScanModule } from '../modules/scan';
 import { WalletModule } from '../modules/wallet';
 import { NotificationModule } from '../modules/notification';
 import { LeagueModule } from '../modules/league';
+import { RealtimeEmitterModule } from '../realtime/realtime.module';
 import { LeagueRollupService } from './league-rollup.service';
 import { OutboxWorkerService } from './outbox.service';
 import { ReconcileBalanceService } from './reconcile-balance.service';
@@ -64,6 +65,7 @@ import { StreakWarningService } from './streak-warning.service';
     NotificationModule,
     ScanModule,
     LeagueModule,
+    RealtimeEmitterModule,
   ],
   providers: [
     ReconcileBalanceService,

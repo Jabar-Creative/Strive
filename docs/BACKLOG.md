@@ -111,7 +111,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `P-02` | POST /payments/checkout — Midtrans Snap, QRIS | A | W5 | 1 | `blocked` | — | 2026-09-17 | Kode selesai & ter-merge, TAPI setengah AC tidak bisa dibuktikan: 'token Snap dan redirect_url yang VALID' menuntut panggilan Midtrans sungguhan, dan MIDTRANS_SERVER_KEY kosong. Idempotensi & PA-5 & PA-10 terbukti. Menunggu kredensial vendor — sama seperti F-05 menunggu akun cloud. |
 | `P-03` | Webhook: verifikasi signature, idempotensi, entri… | A | W5 | 1,5 | `todo` | — | — | — |
 | `PR-01` | Alokasi 2 reviewer lintas squad, identitas disemb… | A | W5 | 1 | `done` | #58 | 2026-09-17 | PR-2 ditegakkan BENTUK DATA: ReviewQueueItem tidak punya author_id, jadi tidak ada tempat untuk lupa membuangnya. Diuji dengan memeriksa SELURUH isi respons, bukan satu field. PR-1 dijaga di antrean DAN di jalur tulis. |
-| `RT-01` | WS gateway + Redis pub/sub adapter, kanal squad:{id} | A | W5 | 1,5 | `todo` | — | — | — |
+| `RT-01` | WS gateway + Redis pub/sub adapter, kanal squad:{id} | A | W5 | 1,5 | `done` | #118 | 2026-09-23 | Dibuktikan dengan DUA aplikasi Nest sungguhan di dua port: klien tersambung ke instance B, event dikirim dari instance A. Satu instance tidak bisa membuktikan apa pun — `server.to()` selalu sampai ke klien di proses yang sama, dengan atau tanpa adapter. Autentikasi handshake dipindah dari `handleConnection` ke middleware `server.use`: `handleConnection` asinkron dan Socket.IO sudah mengirim `connect` sebelum ia selesai, jadi klien yang langsung subscribe ditolak "belum terverifikasi" bergantung kecepatan Postgres. `resolveSessionToken` + `SquadReadService.canRead` diekstrak sebagai sumber tunggal REST dan WS, bukan disalin. `@socket.io/redis-emitter` MEMBUANG Promise dari `publish`; dengan `enableOfflineQueue: false` penolakannya menjadi `unhandledRejection` yang mematikan seluruh worker — `.catch()` saja malah mengubah crash jadi event hilang tanpa suara saat boot, jadi penerbitan dirantai pada kesiapan pertama. Ketiga penjaga dibuktikan merah. `ws:presence:{squad_id}` di PRD §9.4 sengaja TIDAK dibangun (isu #119). |
 | `AI-03` | Penyusunan LLM -> JSON terstruktur, prompt berver… | B | W5 | 1,5 | `todo` | — | — | — |
 | `N-02` | UI lonceng notifikasi + banner peringatan streak | B | W5 | 0,5 | `todo` | — | — | — |
 | `P-04` | UI top-up: pilih paket, bayar, status, kembali ke… | B | W5 | 0,5 | `todo` | — | — | — |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 44 | 41,0 |
+| `done` | 45 | 42,5 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 32 | 33,0 |
+| `todo` | 31 | 31,5 |
 
 ---
 ## Ringkasan per epik
@@ -183,7 +183,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E2` | Learning Engine | 7,5 | 5 | 3/5 · **60%** | — |
 | `E3` | Career Streak | 5,5 | 5 | 4/5 · **73%** | — |
 | `E5` | Squad & Liga | 6,0 | 6 | 5/6 · **75%** | — |
-| `E15` | Realtime | 2,0 | 2 | 0/2 · **0%** | — |
+| `E15` | Realtime | 2,0 | 2 | 1/2 · **75%** | — |
 | `E16` | Notifikasi | 1,5 | 2 | 1/2 · **67%** | — |
 | `E6` | Payment | 3,5 | 4 | 1/4 · **14%** | 1 |
 | `E14` | Strive Store | 2,0 | 2 | 1/2 · **50%** | — |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 3/5 · **60%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 1/5 · **17%** | — |
-| | **Total** | **78,5** | **80** | **44/80 · 52%** | **4** |
+| | **Total** | **78,5** | **80** | **45/80 · 54%** | **4** |
 
 ---
 

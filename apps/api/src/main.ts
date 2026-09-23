@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { RedisIoAdapter } from './realtime';
 import { WorkerModule } from './workers';
 
 /**
@@ -50,6 +51,14 @@ async function bootstrapApi(): Promise<void> {
     origin: process.env['APP_URL'] ?? 'http://localhost:3000',
     credentials: true,
   });
+
+  // Adapter Redis pub/sub untuk WebSocket (RT-2) — DITUNGGU sebelum listen.
+  // Tanpa adapter, event hanya sampai ke klien di instance yang sama; dengan
+  // dua instance, separuh anggota squad tidak pernah menerima pembaruan, dan
+  // tidak ada galat apa pun karena tiap instance mengira pengirimannya sukses.
+  const wsAdapter = new RedisIoAdapter(app);
+  await wsAdapter.connect();
+  app.useWebSocketAdapter(wsAdapter);
 
   await app.listen(port);
   new Logger('bootstrap').log(`API mendengarkan di :${port} (MODE=api)`);
