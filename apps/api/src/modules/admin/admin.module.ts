@@ -22,6 +22,8 @@ import { UserRoleService } from './user-role.service';
   imports: [KyselyModule],
   controllers: [AdminUsersController, AdminIntegrationsController],
   providers: [UserRoleService, IntegrationsHealthService],
-  exports: [UserRoleService],
+  // `IntegrationsHealthService` diekspor untuk MetricsService (R-04): satu
+  // definisi lonjakan biaya, bukan dua yang bisa menyimpang.
+  exports: [UserRoleService, IntegrationsHealthService],
 })
 export class AdminModule {}

@@ -98,12 +98,30 @@ const takTerlacak: string[] = [];
  * diekspor dari satu modul dan dipakai di modul lain.
  */
 const konstanta = new Map<string, string>();
+/**
+ * Peta konstanta → SELURUH nilainya, untuk kode yang dipilih dari tabel.
+ *
+ * Ditambahkan saat `R-04`: `AllExceptionsFilter` memetakan status HTTP yang
+ * dihasilkan framework (404 dari router, 403 dari guard) ke kode §10.2 lewat
+ * `code: KODE_HTTP[status] ?? …`. Pemindai versi sebelumnya menangkap
+ * `KODE_HTTP` sebagai nama konstanta, tidak menemukan nilainya, dan menandainya
+ * tak terlacak — benar, dan itu memang cara test ini dimaksudkan bekerja.
+ *
+ * Jawabannya memperluas pemindai, bukan melonggarkannya: `code: PETA[x]`
+ * sekarang menghitung **semua** nilai di peta itu sebagai terpakai. Satu entri
+ * ilegal di tabel mana pun tetap memerahkan test.
+ */
+const petaKode = new Map<string, string[]>();
 const berkas2 = berkasSumber(join(AKAR, 'src'));
 for (const berkas of berkas2) {
-  for (const m of readFileSync(berkas, 'utf8').matchAll(
-    /\bconst\s+([A-Z][A-Z0-9_]*)\s*(?::\s*[^=]+)?=\s*'([A-Z_]+)'/g,
-  )) {
+  const isi = readFileSync(berkas, 'utf8');
+  for (const m of isi.matchAll(/\bconst\s+([A-Z][A-Z0-9_]*)\s*(?::\s*[^=]+)?=\s*'([A-Z_]+)'/g)) {
     konstanta.set(m[1]!, m[2]!);
+  }
+  // `const NAMA: Record<…> = { 400: 'VALIDATION_ERROR', … }`
+  for (const m of isi.matchAll(/\bconst\s+([A-Z][A-Z0-9_]*)\s*(?::\s*[^=]+)?=\s*\{([^}]*)\}/g)) {
+    const nilai = [...m[2]!.matchAll(/'([A-Z_]{4,})'/g)].map((x) => x[1]!);
+    if (nilai.length > 0) petaKode.set(m[1]!, nilai);
   }
 }
 
@@ -124,7 +142,15 @@ for (const berkas of berkas2) {
   // bentuk yang lebih rapi, dan `content.service.ts` memakainya sejak `L-01`.
   // Penjaga yang hanya mengenali satu cara menulis adalah penjaga yang
   // dilewati orang yang menulis lebih baik.
-  for (const m of isi.matchAll(/code: ([A-Z][A-Z0-9_]*)\b/g)) {
+  //
+  // Bentuk 3 — dipilih dari tabel: `code: KODE_HTTP[status]`. SELURUH nilai
+  // tabelnya dihitung terpakai, jadi satu entri ilegal tetap tertangkap.
+  for (const m of isi.matchAll(/code: ([A-Z][A-Z0-9_]*)(\[)?/g)) {
+    const dariPeta = m[2] ? petaKode.get(m[1]!) : undefined;
+    if (dariPeta) {
+      for (const k of dariPeta) catat(k);
+      continue;
+    }
     const nilai = konstanta.get(m[1]!);
     if (nilai === undefined) takTerlacak.push(`${m[1]} (${nama})`);
     else catat(nilai);

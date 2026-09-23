@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { appOrigins, headerKeamanan } from './common';
+import { StructuredLogger, appOrigins, headerKeamanan } from './common';
 import { RedisIoAdapter } from './realtime';
 import { WorkerModule } from './workers';
 
@@ -37,7 +37,13 @@ async function bootstrapApi(): Promise<void> {
   //
   // Test integrasi memakai `createNestApplication({ rawBody: true })` sendiri,
   // jadi ia TIDAK akan menangkap kalau baris ini hilang dari sini.
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  // Logger JSON terstruktur (R-04, §17.1) dipasang SEBELUM modul dirakit,
+  // supaya galat saat boot pun ikut terstruktur — dan galat saat boot justru
+  // yang paling sering dibaca dari log agregat, bukan dari terminal.
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+    logger: new StructuredLogger(),
+  });
 
   // Prefiks /api/v1 — docs/PRD.md §10. `/health` dikecualikan agar probe
   // orkestrator tidak ikut terpengaruh saat versi API naik.
@@ -72,7 +78,7 @@ async function bootstrapApi(): Promise<void> {
 
 async function bootstrapWorker(): Promise<void> {
   // Konteks aplikasi tanpa HTTP listener.
-  await NestFactory.createApplicationContext(WorkerModule);
+  await NestFactory.createApplicationContext(WorkerModule, { logger: new StructuredLogger() });
   new Logger('bootstrap').log('Worker pool hidup (MODE=worker)');
 }
 
