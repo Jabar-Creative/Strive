@@ -97,7 +97,7 @@ describe('WalletService (database nyata)', () => {
       entry_type: 'earn_lesson',
       amount: 10,
       balance_after: 10,
-      ref_type: 'lesson',
+      ref_type: 'attempt',
     });
     expect(e!.ref_id).toBeTruthy();
     expect(e!.created_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
