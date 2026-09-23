@@ -126,7 +126,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `PL-01` | Form prompt terstruktur (role/context/task/format… | B | W6 | 1 | `todo` | — | — | — |
 | `ST-01` | store_items + pembelian transaksional (debit ledger) | A | W6 | 1 | `done` | #113 | 2026-09-22 | Dipindah dari Dev B (22 Sep). Entri ledger menunjuk BARIS PEMBELIAN, bukan item: `coin_ledger_ref_uniq` tidak memuat `user_id`, dan `findExisting()` juga tidak — dengan ref ke item, pembeli KEDUA mendapat itemnya GRATIS (lapis idempotensi menemukan entri pembeli pertama lalu mengembalikannya tanpa mendebit siapa pun). Diverifikasi merah: saldo pembeli kedua tetap 1000. Baris pembelian disisipkan SEBELUM debit karena ref butuh idnya; SR-4 dijamin ROLLBACK, dan ada assert nol baris tersisa. `asset_key` tidak pernah keluar dari service (SR-5). |
 | `ST-02` | UI etalase + unduh aset (signed URL 15 menit) | B | W6 | 1 | `todo` | — | — | Memiliki `GET /store/purchases/:id/download` — AC-nya ("URL unduh kedaluwarsa setelah 15 menit") sudah menjanjikannya; path-nya dicatat di sini supaya penyisiran `scripts/audit-rute.mjs` bisa melihatnya (isu #88). |
-| `AI-06` | Tabel ai_jobs + dispatcher di Node + pencatatan b… | A | W7 | 1 | `todo` | — | — | — |
+| `AI-06` | Tabel ai_jobs + dispatcher di Node + pencatatan b… | A | W7 | 1 | `done` | #133 | 2026-09-23 | Dikerjakan MENDAHULUI `AI-01` (Dev B): dependensinya LUNAK — sisi Node butuh KONTRAK layanan AI, bukan layanannya. Pola yang sama sudah dipakai `SnapClient` (tanpa akun Midtrans) dan `PlagiarismProvider` (tanpa Copyleaks). Bentuk kontraknya diangkat di #132 supaya AI-01 menyesuaikan sebelum ditulis. Percobaan ulang dihitung **BullMQ**, bukan kolom `ai_jobs.attempts` (keputusan Fatih, 23 Sep): dua sumber kebenaran untuk satu angka pasti menyimpang saat proses mati di tengah. Artinya `BullmqModule` akhirnya dibangun — sebelumnya `@Module({})` kosong yang menunggu Q-03, padahal Q-03 memilih polling. Koneksi BullMQ SENGAJA bukan `createRedis()`: `maxRetriesPerRequest: 2` ditolak pustakanya untuk koneksi yang memblokir (`BRPOPLPUSH`), dan `enableOfflineQueue` dibiarkan bawaan karena job yang hilang = pengguna membayar koin untuk pekerjaan yang tidak pernah jalan. `failed` ditulis di DALAM processor, bukan di event worker yang bisa terlewat saat proses berhenti di antaranya. 4xx tidak diulang (§12.2). Tiga sabotase merah; satu TIDAK — `cost_usd` sebagai number ternyata tersimpan identik, jadi komentarnya diperbaiki dari klaim perlindungan menjadi konvensi tanpa penjaga. Job `running` bisa yatim kalau Redis hilang (keadaan retry ada di Redis, aturan 7): #131 — dan itu membuka bahwa BELUM ADA penjadwal untuk job apa pun di repo ini, sama dengan #121 dan #123. |
 | `K-03` | Worker Copyleaks + webhook hasil + laporan terunduh | A | W7 | 1,5 | `blocked` | — | 2026-09-20 | BLOCKED: kredensial sandbox Copyleaks belum ada (isu #90) — vendor KETIGA yang menahan item, setelah Midtrans (#57) dan Retool (#77). AC-nya menuntut "tuntas end-to-end di sandbox vendor". YANG SUDAH ADA: antarmuka disesuaikan PRD §12.2 (versi K-02 menyimpang — `documentUrl`, bukan `documentKey`; vendor mengambil dokumennya sendiri lewat signed URL dan tidak boleh punya akses bucket kita), rute `POST /webhooks/copyleaks` + entri ACCESS_MATRIX yang ditemukan hilang oleh penyisiran #88, kabel ke settle/release, dan `rawBody: true` di main.ts. Provider GAGAL TERTUTUP: tanpa rahasia, setiap webhook ditolak — bukan tiruan yang mengembalikan true supaya "bisa dites". |
 | `SA-01` | View SQL untuk transaksi & audit + koneksi Retool… | A | W7 | 0,5 | `done` | #60 | 2026-09-17 | View admin_transactions menggabung 4 tabel + kolom paid_without_ledger (uang masuk tanpa koin keluar). Role strive_readonly diuji dengan SET LOCAL ROLE sungguhan: bisa baca view, TIDAK bisa menulis apa pun, TIDAK bisa membaca tabel mentah. |
 | `SA-02` | PATCH /admin/pricing — terbit versi baru, bukan m… | A | W7 | 0,5 | `done` | #61 | 2026-09-17 | publishNewVersion sekarang menulis audit_log DI DALAM transaksi yang sama — versi tanpa jejak adalah harga yang berubah tanpa ada yang mengaku. actorId dari GUARD, tidak pernah dari body. Harga lama terbukti tetap terbaca untuk order lama. |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 47 | 45,0 |
+| `done` | 48 | 46,0 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 29 | 29,0 |
+| `todo` | 28 | 28,0 |
 
 ---
 ## Ringkasan per epik
@@ -189,12 +189,12 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E14` | Strive Store | 2,0 | 2 | 1/2 · **50%** | — |
 | `E7` | Klinik Plagiarisme | 5,0 | 4 | 2/4 · **50%** | 1 |
 | `E11` | Peer Review & Mentor | 4,0 | 4 | 2/4 · **50%** | — |
-| `E8` | ATS CV Builder | 6,5 | 7 | 0/7 · **0%** | — |
+| `E8` | ATS CV Builder | 6,5 | 7 | 1/7 · **15%** | — |
 | `E12` | International Mastery Track | 4,0 | 4 | 1/4 · **12%** | — |
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 3/5 · **60%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 2/5 · **33%** | — |
-| | **Total** | **78,5** | **80** | **47/80 · 57%** | **4** |
+| | **Total** | **78,5** | **80** | **48/80 · 59%** | **4** |
 
 ---
 
