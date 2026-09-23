@@ -88,7 +88,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
 | `A-05` | API profil: GET /me + PATCH /me | A | W2 | 0,5 | `done` | #99 | 2026-09-21 | Daftar PUTIH field, bukan daftar hitam: `role` dan `coin_balance` kolom di tabel yang sama, dan daftar hitam melupakan kolom yang ditambahkan besok. Diverifikasi merah. Menemukan `users.timezone` vs `streaks.timezone` — dua sumber satu fakta, tidak ada yang menyinkronkan sejak trigger registrasi; keduanya ditulis satu transaksi. `avatar_url` dibatasi http(s): `javascript:` tersimpan apa adanya lalu dipasang klien di leaderboard. |
 | `L-02` | GradingService — penilaian sepenuhnya di server | B | W2 | 1 | `done` | #106 | 2026-09-22 | AC terbukti: skor client tak punya jalur masuk (kontrak membuang field + fungsi tanpa parameter skor), jawaban acak skor 0 bukan error. 9 unit merah-dulu + 4 integrasi + 1 kontrak. Review Dev A: bentuk error dibungkus `{ error: … }` (§10.1) dan `CARD_NOT_IN_LESSON` masuk §10.2 lewat PR tersendiri (#114). Sempat dipindah ke lajur Dev A (#108) lalu DIKEMBALIKAN — pemindahannya keliru, PR ini sudah berdiri lebih dulu dan Dev A tidak memeriksa PR terbuka. |
-| `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `in_progress` | — | 2026-09-23 | — |
+| `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `done` | `dbdc1d0` | 2026-09-23 | AC terbukti di browser 360px: lesson 5 kartu tuntas lewat tombol + gestur swipe (skor 100, feedback 5, console bersih, tanpa scroll horizontal); prefers-reduced-motion mematikan seluruh transisi (useReducedMotion). 19 unit test; audit keamanan layak merge, 2 temuan langsung dibereskan. |
 | `C-02` | GET /wallet + GET /wallet/ledger (cursor-paginated) | A | W3 | 0,5 | `done` | #50 | 2026-09-17 | Cursor buram berprefiks cl: — cursor dari endpoint lain ditolak, bukan diam-diam dipakai sebagai id. AC 'telusur sampai entri pertama' diuji dengan menelusuri 47 entri penuh dan mencocokkannya dengan isi tabel. |
 | `L-03` | POST /attempts: attempt + streak + koin + outbox … | A | W3 | 2 | `done` | #116 | 2026-09-22 | Enam tulisan satu transaksi (LE-6). AC rollback diuji dengan `CoinLedgerService` yang meledak TEPAT setelah insert ledger — nol baris di attempt, ledger, outbox, quest, poin squad, dan streak tidak maju. TIGA jalan masuk dibedakan: baru (6 tulisan), kunci idempotensi SAMA (nol tulisan, `rewarded: true` — request ulang jaringan bukan latihan), kunci BEDA di lesson & hari sama (nol tulisan, `rewarded: false`, LE-4). Kedua penjaga diverifikasi merah. `attempt_date` dari `streaks.timezone` — sumber yang SAMA dengan StreakService, supaya LE-4 tidak bocor di hari keduanya berselisih. Bonus milestone streak (§6.1) SENGAJA tidak ditulis: tidak dimiliki item mana pun, isu #115. |
 | `S-01` | StreakService timezone-aware + kredit freeze | A | W3 | 1,5 | `done` | #23 | 2026-09-16 | Ter-merge lewat #23. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 50 | 47,5 |
+| `done` | 51 | 49,5 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 26 | 26,5 |
+| `todo` | 25 | 24,5 |
 
 ---
 ## Ringkasan per epik
@@ -180,7 +180,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E0` | Fondasi & Setup | 10,5 | 12 | 11/12 · **86%** | 1 |
 | `E1` | Auth & RBAC | 6,5 | 7 | 6/7 · **92%** | — |
 | `E4` | Coin & Wallet | 4,0 | 4 | 3/4 · **75%** | — |
-| `E2` | Learning Engine | 7,5 | 5 | 3/5 · **60%** | — |
+| `E2` | Learning Engine | 7,5 | 5 | 4/5 · **87%** | — |
 | `E3` | Career Streak | 5,5 | 5 | 4/5 · **73%** | — |
 | `E5` | Squad & Liga | 6,0 | 6 | 5/6 · **75%** | — |
 | `E15` | Realtime | 2,0 | 2 | 1/2 · **75%** | — |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **50/80 · 61%** | **4** |
+| | **Total** | **78,5** | **80** | **51/80 · 63%** | **4** |
 
 ---
 
