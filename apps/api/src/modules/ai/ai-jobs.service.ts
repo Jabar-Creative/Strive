@@ -55,8 +55,35 @@ export class AiJobsService {
     return row.id;
   }
 
-  /** SETELAH commit — aturan keras 10. */
+  /**
+   * SETELAH commit — aturan keras 10.
+   *
+   * ── `jobId` mencegah DUPLIKAT, dan diam-diam mencegah ANTRE ULANG ──
+   *
+   * `queue.add` dengan `jobId` yang sudah ada **tidak melempar dan tidak
+   * membuat apa pun** — ia mengembalikan job lama apa adanya, termasuk
+   * payload lamanya. Diverifikasi terhadap BullMQ sungguhan: `add` kedua
+   * dengan id sama mengembalikan job dengan data dari `add` pertama.
+   *
+   * Itu perilaku yang kita INGINKAN selama job masih berjalan — ia yang
+   * menahan pengantaran ganda, dan pengantaran ganda berarti **membayar LLM
+   * dua kali** (`mulai()` menerima status `running` supaya job yang
+   * worker-nya mati bisa diambil lagi, jadi ia tidak bisa menahannya sendiri).
+   *
+   * Tapi job yang sudah `completed`/`failed` masih DISIMPAN — `removeOnFail`
+   * menahan 1.000 terakhir. Tanpa baris di bawah, meng-antre-ulang `ai_jobs`
+   * yang gagal adalah no-op senyap: tidak ada galat, tidak ada job, dan
+   * barisnya tetap `failed` selamanya. Itu persis yang akan dilakukan penyapu
+   * job yatim di isu #131.
+   *
+   * Jadi: job yang SUDAH SELESAI dibuang dulu, job yang masih hidup
+   * dibiarkan menahan duplikat.
+   */
   async enqueue(jobId: string): Promise<void> {
+    const lama = await this.queue.getJob(jobId);
+    if (lama && ((await lama.isCompleted()) || (await lama.isFailed()))) {
+      await lama.remove();
+    }
     await this.queue.add('run', { jobId }, { ...OPSI_JOB_AI, jobId });
   }
 

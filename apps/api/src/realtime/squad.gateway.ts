@@ -1,4 +1,4 @@
-import { Inject, Logger } from '@nestjs/common';
+import { Inject, Logger, type OnApplicationShutdown } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -19,9 +19,22 @@ import { squadRoom } from './realtime.emitter';
 /** Path WebSocket, di bawah prefiks API yang sama dengan REST (PRD §10). */
 export const WS_PATH = '/api/v1/ws';
 
+/** Seberapa sering izin soket yang sudah tersambung diperiksa ULANG. */
+export const PERIKSA_ULANG_MS = 5 * 60_000;
+
+/** Batas `subscribe` per soket per menit. */
+export const BATAS_SUBSCRIBE = 30;
+const JENDELA_SUBSCRIBE_MS = 60_000;
+
 interface SocketUser {
   id: string;
   role: UserRole;
+}
+
+/** Penghitung `subscribe` per soket — jendela tetap 60 detik. */
+interface Jatah {
+  sampai: number;
+  terpakai: number;
 }
 
 export interface SubscribeAck {
@@ -56,6 +69,34 @@ export interface SubscribeAck {
  * `SessionGuard`, bukan salinannya — supaya akun yang ditangguhkan tidak tetap
  * menerima event realtime setelah REST-nya menolak.
  *
+ * ── Izin diperiksa ULANG, bukan sekali seumur koneksi ──
+ *
+ * `subscribe` memeriksa `canRead` satu kali. Itu benar untuk saat itu, dan
+ * berhenti benar begitu keadaannya berubah: pengguna yang KELUAR dari squad,
+ * ditangguhkan, atau sesinya kedaluwarsa tetap memegang soketnya dan tetap
+ * menerima `score.updated` selama soket itu hidup.
+ *
+ * REST tidak punya masalah itu — `Q-06` memeriksa ulang di setiap request.
+ * Jadi komentar di bawah yang menjanjikan "aturan yang SAMA dengan papan
+ * REST" hanya benar pada detik pertama. Test `anggota yang sudah KELUAR tidak
+ * bisa subscribe lagi` juga hanya menguji langganan BARU.
+ *
+ * `verifikasiUlang()` menutupnya: tiap `PERIKSA_ULANG_MS` setiap soket lokal
+ * diperiksa ulang — sesinya masih sah, dan setiap ruang yang diikutinya masih
+ * boleh dibacanya. Yang gagal dikeluarkan dari ruangnya; yang sesinya sudah
+ * mati diputus.
+ *
+ * Dipisah dari timer-nya supaya bisa diuji tanpa menunggu lima menit — pola
+ * yang sama dengan `runOnce()` di worker.
+ *
+ * ── `subscribe` punya jatah ──
+ *
+ * `RateLimitInterceptor` (`R-03`) hanya berlaku untuk HTTP; ia keluar lebih
+ * awal untuk konteks non-HTTP. Tanpa jatah di sini, satu soket yang sah bisa
+ * memanggil `subscribe` ribuan kali per detik, dan tiap panggilan menembak
+ * `canRead` ke Postgres. Pembatas yang melindungi REST tidak melindungi pintu
+ * di sebelahnya.
+ *
  * ── RT-3: subscribe ke squad LAIN ditolak ──
  *
  * `SquadReadService.canRead` — aturan yang SAMA dengan papan REST `Q-06`:
@@ -71,7 +112,7 @@ export interface SubscribeAck {
   // (temuan audit R-03).
   cors: { origin: appOrigins(), credentials: true },
 })
-export class SquadGateway implements OnGatewayInit {
+export class SquadGateway implements OnGatewayInit, OnApplicationShutdown {
   private readonly log = new Logger(SquadGateway.name);
 
   /**
@@ -88,7 +129,18 @@ export class SquadGateway implements OnGatewayInit {
     private readonly squads: SquadReadService,
   ) {}
 
+  private timer?: ReturnType<typeof setInterval>;
+
   afterInit(server: Server): void {
+    // Timer TIDAK menahan proses tetap hidup: `unref()` supaya `app.close()`
+    // tidak menggantung menunggu interval berikutnya.
+    this.timer = setInterval(() => {
+      void this.verifikasiUlang().catch((err: unknown) => {
+        this.log.warn(`Verifikasi ulang izin soket gagal: ${String(err)}`);
+      });
+    }, PERIKSA_ULANG_MS);
+    this.timer.unref();
+
     server.use((socket, next) => {
       resolveSessionToken(this.db, tokenDari(socket))
         .then((user) => {
@@ -114,6 +166,48 @@ export class SquadGateway implements OnGatewayInit {
     });
   }
 
+  onApplicationShutdown(): void {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = undefined;
+  }
+
+  /**
+   * Memeriksa ulang setiap soket LOKAL instance ini.
+   *
+   * Lokal, bukan global, dan itu benar: tiap instance memegang soketnya
+   * sendiri, jadi bersama-sama mereka menutupi semuanya tanpa satu instance
+   * pun perlu tahu tentang yang lain.
+   */
+  async verifikasiUlang(): Promise<{ diperiksa: number; dikeluarkan: number; diputus: number }> {
+    const hasil = { diperiksa: 0, dikeluarkan: 0, diputus: 0 };
+    if (!this.server) return hasil;
+
+    for (const socket of this.server.sockets.sockets.values()) {
+      const user = (socket.data as { user?: SocketUser }).user;
+      if (!user) continue;
+      hasil.diperiksa += 1;
+
+      // Sesi dulu: yang sesinya mati tidak perlu diperiksa per-ruang.
+      const masihSah = await resolveSessionToken(this.db, tokenDari(socket));
+      if (!masihSah || masihSah.id !== user.id) {
+        socket.disconnect(true);
+        hasil.diputus += 1;
+        continue;
+      }
+
+      for (const room of socket.rooms) {
+        if (!room.startsWith('squad:')) continue;
+        const squadId = room.slice('squad:'.length);
+        if (!(await this.squads.canRead(squadId, user))) {
+          await socket.leave(room);
+          hasil.dikeluarkan += 1;
+          this.log.log(`Soket ${user.id} dikeluarkan dari ${room} — izinnya sudah tidak berlaku`);
+        }
+      }
+    }
+    return hasil;
+  }
+
   @SubscribeMessage('subscribe')
   async subscribe(
     @ConnectedSocket() socket: Socket,
@@ -125,6 +219,17 @@ export class SquadGateway implements OnGatewayInit {
     const user = (socket.data as { user?: SocketUser }).user;
     if (!user) {
       return { ok: false, error: { code: 'UNAUTHENTICATED', message: 'Sesi tidak ada' } };
+    }
+
+    if (!adaJatah(socket)) {
+      return {
+        ok: false,
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Terlalu banyak permintaan subscribe',
+          details: { limit: BATAS_SUBSCRIBE, window_seconds: JENDELA_SUBSCRIBE_MS / 1000 },
+        },
+      };
     }
 
     const squadId = body?.squad_id;
@@ -156,6 +261,24 @@ export class SquadGateway implements OnGatewayInit {
     await socket.join(squadRoom(squadId));
     return { ok: true };
   }
+}
+
+/**
+ * Jatah `subscribe` per soket, jendela tetap 60 detik.
+ *
+ * Disimpan di `socket.data`, bukan Redis: yang dibatasi SATU soket, dan soket
+ * itu hidup di satu instance. Memindahkannya ke Redis akan menambah satu
+ * perjalanan jaringan untuk melindungi dari sesuatu yang tidak bisa menyebar
+ * lintas instance.
+ */
+function adaJatah(socket: Socket): boolean {
+  const data = socket.data as { jatah?: Jatah };
+  const kini = Date.now();
+  if (!data.jatah || kini > data.jatah.sampai) {
+    data.jatah = { sampai: kini + JENDELA_SUBSCRIBE_MS, terpakai: 0 };
+  }
+  data.jatah.terpakai += 1;
+  return data.jatah.terpakai <= BATAS_SUBSCRIBE;
 }
 
 /**

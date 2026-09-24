@@ -85,10 +85,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `C-01` | CoinLedgerService: write, hold, settle, release +… | A | W2 | 2 | `done` | #21 | 2026-09-16 | Ter-merge lewat #21. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `L-01` | API baca track/modul/lesson/kartu + serializer bu… | A | W2 | 1,5 | `done` | #22 | 2026-09-16 | Ter-merge lewat #22. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `A-03` | Layar login/register/reset + penyimpanan sesi client | B | W2 | 0,5 | `done` | `a01261f` | 2026-09-17 | Handler HTTP Better-Auth dipasang di /api/v1/auth/* (cookie httpOnly, sesi 30 hari AU-4, disableOriginCheck dikunci) + 5 layar. AC terbukti test integrasi HTTP nyata: Set-Cookie + AU-6 lewat HTTP, get-session dengan cookie, origin asing 403. 75/75 integrasi + 8/8 unit web. Verifikasi visual browser tersisa ke manusia (DevTools MCP tidak terpasang di sesi). Callback email reset/verifikasi + additionalFields timezone = isu untuk Dev A. |
-| `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `todo` | — | — | — |
+| `A-04` | Middleware rute: (student) vs (console) | B | W2 | 0,5 | `done` | #103 | 2026-09-21 | AC terbukti di browser sungguhan: student → /mentor & /admin → 403 + halaman jelas, anonim → /login, mentor → 200, aman di 375px. 13 unit test baru. Di-review Dev A 22 Sep; approval TETAP SAH saat merge — `dismiss_stale_reviews` mati, jadi diperiksa ulang: `apps/web/` NOL perubahan sejak approval, satu commit sesudahnya murni merge `main`. Konflik `docs/BACKLOG.md` saat merge diselesaikan dengan MENGHITUNG ULANG dari baris (aturan keras 11), bukan memilih sisi — sisi branch tertinggal 5 item di belakang main. |
 | `A-05` | API profil: GET /me + PATCH /me | A | W2 | 0,5 | `done` | #99 | 2026-09-21 | Daftar PUTIH field, bukan daftar hitam: `role` dan `coin_balance` kolom di tabel yang sama, dan daftar hitam melupakan kolom yang ditambahkan besok. Diverifikasi merah. Menemukan `users.timezone` vs `streaks.timezone` — dua sumber satu fakta, tidak ada yang menyinkronkan sejak trigger registrasi; keduanya ditulis satu transaksi. `avatar_url` dibatasi http(s): `javascript:` tersimpan apa adanya lalu dipasang klien di leaderboard. |
 | `L-02` | GradingService — penilaian sepenuhnya di server | B | W2 | 1 | `done` | #106 | 2026-09-22 | AC terbukti: skor client tak punya jalur masuk (kontrak membuang field + fungsi tanpa parameter skor), jawaban acak skor 0 bukan error. 9 unit merah-dulu + 4 integrasi + 1 kontrak. Review Dev A: bentuk error dibungkus `{ error: … }` (§10.1) dan `CARD_NOT_IN_LESSON` masuk §10.2 lewat PR tersendiri (#114). Sempat dipindah ke lajur Dev A (#108) lalu DIKEMBALIKAN — pemindahannya keliru, PR ini sudah berdiri lebih dulu dan Dev A tidak memeriksa PR terbuka. |
-| `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `done` | `dbdc1d0` | 2026-09-23 | AC terbukti di browser 360px: lesson 5 kartu tuntas lewat tombol + gestur swipe (skor 100, feedback 5, console bersih, tanpa scroll horizontal); prefers-reduced-motion mematikan seluruh transisi (useReducedMotion). 19 unit test; audit keamanan layak merge, 2 temuan langsung dibereskan. |
+| `L-04` | UI kartu bite-sized: pilihan ganda + swipe, feedb… | B | W2 | 2 | `done` | `dbdc1d0` | 2026-09-23 | AC terbukti di browser 360px: lesson 5 kartu tuntas lewat tombol + gestur swipe (skor 100, feedback 5, console bersih, tanpa scroll horizontal); prefers-reduced-motion mematikan seluruh transisi (useReducedMotion). 19 unit test; audit keamanan layak merge. Review Dev A: retry Kirim ulang kini memakai Idempotency-Key SAMA (LE-8), percobaan baru lewat ulang() memakai kunci BARU (LE-4). |
 | `C-02` | GET /wallet + GET /wallet/ledger (cursor-paginated) | A | W3 | 0,5 | `done` | #50 | 2026-09-17 | Cursor buram berprefiks cl: — cursor dari endpoint lain ditolak, bukan diam-diam dipakai sebagai id. AC 'telusur sampai entri pertama' diuji dengan menelusuri 47 entri penuh dan mencocokkannya dengan isi tabel. |
 | `L-03` | POST /attempts: attempt + streak + koin + outbox … | A | W3 | 2 | `done` | #116 | 2026-09-22 | Enam tulisan satu transaksi (LE-6). AC rollback diuji dengan `CoinLedgerService` yang meledak TEPAT setelah insert ledger — nol baris di attempt, ledger, outbox, quest, poin squad, dan streak tidak maju. TIGA jalan masuk dibedakan: baru (6 tulisan), kunci idempotensi SAMA (nol tulisan, `rewarded: true` — request ulang jaringan bukan latihan), kunci BEDA di lesson & hari sama (nol tulisan, `rewarded: false`, LE-4). Kedua penjaga diverifikasi merah. `attempt_date` dari `streaks.timezone` — sumber yang SAMA dengan StreakService, supaya LE-4 tidak bocor di hari keduanya berselisih. Bonus milestone streak (§6.1) SENGAJA tidak ditulis: tidak dimiliki item mana pun, isu #115. |
 | `S-01` | StreakService timezone-aware + kredit freeze | A | W3 | 1,5 | `done` | #23 | 2026-09-16 | Ter-merge lewat #23. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 51 | 49,5 |
+| `done` | 52 | 50,0 |
 | `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 4,5 |
-| `todo` | 25 | 24,5 |
+| `todo` | 24 | 24,0 |
 
 ---
 ## Ringkasan per epik
@@ -178,7 +178,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | Epik | Nama | Hari | Item | Selesai | Blocked |
 |---|---|---:|---:|---:|---:|
 | `E0` | Fondasi & Setup | 10,5 | 12 | 11/12 · **86%** | 1 |
-| `E1` | Auth & RBAC | 6,5 | 7 | 6/7 · **92%** | — |
+| `E1` | Auth & RBAC | 6,5 | 7 | 7/7 · **100%** | — |
 | `E4` | Coin & Wallet | 4,0 | 4 | 3/4 · **75%** | — |
 | `E2` | Learning Engine | 7,5 | 5 | 4/5 · **87%** | — |
 | `E3` | Career Streak | 5,5 | 5 | 4/5 · **73%** | — |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **51/80 · 63%** | **4** |
+| | **Total** | **78,5** | **80** | **52/80 · 64%** | **4** |
 
 ---
 

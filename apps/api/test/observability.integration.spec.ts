@@ -302,6 +302,40 @@ describe('R-04 — metrik §17.2', () => {
     });
   });
 
+  it('selisih rekonsiliasi koin memicu pada SATU pengguna yang menyimpang', async () => {
+    if (!reachable) return;
+    // Satu-satunya metrik §17.2 yang ambangnya NOL, dan yang paling mahal
+    // kalau diam: cache saldo yang menyimpang berarti ada kode yang menulis
+    // di luar `CoinLedgerService` (aturan keras 2 & 3).
+    //
+    // Ia juga yang paling mudah diam tanpa ketahuan — query-nya memakai
+    // `groupBy` + `having` + `count(*)`, dan hasilnya dibaca dari
+    // `rows.length`, bukan dari `count(*)`-nya. Kalau suatu saat seseorang
+    // "merapikan" itu jadi membaca `n`, metriknya akan melaporkan jumlah
+    // BARIS LEDGER pengguna pertama alih-alih jumlah pengguna menyimpang.
+    await sql`TRUNCATE users RESTART IDENTITY CASCADE`.execute(db);
+    const uid = '00000000-0000-4000-8000-0000000d4101';
+    await db
+      .insertInto('users')
+      .values({ id: uid, email: 'drift-r04@uji.test', display_name: 'Drift', coin_balance: 0 })
+      .execute();
+
+    // Saldo nol tanpa ledger BUKAN penyimpangan — 0 = coalesce(sum, 0).
+    expect(ambil(await metrics().evaluate(), 'coin_reconcile_drift')).toMatchObject({
+      status: 'ok',
+      value: 0,
+      threshold: 0,
+    });
+
+    // Cache ditulis tanpa ledger — persis bentuk bug yang dijaga aturan 2.
+    await db.updateTable('users').set({ coin_balance: 999 }).where('id', '=', uid).execute();
+
+    expect(ambil(await metrics().evaluate(), 'coin_reconcile_drift')).toMatchObject({
+      status: 'breached',
+      value: 1,
+    });
+  });
+
   it('kegagalan webhook payment > 3 dalam sejam memicu', async () => {
     if (!reachable) return;
     await sql`TRUNCATE audit_log RESTART IDENTITY CASCADE`.execute(db);

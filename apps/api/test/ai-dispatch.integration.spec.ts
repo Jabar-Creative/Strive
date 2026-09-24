@@ -293,6 +293,51 @@ describe('AI-06 — dispatcher ai_jobs (PostgreSQL + Redis nyata)', () => {
     expect((await baris(id)).status).toBe('done');
   }, 40_000);
 
+  it('ai_jobs yang GAGAL bisa diantrekan ulang — bukan no-op senyap', async () => {
+    if (!reachable) return;
+    // `queue.add` dengan `jobId` yang sudah ada mengembalikan job lama apa
+    // adanya, tanpa galat dan tanpa membuat apa pun. Karena `removeOnFail`
+    // menahan 1.000 job gagal terakhir, tanpa penanganan khusus setiap
+    // antre-ulang `ai_jobs` yang gagal tidak akan pernah jalan — dan persis
+    // itu yang akan dilakukan penyapu job yatim (#131).
+    const klien = new KlienUji();
+    klien.lempar = () => new GalatAiPermanen('Layanan AI menolak job (422)');
+    const id = await buatDanAntre();
+    await jalankanWorker(klien);
+    expect((await baris(id)).status).toBe('failed');
+
+    // Coba lagi, kali ini layanannya sehat.
+    klien.lempar = null;
+    klien.panggilan = [];
+    await db.updateTable('ai_jobs').set({ status: 'queued' }).where('id', '=', id).execute();
+    const jobs = new AiJobsService(db, queue);
+    await jobs.enqueue(id);
+    await jalankanWorker(klien);
+
+    expect(klien.panggilan, 'antre ulang tidak menghasilkan job apa pun').toHaveLength(1);
+    expect((await baris(id)).status).toBe('done');
+  }, 40_000);
+
+  it('antre ulang saat job MASIH hidup tidak menggandakannya', async () => {
+    if (!reachable) return;
+    // Sisi lain dari koin yang sama: dedup `jobId` yang menahan antre-ulang
+    // juga yang menahan pengantaran ganda. `mulai()` menerima status
+    // `running` (supaya job yang worker-nya mati bisa diambil lagi), jadi ia
+    // tidak bisa menahannya sendiri — dua pengantaran berarti LLM dibayar
+    // dua kali.
+    const id = await buatDanAntre();
+    const jobs = new AiJobsService(db, queue);
+    await jobs.enqueue(id);
+    await jobs.enqueue(id);
+
+    const n = await queue.getJobCounts('waiting', 'delayed', 'prioritized');
+    expect((n.waiting ?? 0) + (n.delayed ?? 0) + (n.prioritized ?? 0)).toBe(1);
+
+    const klien = new KlienUji();
+    await jalankanWorker(klien);
+    expect(klien.panggilan, 'job yang sama dijalankan lebih dari sekali').toHaveLength(1);
+  }, 40_000);
+
   it('jobId yang tidak sah tidak menjatuhkan worker', async () => {
     if (!reachable) return;
     const klien = new KlienUji();
