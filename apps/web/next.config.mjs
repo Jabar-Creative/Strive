@@ -33,6 +33,40 @@ const nextConfig = {
 
   // Paket workspace dikompilasi dari sumber; tidak ada langkah build terpisah.
   transpilePackages: ['@strive/ui', '@strive/contracts'],
+  // Header keamanan §16.1 — temuan audit `R-03`: sebelum ini web menyetel
+  // NOL header keamanan, sama seperti API.
+  //
+  // `Content-Security-Policy` sengaja TIDAK ada di sini. CSP yang benar untuk
+  // Next.js App Router butuh nonce per-request yang disuntikkan dari
+  // middleware ke `<script>` milik framework; menuliskannya tanpa itu hanya
+  // meninggalkan dua pilihan sama-sama buruk — `'unsafe-inline'`, yang
+  // membuat header itu tidak menjaga apa pun, atau CSP benar yang memutihkan
+  // seluruh aplikasi. Itu pekerjaan di `apps/web` dan miliknya Dev B; diangkat
+  // sebagai isu, bukan ditebak di sini.
+  //
+  // Empat di bawah tidak punya risiko itu: tidak satu pun bisa memutus render.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          // `strict-origin-when-cross-origin` (bukan `no-referrer` seperti
+          // API): web perlu mengirim referrer ke dirinya sendiri untuk
+          // analitik dan navigasi, tapi tidak pernah path lengkap ke luar.
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), payment=()',
+          },
+          // Halaman Snap Midtrans dibuka sebagai redirect/popup, bukan iframe
+          // di dalam kita, jadi menolak semua frame tidak memutus pembayaran.
+          { key: 'X-Frame-Options', value: 'DENY' },
+        ],
+      },
+    ];
+  },
+
   eslint: {
     // Lint dijalankan sekali untuk SELURUH workspace lewat `pnpm lint`
     // (satu eslint.config.mjs di root — F-01). `next build` tidak perlu

@@ -51,23 +51,42 @@ export class SessionGuard implements CanActivate {
       });
     }
 
-    const row = await this.db
-      .selectFrom('sessions')
-      .innerJoin('users', 'users.id', 'sessions.user_id')
-      .select(['users.id as id', 'users.role as role', 'users.status as status'])
-      .where('sessions.token', '=', value.slice('Bearer '.length).trim())
-      .where(sql<boolean>`sessions.expires_at > now()`)
-      .executeTakeFirst();
-
-    // Satu pesan untuk tiga sebab — tidak ada, kedaluwarsa, atau akunnya
-    // ditangguhkan. Bedanya tidak berguna bagi pengguna yang sah, dan berguna
-    // bagi yang menebak-nebak token.
-    if (!row || row.status !== 'active') {
+    const user = await resolveSessionToken(this.db, value.slice('Bearer '.length).trim());
+    if (!user) {
       throw new UnauthorizedException({
         error: { code: 'UNAUTHENTICATED', message: 'Sesi tidak valid atau sudah berakhir' },
       });
     }
-
-    return { id: row.id, role: row.role as UserRole };
+    return user;
   }
+}
+
+/**
+ * Token sesi → pengguna, atau `null`. SATU-SATUNYA tempat keputusan itu dibuat.
+ *
+ * Dipakai `SessionGuard` (REST) dan gateway WebSocket (`RT-01`). Dua salinan
+ * logika "sesi ini sah?" akan menyimpang — dan yang menyimpang duluan biasanya
+ * pemeriksaan `status`, sehingga akun yang ditangguhkan tetap menerima event
+ * realtime setelah REST-nya menolak.
+ *
+ * `null` untuk tiga sebab — tidak ada, kedaluwarsa, ditangguhkan — dan
+ * pemanggil TIDAK diberi tahu yang mana: bedanya tidak berguna bagi pengguna
+ * yang sah, dan berguna bagi yang menebak-nebak token.
+ */
+export async function resolveSessionToken(
+  db: Kysely<DB>,
+  token: string,
+): Promise<{ id: string; role: UserRole } | null> {
+  if (token.length === 0) return null;
+
+  const row = await db
+    .selectFrom('sessions')
+    .innerJoin('users', 'users.id', 'sessions.user_id')
+    .select(['users.id as id', 'users.role as role', 'users.status as status'])
+    .where('sessions.token', '=', token)
+    .where(sql<boolean>`sessions.expires_at > now()`)
+    .executeTakeFirst();
+
+  if (!row || row.status !== 'active') return null;
+  return { id: row.id, role: row.role as UserRole };
 }

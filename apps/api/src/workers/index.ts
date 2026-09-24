@@ -1,12 +1,18 @@
 import { Module } from '@nestjs/common';
 
+import { BullmqModule } from '../infra/bullmq';
 import { KyselyModule } from '../infra/kysely';
 import { RedisModule } from '../infra/redis';
 import { StorageModule } from '../infra/storage';
+import { AdminModule } from '../modules/admin';
+import { AiModule } from '../modules/ai';
 import { ScanModule } from '../modules/scan';
 import { WalletModule } from '../modules/wallet';
 import { NotificationModule } from '../modules/notification';
 import { LeagueModule } from '../modules/league';
+import { RealtimeEmitterModule } from '../realtime/realtime.module';
+import { AiDispatchService } from './ai-dispatch.service';
+import { MetricsService } from './metrics.service';
 import { LeagueRollupService } from './league-rollup.service';
 import { OutboxWorkerService } from './outbox.service';
 import { ReconcileBalanceService } from './reconcile-balance.service';
@@ -22,6 +28,11 @@ import { StreakWarningService } from './streak-warning.service';
  *                            SUDAH ADA — `OutboxWorkerService.runOnce()`. WS menyusul RT-01.
  *   scan               K-03  submit ke Copyleaks, proses webhook hasil
  *   ai-dispatch        AI-06 kirim ai_jobs ke AI service, catat biaya
+ *                            SUDAH ADA — `AiDispatchService`. Ia SATU-SATUNYA
+ *                            worker yang benar-benar memakai BullMQ; sisanya
+ *                            masih dipanggil manual. Percobaan ulang dihitung
+ *                            BullMQ, bukan kolom `ai_jobs`, supaya tidak ada
+ *                            dua sumber kebenaran untuk satu angka.
  *   notify             N-01  email Resend + notifikasi in-app, retry 3x
  *   league-rollup      Q-04  tutup musim, promosi/degradasi 20%, IDEMPOTEN
  *                            SUDAH ADA — `LeagueRollupService.run()`. Belum
@@ -60,10 +71,14 @@ import { StreakWarningService } from './streak-warning.service';
     KyselyModule,
     RedisModule,
     StorageModule,
+    BullmqModule,
+    AiModule,
+    AdminModule,
     WalletModule,
     NotificationModule,
     ScanModule,
     LeagueModule,
+    RealtimeEmitterModule,
   ],
   providers: [
     ReconcileBalanceService,
@@ -71,6 +86,8 @@ import { StreakWarningService } from './streak-warning.service';
     PartitionService,
     LeagueRollupService,
     OutboxWorkerService,
+    AiDispatchService,
+    MetricsService,
   ],
   exports: [
     ReconcileBalanceService,
@@ -78,6 +95,8 @@ import { StreakWarningService } from './streak-warning.service';
     PartitionService,
     LeagueRollupService,
     OutboxWorkerService,
+    AiDispatchService,
+    MetricsService,
   ],
 })
 export class WorkerModule {}
@@ -86,3 +105,5 @@ export * from './streak-warning.service';
 export * from './partition.service';
 export * from './league-rollup.service';
 export * from './outbox.service';
+export * from './ai-dispatch.service';
+export * from './metrics.service';

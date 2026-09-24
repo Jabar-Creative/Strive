@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { StructuredLogger, appOrigins, headerKeamanan } from './common';
+import { RedisIoAdapter } from './realtime';
 import { WorkerModule } from './workers';
 
 /**
@@ -35,21 +37,40 @@ async function bootstrapApi(): Promise<void> {
   //
   // Test integrasi memakai `createNestApplication({ rawBody: true })` sendiri,
   // jadi ia TIDAK akan menangkap kalau baris ini hilang dari sini.
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  // Logger JSON terstruktur (R-04, §17.1) dipasang SEBELUM modul dirakit,
+  // supaya galat saat boot pun ikut terstruktur — dan galat saat boot justru
+  // yang paling sering dibaca dari log agregat, bukan dari terminal.
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+    logger: new StructuredLogger(),
+  });
 
   // Prefiks /api/v1 — docs/PRD.md §10. `/health` dikecualikan agar probe
   // orkestrator tidak ikut terpengaruh saat versi API naik.
   app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+
+  // Header keamanan §16.1 — DIPASANG SEBELUM rute apa pun, supaya respons
+  // galat dan 404 ikut membawanya.
+  app.use(headerKeamanan());
 
   // CORS SEKALI DI SINI, terbatas ketat (A-03): web dan API berjalan di port
   // berbeda, dan cookie sesi httpOnly hanya terkirim lintas origin kalau
   // respons eksplisit mengizinkan origin + credentials. Origin dipin ke
   // APP_URL — BUKAN true/false, memakai `origin: true` berarti CORS longgar
   // dan itu masuk daftar jebakan keamanan repo ini.
-  app.enableCors({
-    origin: process.env['APP_URL'] ?? 'http://localhost:3000',
-    credentials: true,
-  });
+  //
+  // `appOrigins()`, bukan `process.env['APP_URL'] ?? …` — `??` meloloskan
+  // string KOSONG, dan paket `cors` membaca origin falsy sebagai `*`
+  // (temuan audit R-03).
+  app.enableCors({ origin: appOrigins(), credentials: true });
+
+  // Adapter Redis pub/sub untuk WebSocket (RT-2) — DITUNGGU sebelum listen.
+  // Tanpa adapter, event hanya sampai ke klien di instance yang sama; dengan
+  // dua instance, separuh anggota squad tidak pernah menerima pembaruan, dan
+  // tidak ada galat apa pun karena tiap instance mengira pengirimannya sukses.
+  const wsAdapter = new RedisIoAdapter(app);
+  await wsAdapter.connect();
+  app.useWebSocketAdapter(wsAdapter);
 
   await app.listen(port);
   new Logger('bootstrap').log(`API mendengarkan di :${port} (MODE=api)`);
@@ -57,7 +78,7 @@ async function bootstrapApi(): Promise<void> {
 
 async function bootstrapWorker(): Promise<void> {
   // Konteks aplikasi tanpa HTTP listener.
-  await NestFactory.createApplicationContext(WorkerModule);
+  await NestFactory.createApplicationContext(WorkerModule, { logger: new StructuredLogger() });
   new Logger('bootstrap').log('Worker pool hidup (MODE=worker)');
 }
 

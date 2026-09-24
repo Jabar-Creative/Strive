@@ -25,7 +25,8 @@
     "test": "pnpm -r --no-bail test",
     "test:e2e": "node scripts/not-implemented.mjs test:e2e R-01",
     "build": "pnpm -r build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "audit:kebijakan": "node scripts/audit-deps.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": [

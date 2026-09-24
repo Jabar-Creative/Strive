@@ -2,4 +2,4 @@
 //
 // Setiap POST bertanda ⚡ di docs/PRD.md §10.3 wajib `Idempotency-Key`.
 // Request ulang mengembalikan respons PERTAMA, bukan efek kedua.
-export {};
+export * from './rate-limit.interceptor';

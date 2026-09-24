@@ -188,17 +188,7 @@ export class SquadReadService {
     squad: { id: string; mentor_id: string | null },
     actor: Actor,
   ): Promise<void> {
-    if (actor.role === 'mentor' && squad.mentor_id === actor.id) return;
-
-    const anggota = await this.db
-      .selectFrom('squad_members')
-      .select('id')
-      .where('squad_id', '=', squad.id)
-      .where('user_id', '=', actor.id)
-      .where('left_at', 'is', null)
-      .executeTakeFirst();
-
-    if (!anggota) {
+    if (!(await this.bolehMembacaSquad(squad, actor))) {
       throw new ForbiddenException({
         error: {
           code: 'FORBIDDEN_ROLE',
@@ -207,6 +197,41 @@ export class SquadReadService {
         },
       });
     }
+  }
+
+  /**
+   * Boleh membaca squad ini? Aturan yang SAMA untuk REST (`Q-06`) dan
+   * WebSocket (`RT-01`, RT-3): anggota aktif, ATAU mentornya (PR-7).
+   *
+   * Dibuat publik dan dipakai keduanya — bukan disalin ke gateway — karena
+   * dua salinan aturan akses akan menyimpang, dan yang menyimpang duluan
+   * biasanya yang jarang dibaca: kanal realtime yang terus mengirim papan
+   * squad ke orang yang REST-nya sudah menolak.
+   */
+  async canRead(squadId: string, actor: Actor): Promise<boolean> {
+    const squad = await this.db
+      .selectFrom('squads')
+      .select(['id', 'mentor_id'])
+      .where('id', '=', squadId)
+      .executeTakeFirst();
+    if (!squad) return false;
+    return this.bolehMembacaSquad(squad, actor);
+  }
+
+  private async bolehMembacaSquad(
+    squad: { id: string; mentor_id: string | null },
+    actor: Actor,
+  ): Promise<boolean> {
+    if (actor.role === 'mentor' && squad.mentor_id === actor.id) return true;
+
+    const anggota = await this.db
+      .selectFrom('squad_members')
+      .select('id')
+      .where('squad_id', '=', squad.id)
+      .where('user_id', '=', actor.id)
+      .where('left_at', 'is', null)
+      .executeTakeFirst();
+    return anggota !== undefined;
   }
 
   /** Anggota aktif + peringkat, dihitung Postgres. Sama sumbernya dengan `GET /hub`. */

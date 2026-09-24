@@ -43,7 +43,9 @@ let coins: CoinLedgerService;
 let reachable = false;
 
 /** PDF sungguhan, isinya unik per panggilan supaya hash-nya berbeda. */
-const pdf = (isi = randomUUID()) => Buffer.from(`%PDF-1.7\n% ${isi}\n%%EOF\n`, 'latin1');
+// Dianotasi `string`: tanpa itu tipe parameternya tersimpulkan dari nilai
+// bawaannya (template literal uuid), dan `pdf('isi-a')` ditolak tsc.
+const pdf = (isi: string = randomUUID()) => Buffer.from(`%PDF-1.7\n% ${isi}\n%%EOF\n`, 'latin1');
 
 const dokumen = (buffer: Buffer, filename = 'skripsi.pdf') => ({ filename, buffer });
 

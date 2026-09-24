@@ -133,7 +133,9 @@ beforeEach(async () => {
     )
     .returning('id')
     .execute();
-  attempts = r.rows?.map((x) => x.id) ?? r.map((x) => x.id);
+  // `.execute()` Kysely mengembalikan ARRAY, bukan hasil bergaya pg. Cabang
+  // `r.rows` tidak pernah tercapai — ia hanya `undefined` yang lewat diam-diam.
+  attempts = r.map((x) => x.id);
 });
 
 /**

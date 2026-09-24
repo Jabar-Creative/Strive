@@ -1592,6 +1592,7 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 | `INVALID_CURSOR` | 400 | Cursor pagination tidak bisa didekode. `details: {cursor}` |
 | `ROLE_CHANGE_FORBIDDEN` | 403 | Perubahan peran ditolak oleh aturannya sendiri, bukan oleh peran pemanggil. `details: {reason}` — `self` (mengubah peran sendiri) atau `last_superadmin` (menyisakan nol superadmin) |
 | `CARD_NOT_IN_LESSON` | 422 | Jawaban menunjuk kartu yang bukan milik lesson itu. `details: {card_ids}` — dibedakan dari jawaban yang salah, yang bukan galat sama sekali |
+| `INTERNAL_ERROR` | 500 | Kegagalan tak terduga di server. `details` SELALU kosong |
 
 > **Daftar ini TERTUTUP.** Kode yang tidak ada di sini tidak boleh dikirim API, karena
 > `packages/contracts` diturunkan dari tabel ini dan klien diminta bercabang pada `code`,
@@ -1612,6 +1613,17 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 > justru **bukan galat sama sekali** — dua kondisi yang terasa mirip dan harus bisa dibedakan
 > klien. Memakai `VALIDATION_ERROR` untuk yang pertama menyamakan "kamu menjawab ngawur"
 > dengan "aplikasimu bicara tentang lesson yang salah".
+>
+> **`INTERNAL_ERROR` ditambahkan 23 Sep 2026 (`R-04`).** Daftar tertutup yang tidak punya
+> satu pun entri untuk kegagalan paling umum di server mana pun adalah daftar yang belum
+> selesai. Sebelum ini API **tidak punya exception filter sama sekali**, jadi respons 500
+> memakai bentuk bawaan Nest (`{"statusCode":500,"message":"Internal server error"}`) —
+> tanpa `code`. Klien yang mencabang pada `error.code`, yang persis diminta §10.1,
+> mendapat `undefined` tepat di saat terburuk.
+>
+> `details` **selalu** kosong untuk kode ini, dan itu bagian dari kontraknya: galat
+> internal memuat nama tabel, potongan query, dan sesekali nilai parameter. Yang
+> menelusuri memakai `request_id` di header respons, bukan isi badannya.
 >
 > **Enam kode lain masih melanggar daftar ini** dan menunggu keputusan di
 > [isu #92](https://github.com/Jabar-Creative/Strive/issues/92) — keenamnya sudah terlanjur
@@ -2098,24 +2110,33 @@ Setiap warna aksen dipatok ke **satu makna** dan tidak boleh dipinjam. Ini atura
 
 ### 16.1 Checklist wajib sebelum rilis (`R-03`)
 
-- [ ] TLS 1.3, HSTS aktif
-- [ ] Password Argon2id, tidak pernah di log
-- [ ] JWT ditandatangani dengan secret ≥ 32 byte dari env
-- [ ] Refresh token disimpan sebagai **hash**, bukan plaintext
-- [ ] Deteksi token reuse aktif dan mencabut rantai sesi
-- [ ] Rate limit 120 req/menit per pengguna, lebih ketat untuk `/auth/*` (10/menit)
-- [ ] Webhook memverifikasi signature **sebelum** memproses apa pun
-- [ ] Upload divalidasi tipe **dan** magic bytes, bukan hanya ekstensi
-- [ ] Upload disimpan di luar webroot, diakses hanya lewat signed URL
-- [ ] Tidak ada bucket publik untuk dokumen pengguna
-- [ ] Query memakai parameter binding (Kysely), tidak ada string concat
-- [ ] Header keamanan: `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`
-- [ ] CORS whitelist eksplisit, bukan `*`
-- [ ] Secret tidak pernah masuk log, error message, atau respons API
-- [ ] Dependency audit (`pnpm audit`, `pip-audit`) nol kerentanan tinggi
-- [ ] Kepemilikan sumber daya dicek di service, bukan hanya di guard
-- [ ] Reviewer tidak bisa melihat identitas penulis di respons API mana pun
-- [ ] OWASP ASVS Level 1 tuntas
+> **Diaudit 23 Sep 2026 (`R-03`). Bukti per baris ada di `docs/reports/R-03/README.md`;
+> centang di bawah HANYA untuk yang buktinya ada di sana.** Empat baris diperbaiki di
+> audit itu sendiri (rate limit, header, CORS, rahasia), dan lima temuan yang butuh
+> keputusan dibuka sebagai isu #123–#127. Baris yang tidak bisa diperiksa tanpa
+> deployment ditandai ⏸ — `F-05` masih `blocked`, jadi belum ada TLS untuk diperiksa.
+
+- [ ] ⏸ TLS 1.3, HSTS aktif — *kodenya siap (HSTS dikirim saat `x-forwarded-proto: https`); menunggu `F-05`*
+- [x] Password Argon2id, tidak pernah di log
+- [ ] ➖ JWT ditandatangani dengan secret ≥ 32 byte dari env — *tidak berlaku: tidak ada JWT, sesi berbasis tabel `sessions` (`A-01`)*
+- [ ] ➖ Refresh token disimpan sebagai **hash**, bukan plaintext — *tidak berlaku: `refresh_tokens` dibuang migrasi 007. Soal `sessions.token` plaintext: isu #124*
+- [ ] ➖ Deteksi token reuse aktif dan mencabut rantai sesi — *tidak berlaku, sama seperti di atas*
+- [x] Rate limit 120 req/menit per pengguna, lebih ketat untuk `/auth/*` (10/menit) — *`RateLimitInterceptor`; bentuk kunci §9.4 bertentangan, isu #126*
+- [x] Webhook memverifikasi signature **sebelum** memproses apa pun
+- [x] Upload divalidasi tipe **dan** magic bytes, bukan hanya ekstensi
+- [x] Upload disimpan di luar webroot, diakses hanya lewat signed URL
+- [x] Tidak ada bucket publik untuk dokumen pengguna — *nama `strive-public` menyesatkan, isu #127*
+- [x] Query memakai parameter binding (Kysely), tidak ada string concat
+- [x] Header keamanan: `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` — *CSP `apps/web` menunggu nonce App Router, isu #125*
+- [x] CORS whitelist eksplisit, bukan `*`
+- [x] Secret tidak pernah masuk log, error message, atau respons API
+- [x] Dependency audit (`pnpm audit`, `pip-audit`) nol kerentanan tinggi — *16 advisory ditriase; nol yang bisa dicapai. Digerbangi `pnpm audit:kebijakan` di CI*
+- [x] Kepemilikan sumber daya dicek di service, bukan hanya di guard
+- [x] Reviewer tidak bisa melihat identitas penulis di respons API mana pun
+- [ ] ⏸ OWASP ASVS Level 1 tuntas — *bagian yang ada di dalam kode: tuntas. Kontrol transport & konfigurasi menunggu `F-05`*
+
+**Belum boleh rilis sebelum ini juga selesai:** retensi 90 dokumen sensitif (§16.2) tidak
+ada implementasinya sama sekali — isu #123.
 
 ### 16.2 Data pribadi
 
@@ -2235,7 +2256,7 @@ AI_SERVICE_PORT=8000      # FastAPI
 
 # Core
 NODE_ENV=                 # development | production
-APP_URL=                  # https://app.striveacademy.id
+APP_URL=                  # https://app.striveacademy.id  <- WAJIB diisi: kosong = CORS jatuh ke origin dev, frontend ditolak (R-03)
 API_URL=
 DATABASE_URL=             # postgres://...
 REDIS_URL=                # redis://...
@@ -2379,6 +2400,7 @@ Ditulis eksplisit agar tidak diam-diam masuk kembali.
 | 17 Sep 2026 | 2.3 | **§10.2 menerima `INVALID_CURSOR`** (400). Cursor pagination tidak punya padanan di daftar lama, dan bukan cuma milik `N-01` — `C-02` akan butuh yang sama. Ditambahkan **sebelum** kontraknya dipakai, bukan sesudah; daftar itu tertutup. | **Fatih Maulana** |
 | 22 Sep 2026 | **2.4** | **§9 — sisi CONTRACT dari 004 dikerjakan (isu #47, migrasi 007).** `users.password_hash`, `users.email_verified_at`, dan tabel `refresh_tokens` **dibuang**; ketiganya ditandai USANG sejak 17 Sep dengan janji "dibuang di migrasi contract". Jumlah tabel domain **33 → 32**. Prasyarat lama ("A-01 stabil di staging") diganti bukti yang lebih kuat: seluruh repo disisir dan nol kode produksi membacanya. Yang membuktikan ini bukan kerapian — `A-05` ternyata membaca `email_verified_at`, kolom yang di-backfill sekali lalu tidak pernah ditulis lagi, sehingga `/me` melaporkan email BELUM terverifikasi selamanya dan AU-8 memblokir top-upnya. | **Fatih Maulana** |
 | 22 Sep 2026 | **2.4** | **§9 — `squads.season_id` jadi `NOT NULL` (isu #84, migrasi 008).** Mengunci keputusan yang sudah tersirat di §7 E5 tapi tidak pernah ditegakkan: **squad selalu milik satu musim.** FK `REFERENCES league_seasons(id)` menjamin musim yang DITUNJUK ada; ia tidak pernah menjamin ada musim yang ditunjuk. Squad tanpa musim bukan squad berpapan kosong — kunci ZSET (`lb:sq:<season_id>:<squad_id>`) dan PK `league_standings` tidak bisa dibentuk, dan `GET /squads/me` menjawab `null` yang terbaca "kamu belum punya squad". Nol baris melanggar saat diterapkan. Tidak ada squad lintas-musim atau squad sandbox; kalau itu berubah, ia butuh migrasi baru DAN baris di sini. | **Fatih Maulana** |
+| 23 Sep 2026 | **2.4** | **§10.2 menerima `INTERNAL_ERROR`** (500). Daftar tertutup tanpa satu pun entri untuk kegagalan paling umum di server mana pun adalah daftar yang belum selesai. Ditemukan saat `R-04`: API **tidak punya exception filter sama sekali**, jadi respons 500 memakai bentuk bawaan Nest tanpa `code`, dan klien yang mencabang pada `error.code` — yang persis diminta §10.1 — mendapat `undefined` tepat di saat terburuk. `details` SELALU kosong; yang menelusuri memakai `request_id` di header, bukan isi badan. PR tersendiri sebelum kodenya, urutan yang sama dengan `ROLE_CHANGE_FORBIDDEN` dan `CARD_NOT_IN_LESSON`. | **Fatih Maulana** |
 | 22 Sep 2026 | **2.4** | **§10.2 menerima `CARD_NOT_IN_LESSON`** (422). Dibutuhkan `L-02`: §7 E2 menuntut 422 untuk `card_id` di luar lesson-nya, sementara jawaban yang salah bukan galat sama sekali. Ditambahkan lewat PR tersendiri sebelum kodenya di-merge — urutan yang sama dengan `ROLE_CHANGE_FORBIDDEN`. | **Fatih Maulana** |
 | | | _Isi baris baru setiap kali ada keputusan yang mengubah dokumen ini._ | |
 
