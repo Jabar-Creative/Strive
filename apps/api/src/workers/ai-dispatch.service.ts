@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnApplicationBootstrap,
+  type OnApplicationShutdown,
+} from '@nestjs/common';
 import { Worker, type Job } from 'bullmq';
 
 import { QUEUE, bullConnection } from '../infra/bullmq';
@@ -29,6 +35,19 @@ interface DataJob {
  * sebabnya `AI-06` belum lengkap tanpa penyapu job `running` yang tua; diangkat
  * sebagai isu, bukan dipura-purakan selesai.
  *
+ * ── Ia menyalakan dirinya sendiri, dan itu bukan kemalasan ──
+ *
+ * Versi pertama hanya punya `start()` — dan **tidak ada yang memanggilnya**.
+ * `bootstrapWorker()` cuma membangun konteks aplikasi; antrean `ai` berdiri
+ * tanpa satu pun konsumen, dan setiap `ai_jobs` mengendap `queued` selamanya
+ * tanpa galat. Test `AI-06` lulus karena ia membuat `Worker` BullMQ-nya
+ * sendiri — pola "hijau tapi rusak saat dijalankan" yang keempat di repo ini.
+ *
+ * `onApplicationBootstrap` menutupnya secara struktural: selama kelas ini ada
+ * di `WorkerModule`, ia hidup. Tidak ada baris di `main.ts` yang bisa lupa
+ * ditulis, dan kelas ini tidak pernah masuk `AppModule` — jadi `MODE=api`
+ * tetap tidak menarik job.
+ *
  * ── Kenapa `failed` ditulis di PERCOBAAN TERAKHIR, bukan di event `failed` ──
  *
  * Event `failed` worker berjalan di luar konteks job dan bisa terlewat saat
@@ -37,7 +56,7 @@ interface DataJob {
  * pekerjaannya.
  */
 @Injectable()
-export class AiDispatchService implements OnApplicationShutdown {
+export class AiDispatchService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly log = new Logger(AiDispatchService.name);
   private worker?: Worker;
 
@@ -46,7 +65,15 @@ export class AiDispatchService implements OnApplicationShutdown {
     @Inject(AI_SERVICE_CLIENT) private readonly ai: AiServiceClient,
   ) {}
 
-  /** Mulai menarik job. Hanya dipanggil di `MODE=worker`. */
+  /**
+   * Dipanggil Nest saat konteks selesai di-init — termasuk
+   * `createApplicationContext` di `bootstrapWorker()`.
+   */
+  onApplicationBootstrap(): void {
+    this.start();
+  }
+
+  /** Mulai menarik job. Hanya hidup di `MODE=worker`. */
   start(): Worker {
     if (this.worker) return this.worker;
     this.worker = new Worker(QUEUE.ai, (job) => this.proses(job), {
