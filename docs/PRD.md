@@ -2258,6 +2258,10 @@ AI_SERVICE_PORT=8000      # FastAPI
 NODE_ENV=                 # development | production
 APP_URL=                  # https://app.striveacademy.id  <- WAJIB diisi: kosong = CORS jatuh ke origin dev, frontend ditolak (R-03)
 API_URL=
+TRUST_PROXY_HOPS=0        # jumlah reverse proxy TEPERCAYA di depan API. 0 = X-Forwarded-For diabaikan total.
+                          # Isi hanya setelah F-05: header itu dikirim klien, dan mempercayainya tanpa proxy
+                          # membuat rate limit §16.1 bisa dilewati dengan satu header acak per request.
+                          # Dihitung dari KANAN — entri paling kiri tetap milik klien meski proxy sudah ada.
 DATABASE_URL=             # postgres://...
 REDIS_URL=                # redis://...
 

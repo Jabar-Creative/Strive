@@ -62,6 +62,11 @@ beforeAll(async () => {
     return;
   }
   process.env['DATABASE_URL'] = url;
+  // Berkas ini memisahkan ember rate limit per test lewat `X-Forwarded-For`.
+  // Itu hanya sah kalau kita MENYATAKAN ada satu proxy tepercaya — tanpa env
+  // ini header tersebut diabaikan total (dan memang harus). Jadi menyetelnya
+  // di sini sekalian menguji jalur proxy-nya.
+  process.env['TRUST_PROXY_HOPS'] = '1';
 
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   app = moduleRef.createNestApplication();
@@ -76,6 +81,7 @@ beforeAll(async () => {
 }, 30_000);
 
 afterAll(async () => {
+  delete process.env['TRUST_PROXY_HOPS'];
   if (app) await app.close();
   if (redis) redis.disconnect();
 });
@@ -208,6 +214,45 @@ describe('R-03 — rate limit (PRD §7, §10.1, §16.1)', () => {
     // direset.
     expect(ttl1).toBeGreaterThan(0);
     expect(ttl2).toBeLessThan(ttl1);
+  });
+
+  it('TANPA proxy tepercaya, X-Forwarded-For DIABAIKAN — limit tidak bisa dilewati', async () => {
+    if (!reachable) return;
+    // Lubang paling mahal di pembatas mana pun: header itu dikirim KLIEN.
+    // Kalau ia dipercaya tanpa syarat, penyerang cukup mengirim nilai acak
+    // tiap request untuk mendapat ember baru setiap kali — dan batas 10/menit
+    // di `/auth/*` yang menjaga brute force login lewat begitu saja.
+    const asli = process.env['TRUST_PROXY_HOPS'];
+    delete process.env['TRUST_PROXY_HOPS'];
+    try {
+      const a = await ambil('/health', alamatBaru());
+      const b = await ambil('/health', alamatBaru());
+      // Dua alamat "berbeda", satu soket yang sama → SATU ember.
+      expect(Number(a.headers.get('x-ratelimit-remaining'))).toBe(BATAS_UMUM - 1);
+      expect(Number(b.headers.get('x-ratelimit-remaining'))).toBe(BATAS_UMUM - 2);
+    } finally {
+      if (asli === undefined) delete process.env['TRUST_PROXY_HOPS'];
+      else process.env['TRUST_PROXY_HOPS'] = asli;
+    }
+  });
+
+  it('DENGAN satu proxy, entri paling KIRI (milik klien) diabaikan', async () => {
+    if (!reachable) return;
+    // Proxy hanya MENAMBAHKAN alamat yang dilihatnya di ujung kanan; apa pun
+    // di kirinya dikirim klien. Mengambil yang kiri berarti tetap spoofable
+    // meski proxy-nya sudah berdiri.
+    const nyata = alamatBaru();
+    const palsu1 = '198.51.100.7';
+    const palsu2 = '198.51.100.8';
+
+    const a = await ambil('/health', `${palsu1}, ${nyata}`);
+    const b = await ambil('/health', `${palsu2}, ${nyata}`);
+
+    // Klien mengganti-ganti entri kiri, tapi embernya tetap SATU — karena
+    // yang dipakai entri kanan yang ditambahkan proxy kita.
+    expect(Number(a.headers.get('x-ratelimit-remaining'))).toBe(BATAS_UMUM - 1);
+    expect(Number(b.headers.get('x-ratelimit-remaining'))).toBe(BATAS_UMUM - 2);
+    expect(await redis.keys(`rl:ip:${nyata}:*`)).toHaveLength(1);
   });
 
   it('kunci Redis-nya memang yang didaftarkan §9.4', async () => {

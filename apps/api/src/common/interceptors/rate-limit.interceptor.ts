@@ -141,6 +141,17 @@ export class RateLimitInterceptor implements NestInterceptor {
 }
 
 /**
+ * Berapa proxy tepercaya yang berdiri di depan API. `0` = tidak ada.
+ *
+ * Tanpa nilai ini, `X-Forwarded-For` TIDAK dipercaya sama sekali — dan itu
+ * bawaannya, karena hari ini memang belum ada proxy (`F-05` masih blocked).
+ */
+export function hopProxyTepercaya(): number {
+  const n = Number.parseInt(process.env['TRUST_PROXY_HOPS'] ?? '0', 10);
+  return Number.isInteger(n) && n > 0 ? n : 0;
+}
+
+/**
  * Pengguna kalau sesinya sudah terverifikasi, kalau tidak alamatnya.
  *
  * Diberi prefiks berbeda supaya satu ruang nama tidak bisa menyamar jadi yang
@@ -150,9 +161,47 @@ export class RateLimitInterceptor implements NestInterceptor {
 export function identitas(req: ReqRate): string {
   const id = req.user?.id;
   if (typeof id === 'string' && id.length > 0) return `u:${id}`;
+  return `ip:${alamatKlien(req)}`;
+}
+
+/**
+ * Alamat klien — dan ini gerbang yang paling mudah dibuat SIA-SIA.
+ *
+ * Versi pertama membaca `X-Forwarded-For` tanpa syarat lalu mengambil entri
+ * **paling kiri**. Dua kesalahan sekaligus, dan keduanya menghapus seluruh
+ * guna pembatas ini untuk lalu lintas yang belum terautentikasi:
+ *
+ * 1. **Header itu dikirim KLIEN.** Tanpa proxy yang menimpanya — dan repo ini
+ *    belum punya proxy sama sekali — penyerang cukup mengirim
+ *    `X-Forwarded-For: <acak>` di setiap request untuk mendapat ember baru
+ *    setiap kali. Batas 10/menit di `/auth/*`, yang justru menjaga brute
+ *    force login, lewat begitu saja.
+ * 2. **Entri paling kiri tetap milik klien meski ADA proxy.** Proxy hanya
+ *    MENAMBAHKAN alamat yang dilihatnya di ujung kanan; apa pun yang sudah
+ *    ada di kiri dikirim klien. Jadi versi pertama itu spoofable bahkan
+ *    setelah `F-05` berdiri.
+ *
+ * Yang benar: hitung dari KANAN sebanyak proxy yang kita percayai, dan hanya
+ * kalau kita menyatakan ada proxy. `TRUST_PROXY_HOPS=1` berarti "satu proxy
+ * milik kita menambahkan entri terakhir" — entri itulah alamat sungguhannya.
+ *
+ * Tanpa env itu, header diabaikan total dan yang dipakai alamat soket, yang
+ * tidak bisa dipalsukan tanpa memalsukan TCP.
+ */
+function alamatKlien(req: ReqRate): string {
+  const langsung = req.ip || req.socket?.remoteAddress || 'tak-dikenal';
+  const hop = hopProxyTepercaya();
+  if (hop === 0) return langsung;
 
   const xff = req.headers['x-forwarded-for'];
-  const rantai = Array.isArray(xff) ? xff[0] : xff;
-  const pertama = typeof rantai === 'string' ? rantai.split(',')[0]?.trim() : undefined;
-  return `ip:${pertama || req.ip || req.socket?.remoteAddress || 'tak-dikenal'}`;
+  const mentah = Array.isArray(xff) ? xff.join(',') : xff;
+  if (typeof mentah !== 'string') return langsung;
+
+  const daftar = mentah
+    .split(',')
+    .map((x) => x.trim())
+    .filter((x) => x.length > 0);
+  // Kurang dari `hop` entri berarti rantainya tidak sepanjang yang kita kira —
+  // jatuh ke alamat soket, jangan menebak.
+  return daftar.length >= hop ? (daftar[daftar.length - hop] ?? langsung) : langsung;
 }
