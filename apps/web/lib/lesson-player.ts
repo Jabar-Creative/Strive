@@ -28,14 +28,24 @@ export interface PlayerState {
   answers: CardAnswer[];
   /** Semua kartu terjawab — siap dikirim sebagai attempt. */
   done: boolean;
+  /**
+   * Kunci idempoten attempt INI. Dibuat pemanggil saat percobaan dimulai
+   * (muat/ulang), dan TIDAK PERNAH berubah selama state hidup: tombol
+   * "Kirim ulang" adalah RETRY atas attempt yang sama, dan retry memakai
+   * kunci yang sama supaya server menjawab dengan hasil yang tersimpan
+   * (LE-8) alih-alih menolaknya sebagai pengulangan (LE-4, rewarded=false
+   * padahal koinnya sudah masuk).
+   */
+  idempotencyKey: string;
 }
 
-export function startPlayer(totalCards: number): PlayerState {
+export function startPlayer(totalCards: number, idempotencyKey: string): PlayerState {
   return {
     cardIndex: 0,
     totalCards: Math.max(0, totalCards),
     answers: [],
     done: totalCards <= 0,
+    idempotencyKey,
   };
 }
 

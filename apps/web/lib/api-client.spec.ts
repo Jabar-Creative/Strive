@@ -78,18 +78,21 @@ describe('createApiClient — createAttempt', () => {
       feedback: [{ card_id: 'c-1', correct: true, why: 'sebabnya' }],
     });
     const client = createApiClient({ baseUrl: BASE });
-    const hasil = await client.createAttempt({
-      lesson_id: 'l-1',
-      answers: [{ card_id: 'c-1', answer: 'a', ms: 3000 }],
-      duration_ms: 45_000,
-    });
+    const hasil = await client.createAttempt(
+      {
+        lesson_id: 'l-1',
+        answers: [{ card_id: 'c-1', answer: 'a', ms: 3000 }],
+        duration_ms: 45_000,
+      },
+      'kunci-idempoten-uji',
+    );
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(`${BASE}/api/v1/attempts`);
     expect(init.method).toBe('POST');
     expect(init.credentials).toBe('include');
     const headers = new Headers(init.headers);
-    expect(headers.get('idempotency-key')).toMatch(/^[\w-]{16,}$/);
+    expect(headers.get('idempotency-key')).toBe('kunci-idempoten-uji');
     expect(JSON.parse(String(init.body))).toEqual({
       lesson_id: 'l-1',
       answers: [{ card_id: 'c-1', answer: 'a', ms: 3000 }],
@@ -99,7 +102,7 @@ describe('createApiClient — createAttempt', () => {
     expect(hasil.feedback[0]?.why).toBe('sebabnya');
   });
 
-  it('dua panggilan menghasilkan dua Idempotency-Key BERBEDA', async () => {
+  it('kunci MILIK PEMANGGIL: kunci sama terkirim sama (retry), kunci beda terkirim beda', async () => {
     const fetchMock = mockFetch(201, {});
     const client = createApiClient({ baseUrl: BASE });
     const payload = {
@@ -107,18 +110,18 @@ describe('createApiClient — createAttempt', () => {
       answers: [{ card_id: 'c-1', answer: true, ms: 1000 }],
       duration_ms: 1000,
     };
-    await client.createAttempt(payload);
-    await client.createAttempt(payload);
-    const k1 = new Headers((fetchMock.mock.calls[0] as [string, RequestInit])[1].headers).get(
-      'idempotency-key',
-    );
-    const k2 = new Headers((fetchMock.mock.calls[1] as [string, RequestInit])[1].headers).get(
-      'idempotency-key',
-    );
-    // Kunci idempoten mengikat SATU request; percobaan baru = kunci baru.
-    // Mengulang kunci lama membuat retry jaringan dan attempt baru tak
-    // bisa dibedakan server (LE-8).
-    expect(k1).not.toBe(k2);
+    // retry attempt yang sama: pemanggil (mesin pemain) memakai kunci sama
+    await client.createAttempt(payload, 'kunci-retry');
+    await client.createAttempt(payload, 'kunci-retry');
+    // percobaan baru: kunci baru
+    await client.createAttempt(payload, 'kunci-baru');
+    const kunci = (i: number) =>
+      new Headers((fetchMock.mock.calls[i] as [string, RequestInit])[1].headers).get(
+        'idempotency-key',
+      );
+    expect(kunci(0)).toBe('kunci-retry');
+    expect(kunci(1)).toBe('kunci-retry'); // LE-8: retry = kunci identik
+    expect(kunci(2)).toBe('kunci-baru'); // LE-4: percobaan baru = kunci baru
   });
 });
 

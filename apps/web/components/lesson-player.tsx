@@ -58,7 +58,7 @@ export function LessonPlayer({ lessonId }: { lessonId: string }) {
   const [lesson, setLesson] = useState<LessonCardsResponse | null>(null);
   const [fase, setFase] = useState<Fase>('memuat');
   const [galat, setGalat] = useState<ApiError | null>(null);
-  const [player, setPlayer] = useState<PlayerState>(() => startPlayer(0));
+  const [player, setPlayer] = useState<PlayerState>(() => startPlayer(0, ''));
   const [hasil, setHasil] = useState<AttemptResult | null>(null);
 
   const mulaiRef = useRef(0); // performance.now() saat lesson dibuka
@@ -74,7 +74,9 @@ export function LessonPlayer({ lessonId }: { lessonId: string }) {
       .getLessonCards(lessonId)
       .then((data) => {
         setLesson(data);
-        setPlayer(startPlayer(data.cards.length));
+        // Kunci baru SETIAP percobaan dimulai (muat/ulang); retry "Kirim
+        // ulang" TIDAK lewat sini — ia memakai kunci dari state yang sama.
+        setPlayer(startPlayer(data.cards.length, crypto.randomUUID()));
         mulaiRef.current = performance.now();
         kartuMulaiRef.current = mulaiRef.current;
         terkirimRef.current = false;
@@ -93,7 +95,13 @@ export function LessonPlayer({ lessonId }: { lessonId: string }) {
     terkirimRef.current = true;
     setFase('mengirim');
     api
-      .createAttempt(attemptPayload(lessonId, player, performance.now() - mulaiRef.current))
+      .createAttempt(
+        attemptPayload(lessonId, player, performance.now() - mulaiRef.current),
+        // Kunci dari STATE: "Kirim ulang" setelah gagal memanggil kirim()
+        // lagi dengan state yang sama, jadi kuncinya identik — retry,
+        // bukan percobaan baru (LE-8, bukan LE-4).
+        player.idempotencyKey,
+      )
       .then((r) => {
         setHasil(r);
         setFase('hasil');
@@ -125,7 +133,8 @@ export function LessonPlayer({ lessonId }: { lessonId: string }) {
   const ulang = useCallback(() => {
     if (!lesson) return;
     setHasil(null);
-    setPlayer(startPlayer(lesson.cards.length));
+    // Percobaan BARU: kunci baru (LE-4 — pengulangan latihan, rewarded=false).
+    setPlayer(startPlayer(lesson.cards.length, crypto.randomUUID()));
     mulaiRef.current = performance.now();
     kartuMulaiRef.current = mulaiRef.current;
     terkirimRef.current = false;

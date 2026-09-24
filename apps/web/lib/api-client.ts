@@ -7,11 +7,10 @@
  *   1. Percabangan error SELALU pada `error.code`, tidak pernah pada `message`.
  *      `code` adalah kontrak, `message` bukan — docs/PRD.md §10.1.
  *   2. Setiap POST yang mengubah saldo atau memberi hadiah mengirim header
- *      `Idempotency-Key` — docs/PRD.md §10.3 (ditandai ⚡). POST /attempts
- *      bertanda itu, jadi createAttempt membangkitkan kuncinya sendiri dan
- *      SATU panggilan = SATU kunci: percobaan baru (bukan retry) wajib kunci
- *      baru, karena server mengembalikan respons pertama untuk kunci sama
- *      (LE-8).
+ *      `Idempotency-Key` — docs/PRD.md §10.3 (ditandai ⚡). Untuk POST
+ *      /attempts kuncinya MILIK PEMANGGIL: retry attempt yang sama memakai
+ *      kunci sama (server mengembalikan respons pertama, LE-8), percobaan
+ *      baru membangkitkan kunci baru (LE-4).
  *
  * Autentikasi lewat cookie sesi httpOnly milik API — `credentials:
  * 'include'`, tidak ada token di JavaScript.
@@ -134,12 +133,21 @@ export function createApiClient(config: ApiClientConfig) {
       return request<LessonCardsResponse>(`/lessons/${lessonId}/cards`, { signal: opts?.signal });
     },
 
-    /** POST /attempts (⚡) — kunci idempoten dibangkitkan per panggilan. */
-    createAttempt(payload: AttemptPayload, opts?: Pick<RequestOptions, 'signal'>) {
+    /**
+     * POST /attempts (⚡). Kunci idempoten MILIK PEMANGGIL, bukan klien:
+     * retry atas attempt yang sama wajib memakai kunci yang SAMA (server
+     * menjawab dengan hasil tersimpan, LE-8); percobaan baru membangkitkan
+     * kunci baru (LE-4). Klien tidak tahu bedanya — pemanggil yang tahu.
+     */
+    createAttempt(
+      payload: AttemptPayload,
+      idempotencyKey: string,
+      opts?: Pick<RequestOptions, 'signal'>,
+    ) {
       return request<AttemptResult>('/attempts', {
         method: 'POST',
         body: payload,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey,
         signal: opts?.signal,
       });
     },
