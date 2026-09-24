@@ -12,6 +12,7 @@ import { RedisModule, createRedis } from '../src/infra/redis';
 import { LeaderboardService } from '../src/modules/league';
 import { SquadModule } from '../src/modules/squad';
 import {
+  BATAS_SUBSCRIBE,
   RealtimeEmitter,
   RealtimeModule,
   RedisIoAdapter,
@@ -352,6 +353,94 @@ describe('RT-01 — WS gateway + Redis pub/sub (dua instance nyata)', () => {
     const s = await sambung(portA, await sesi(ANGGOTA));
     const ack = (await s.emitWithAck('subscribe', { squad_id: SQUAD })) as { ok: boolean };
     expect(ack.ok).toBe(false);
+  });
+
+  // ── Izin tidak berhenti diperiksa setelah subscribe ────────────────────
+
+  it('anggota yang KELUAR setelah subscribe dikeluarkan dari ruangnya', async () => {
+    if (!reachable) return;
+    const s = await sambung(portA, await sesi(ANGGOTA));
+    expect(await s.emitWithAck('subscribe', { squad_id: SQUAD })).toEqual({ ok: true });
+
+    // Sampai di sini izinnya sah. Lalu keadaannya berubah.
+    await db
+      .updateTable('squad_members')
+      .set({ left_at: sql`now()` })
+      .where('user_id', '=', ANGGOTA)
+      .execute();
+
+    // Tanpa pemeriksaan ulang, soket ini tetap menerima event squad yang
+    // BUKAN lagi miliknya — selama soketnya hidup. REST tidak punya masalah
+    // itu karena ia memeriksa di setiap request.
+    const hasil = await appA.get(SquadGateway).verifikasiUlang();
+    expect(hasil.dikeluarkan).toBeGreaterThanOrEqual(1);
+
+    const datang = tunggu(s, 'score.updated', 1000);
+    appA.get(SquadGateway).server.to(`squad:${SQUAD}`).emit('score.updated', { squad_id: SQUAD });
+    expect(await datang, 'mantan anggota masih menerima event squad').toBeNull();
+    expect(s.connected, 'dikeluarkan dari ruang, bukan diputus').toBe(true);
+  });
+
+  it('sesi yang DICABUT setelah tersambung memutus soketnya', async () => {
+    if (!reachable) return;
+    const token = await sesi(ANGGOTA);
+    const s = await sambung(portA, token);
+    await s.emitWithAck('subscribe', { squad_id: SQUAD });
+
+    // Logout, atau akun ditangguhkan admin.
+    await db.deleteFrom('sessions').where('token', '=', token).execute();
+
+    const hasil = await appA.get(SquadGateway).verifikasiUlang();
+    expect(hasil.diputus).toBeGreaterThanOrEqual(1);
+    await new Promise((r) => setTimeout(r, 300));
+    expect(s.connected).toBe(false);
+  });
+
+  it('anggota yang MASIH sah tidak diganggu pemeriksaan ulang', async () => {
+    if (!reachable) return;
+    const s = await sambung(portA, await sesi(ANGGOTA));
+    await s.emitWithAck('subscribe', { squad_id: SQUAD });
+
+    const hasil = await appA.get(SquadGateway).verifikasiUlang();
+    expect(hasil.dikeluarkan).toBe(0);
+    expect(hasil.diputus).toBe(0);
+
+    const datang = tunggu(s, 'score.updated');
+    appA.get(SquadGateway).server.to(`squad:${SQUAD}`).emit('score.updated', { squad_id: SQUAD });
+    expect(await datang).toEqual({ squad_id: SQUAD });
+  });
+
+  it('`subscribe` punya jatah — RateLimitInterceptor tidak menjaga WS', async () => {
+    if (!reachable) return;
+    // `RateLimitInterceptor` keluar lebih awal untuk konteks non-HTTP, jadi
+    // tanpa jatah di sini satu soket sah bisa menembak `canRead` ke Postgres
+    // ribuan kali per detik.
+    const s = await sambung(portA, await sesi(ANGGOTA));
+    for (let i = 0; i < BATAS_SUBSCRIBE; i++) {
+      const ack = (await s.emitWithAck('subscribe', { squad_id: SQUAD })) as { ok: boolean };
+      expect(ack.ok, `subscribe ke-${i + 1}`).toBe(true);
+    }
+
+    const lewat = (await s.emitWithAck('subscribe', { squad_id: SQUAD })) as {
+      ok: boolean;
+      error?: { code: string };
+    };
+    expect(lewat.ok).toBe(false);
+    expect(lewat.error?.code).toBe('RATE_LIMITED');
+    // Jatah habis BUKAN alasan memutus soket — langganan yang sudah ada tetap.
+    expect(s.connected).toBe(true);
+  });
+
+  it('jatah dihitung per SOKET, bukan per pengguna', async () => {
+    if (!reachable) return;
+    const a = await sambung(portA, await sesi(ANGGOTA));
+    for (let i = 0; i < BATAS_SUBSCRIBE + 1; i++)
+      await a.emitWithAck('subscribe', { squad_id: SQUAD });
+
+    // Soket baru milik pengguna yang sama mulai dari nol: yang dibatasi
+    // beban per koneksi, dan koneksi baru sudah dibatasi di tempat lain.
+    const b = await sambung(portA, await sesi(ANGGOTA));
+    expect(await b.emitWithAck('subscribe', { squad_id: SQUAD })).toEqual({ ok: true });
   });
 
   // ── Autentikasi handshake ──────────────────────────────────────────────

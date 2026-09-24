@@ -25,6 +25,15 @@ export const AMBANG_LONJAKAN = 3;
 /** Di bawah ini, rasio tidak berarti apa-apa — 0,000001 → 0,000004 bukan insiden. */
 export const LANTAI_LONJAKAN_USD = 0.5;
 
+/** Berapa hari sebelum hari ini yang membentuk garis dasar. */
+export const HARI_DASAR = 6;
+
+/**
+ * Notifikasi yang baru dibuat belum tentu gagal — ia belum sempat dikirim.
+ * Di bawah tenggang ini ia tidak dihitung apa pun.
+ */
+export const TENGGANG_KIRIM_MENIT = 5;
+
 export type StatusVendor = 'up' | 'degraded' | 'down' | 'not_configured' | 'unknown';
 
 export interface KesehatanVendor {
@@ -110,7 +119,7 @@ export class IntegrationsHealthService {
         today_usd: biaya.total,
         by_model: biaya.perModel,
         last_7_days: tujuhHari,
-        spike: lonjakan(biaya.total, tujuhHari),
+        spike: lonjakan(biaya.total, tujuhHari, biaya.tanggal),
       },
       scans,
     };
@@ -173,13 +182,33 @@ export class IntegrationsHealthService {
     });
   }
 
-  /** Resend — notifikasi yang dibuat tapi tidak pernah `sent_at` berarti gagal kirim. */
+  /**
+   * Resend — dan di sinilah "akurat" paling mudah dilanggar.
+   *
+   * Versi pertama menghitung SETIAP `sent_at IS NULL` sebagai gagal. Itu
+   * salah dua kali:
+   *
+   * 1. Notifikasi yang baru dibuat sepuluh detik lalu belum gagal — ia belum
+   *    sempat dikirim. Sistem yang sehat dan sibuk akan terlihat `degraded`
+   *    justru karena ia sibuk.
+   * 2. Lebih buruk: worker notifikasi **belum dijadwalkan sama sekali**
+   *    (isu #131). Jadi begitu ada satu notifikasi, vendor ini dilaporkan
+   *    `down` — menyalahkan Resend untuk worker kita sendiri yang tidak
+   *    berjalan. Dasbor yang menunjuk pihak yang salah lebih buruk daripada
+   *    dasbor kosong: ia mengirim orang menelepon vendor.
+   *
+   * Sekarang hanya yang sudah lewat tenggang yang dihitung gagal; yang masih
+   * di dalamnya tidak dihitung apa pun, dan nol panggilan berarti `unknown`.
+   */
   private async kesehatanResend(): Promise<KesehatanVendor> {
     const r = await this.db
       .selectFrom('notifications')
       .select([
         sql<string>`count(*) filter (where sent_at is not null)`.as('ok'),
-        sql<string>`count(*) filter (where sent_at is null)`.as('gagal'),
+        sql<string>`count(*) filter (
+          where sent_at is null
+            and created_at < now() - ${sql.lit(TENGGANG_KIRIM_MENIT)} * interval '1 minute'
+        )`.as('gagal'),
       ])
       .where('created_at', '>', sql<Date>`now() - ${sql.lit(JENDELA_MENIT)} * interval '1 minute'`)
       .executeTakeFirstOrThrow();
@@ -214,7 +243,11 @@ export class IntegrationsHealthService {
   }
 
   /** Biaya LLM HARI INI menurut zona waktu ops, per model dan totalnya. */
-  private async biayaHariIni(): Promise<{ total: string; perModel: BiayaModel[] }> {
+  private async biayaHariIni(): Promise<{
+    total: string;
+    perModel: BiayaModel[];
+    tanggal: string;
+  }> {
     const rows = await this.db
       .selectFrom('ai_jobs')
       .select([
@@ -230,10 +263,20 @@ export class IntegrationsHealthService {
       .orderBy('model')
       .execute();
 
+    // Tanggal ops diambil dari POSTGRES, bukan dibentuk di Node: `lonjakan()`
+    // memakainya untuk menyaring hari ini dari daftar, dan daftar itu juga
+    // lahir dari `(created_at AT TIME ZONE …)::date` di Postgres. Dua sumber
+    // tanggal berbeda akan meleset tepat di tengah malam.
+    const hari = await sql<{
+      t: string;
+    }>`select (now() AT TIME ZONE ${sql.lit(TZ_OPS)})::date::text as t`.execute(this.db);
+    const tanggal = hari.rows[0]!.t;
+
     const total = rows.reduce((n, r) => n + Number(r.cost_usd), 0);
     return {
       total: total.toFixed(6),
       perModel: rows.map((r) => ({ model: r.model, cost_usd: r.cost_usd, jobs: Number(r.jobs) })),
+      tanggal,
     };
   }
 
@@ -289,14 +332,26 @@ export class IntegrationsHealthService {
 export function lonjakan(
   hariIniUsd: string,
   tujuhHari: { date: string; cost_usd: string }[],
+  tanggalHariIni: string,
 ): { baseline_usd: string; ratio: number | null; alert: boolean } {
   const hariIni = Number(hariIniUsd);
-  const sebelumnya = tujuhHari.slice(0, -1).map((d) => Number(d.cost_usd));
-  if (sebelumnya.length === 0) {
-    return { baseline_usd: '0.000000', ratio: null, alert: false };
-  }
 
-  const dasar = sebelumnya.reduce((a, b) => a + b, 0) / sebelumnya.length;
+  // Hari TANPA baris berarti biaya NOL, dan nol itu harus ikut menurunkan
+  // rata-rata. Versi pertama membagi dengan `sebelumnya.length` — jumlah hari
+  // yang kebetulan punya baris — jadi hari sepi tidak pernah masuk hitungan
+  // dan garis dasarnya melambung.
+  //
+  // Akibatnya persis kebalikan dari guna alarm ini, dan paling parah justru
+  // sekarang, saat produknya masih sepi: lima hari nol + satu hari $6
+  // menghasilkan dasar $6 (bukan $1), jadi hari ini $12 terbaca 2× dan
+  // TIDAK berbunyi — padahal sebenarnya 12×.
+  //
+  // Hari ini juga disaring lewat TANGGALNYA, bukan `slice(0, -1)`. Kalau hari
+  // ini belum punya biaya sama sekali, ia tidak ada di daftar, dan `slice`
+  // akan membuang hari terakhir yang justru bagian dari dasar.
+  const sebelumnya = tujuhHari.filter((d) => d.date !== tanggalHariIni);
+  const total = sebelumnya.reduce((n, d) => n + Number(d.cost_usd), 0);
+  const dasar = total / HARI_DASAR;
   if (dasar === 0) {
     return {
       baseline_usd: '0.000000',
