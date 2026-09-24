@@ -10,7 +10,9 @@ import {
   AMBANG_LONJAKAN,
   AdminModule,
   IntegrationsHealthService,
+  HARI_DASAR,
   LANTAI_LONJAKAN_USD,
+  TENGGANG_KIRIM_MENIT,
   TZ_OPS,
   type IntegrationsHealth,
 } from '../src/modules/admin';
@@ -275,6 +277,36 @@ describe('SA-03 — GET /admin/integrations/health (database nyata)', () => {
     expect(h.llm_cost.spike.alert).toBe(true);
   });
 
+  it('hari SEPI tanpa baris tetap menurunkan garis dasar', async () => {
+    if (!reachable) return;
+    // Lubang paling mahal di alarm ini: hari tanpa baris berarti biaya NOL,
+    // dan nol harus ikut menurunkan rata-rata. Membagi dengan "jumlah hari
+    // yang kebetulan punya baris" membuat garis dasar melambung — dan paling
+    // parah justru sekarang, saat produknya masih sepi.
+    //
+    // Lima hari nol + satu hari $6 → dasar yang BENAR $1, bukan $6.
+    await aiJob({ status: 'done', costUsd: 6, offsetHari: -3 });
+    await aiJob({ status: 'done', costUsd: 12 });
+
+    const h = await svc.get();
+    expect(h.llm_cost.spike.baseline_usd).toBe((6 / HARI_DASAR).toFixed(6));
+    expect(h.llm_cost.spike.ratio).toBe(12);
+    expect(h.llm_cost.spike.alert, 'lonjakan 12× tidak berbunyi').toBe(true);
+  });
+
+  it('hari ini disaring lewat TANGGAL, bukan posisi terakhir di daftar', async () => {
+    if (!reachable) return;
+    // Kalau hari ini belum punya biaya sama sekali, ia tidak ada di daftar —
+    // dan membuang "elemen terakhir" justru membuang hari yang termasuk dasar.
+    await aiJob({ status: 'done', costUsd: 3, offsetHari: -1 });
+    await aiJob({ status: 'done', costUsd: 3, offsetHari: -2 });
+
+    const h = await svc.get();
+    expect(h.llm_cost.today_usd).toBe('0.000000');
+    // Kedua hari itu dasar, bukan satu.
+    expect(h.llm_cost.spike.baseline_usd).toBe((6 / HARI_DASAR).toFixed(6));
+  });
+
   it('hari yang biasa saja TIDAK memicu alert', async () => {
     if (!reachable) return;
     for (let d = 1; d <= 6; d++) await aiJob({ status: 'done', costUsd: 1, offsetHari: -d });
@@ -296,6 +328,36 @@ describe('SA-03 — GET /admin/integrations/health (database nyata)', () => {
     expect(h.llm_cost.spike.ratio).toBeGreaterThanOrEqual(AMBANG_LONJAKAN);
     expect(Number(h.llm_cost.today_usd)).toBeLessThan(LANTAI_LONJAKAN_USD);
     expect(h.llm_cost.spike.alert).toBe(false);
+  });
+
+  it('notifikasi yang BARU dibuat bukan kegagalan Resend', async () => {
+    if (!reachable) return;
+    // Worker notifikasi belum dijadwalkan sama sekali (#131). Menghitung
+    // setiap `sent_at IS NULL` sebagai gagal berarti melaporkan Resend `down`
+    // karena worker KITA tidak jalan — dasbor yang menunjuk pihak yang salah,
+    // dan mengirim orang menelepon vendor.
+    await db
+      .insertInto('notifications')
+      .values({ user_id: SUPER, kind: 'streak_warning', title: 'x', body: 'y' })
+      .execute();
+
+    expect(vendor(await svc.get(), 'resend').status).toBe('unknown');
+  });
+
+  it('notifikasi yang lewat tenggang MEMANG dihitung gagal', async () => {
+    if (!reachable) return;
+    await db
+      .insertInto('notifications')
+      .values({
+        user_id: SUPER,
+        kind: 'streak_warning',
+        title: 'x',
+        body: 'y',
+        created_at: sql`now() - ${sql.lit(TENGGANG_KIRIM_MENIT + 1)} * interval '1 minute'`,
+      })
+      .execute();
+
+    expect(vendor(await svc.get(), 'resend')).toMatchObject({ status: 'down', gagal: 1 });
   });
 
   it('tujuh hari terakhir terurut, dan hari tanpa biaya tidak mengarang baris', async () => {
