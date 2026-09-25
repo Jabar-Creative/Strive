@@ -345,6 +345,15 @@ jobs:
             -e DATABASE_URL=postgres://ci:ci@127.0.0.1:1/none
             -e REDIS_URL=redis://127.0.0.1:6379
             -e AUTH_SECRET=image-ci-bukan-rahasia-min-32-byte
+            # Alasan yang SAMA dengan AUTH_SECRET di atas: storage gagal
+            # TERTUTUP di produksi. Tanpa ketiganya, `createS3FromEnv()`
+            # melempar saat boot supaya produksi tidak pernah diam-diam
+            # memakai MinIO lokal dengan password yang ada di repo publik.
+            # Nilai di bawah cukup untuk MEMBUKTIKAN IMAGE BOOT — job ini
+            # tidak menyentuh storage sama sekali.
+            -e S3_ENDPOINT=http://127.0.0.1:1
+            -e S3_ACCESS_KEY=image-ci
+            -e S3_SECRET_KEY=image-ci-bukan-rahasia
             -e API_PORT=3001
           )
           docker run -d --name api-image "${bersama[@]}" -e MODE=api strive-api:ci
