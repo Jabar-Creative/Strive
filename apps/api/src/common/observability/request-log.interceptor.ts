@@ -3,18 +3,18 @@ import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nes
 import type { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
+import { ringkasanIp, type SumberIp } from '../client-ip';
 import { barisLog, formatJson } from './structured-logger';
 
 /** Header yang dipakai kalau proxy sudah menyetel id-nya. */
 export const HEADER_REQUEST_ID = 'x-request-id';
 
-interface ReqLog {
+interface ReqLog extends SumberIp {
   method?: string;
   path?: string;
   url?: string;
   route?: { path?: string };
   user?: { id?: string };
-  headers: Record<string, string | string[] | undefined>;
 }
 
 /**
@@ -57,6 +57,11 @@ export class RequestLogInterceptor implements NestInterceptor {
     const requestId = (Array.isArray(dari) ? dari[0] : dari) || randomUUID();
     res.setHeader(HEADER_REQUEST_ID, requestId);
 
+    // Diambil SEBELUM handler. Rute auth menimpa X-Forwarded-For menjadi satu
+    // IP sebelum Better-Auth membacanya; menghitung sesudah itu selalu 1 dan
+    // tidak lagi bisa dipakai mengukur hop.
+    const ip = ringkasanIp(req);
+
     const mulai = process.hrtime.bigint();
     const tulis = (status: number): void => {
       if (!formatJson()) return;
@@ -69,6 +74,9 @@ export class RequestLogInterceptor implements NestInterceptor {
           route: req.route?.path ?? req.path ?? req.url ?? null,
           status,
           duration_ms: Number(durasi.toFixed(1)),
+          client_ip: ip.clientIp,
+          xff_count: ip.xffCount,
+          trust_proxy_hops: ip.hops,
         })}\n`,
       );
     };
