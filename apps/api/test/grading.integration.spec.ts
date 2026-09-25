@@ -112,6 +112,20 @@ beforeEach(async () => {
 });
 
 describe('GradingService.grade — jalur DB (integrasi)', () => {
+  it('database siap dipakai', () => {
+    // Tanpa baris ini berkas ini melaporkan SEMUA HIJAU terhadap database
+    // mati — empat test "lulus" dalam 5 milidetik, nol cakupan. Setiap test
+    // di bawah dijaga `if (!reachable) return`, dan pola itu hanya aman
+    // kalau ada satu test yang MEMERAHKAN ketiadaan database.
+    //
+    // Yang diuji berkas ini aturan keras 9 (penilaian selalu di server),
+    // jadi ia salah satu yang paling mahal untuk dilewati diam-diam.
+    expect(
+      reachable,
+      `DATABASE_URL tidak bisa dipakai (${url}). Jalankan: docker compose up -d && pnpm db:migrate`,
+    ).toBe(true);
+  });
+
   it('mengambil kartu beserta kunci lalu menilai dalam transaksi pemanggil', async () => {
     if (!reachable) return;
     const hasil = await db.transaction().execute(async (trx) =>
