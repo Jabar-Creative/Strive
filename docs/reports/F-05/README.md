@@ -22,17 +22,37 @@ Penyebab: `infra/Dockerfile.api` menyalin `node_modules` aplikasi ke `/app/apps/
 
 Perbaikan layout image, pemeriksaan boot di CI, dan pesan gagal per service: https://github.com/Jabar-Creative/Strive/pull/150. V1–V13 tetap **TIDAK TERBUKTI**. Run itu tidak menghasilkan jawaban HTTP yang bisa dicatat sebagai bukti hidup.
 
+## Deploy kedua — smoke lulus, checklist V1–V13 tidak diangkat
+
+Run: https://github.com/Jabar-Creative/Strive/actions/runs/36118019993
+
+Migrasi sudah mutakhir. Unggahan Railway api, worker, dan ai sukses. Web Vercel READY. Smoke workflow lulus. Itu bukan pelaksanaan daftar V1–V13 di bawah: baris-baris itu tetap **TIDAK TERBUKTI**.
+
+## IP klien Better Auth — satu ember bersama
+
+Setelah probe hanya-baca ke `/api/v1/auth/*`, log api menulis peringatan Better Auth: rate limit tidak bisa menentukan IP klien dan jatuh ke satu ember per path. Semua pengguna berbagi batas masuk. Better Auth 1.7.5 hanya mempercayai `X-Forwarded-For` bernilai tunggal kalau `trustedProxies` kosong; rantai (lebih dari satu entri) ditolak. `trustedProxies` mencocokkan CIDR proxy, bukan jumlah hop, dan IP edge Railway tidak disimpan di repo.
+
+Perbaikannya memakai `TRUST_PROXY_HOPS` yang sudah ada: dihitung dari kanan, entri kiri yang dikirim klien dibuang, lalu header ditimpa menjadi satu IP sebelum Better Auth membacanya. Arti variabel tidak berubah. Asumsi staging: peramban → satu edge Railway → container, jadi `1` berarti entri paling kanan adalah alamat yang ditulis edge itu. Container yang bisa dihubungi dengan melewati proxy itu akan mempercayai header klien — sama seperti pembatas Nest.
+
+Mengukur hop, setelah deploy perbaikan ini, tanpa rute baru. `LOG_FORMAT=json` sudah menyala di service api. Satu permintaan (cukup `GET /health`, supaya tidak menghabiskan jatah 10/menit `/auth/*`) menulis baris `"msg":"http"` dengan `client_ip`, `xff_count`, dan `trust_proxy_hops`. Rute auth menambah baris `pengukuran proxy` dengan tiga nilai yang sama. Rantai header tidak dicetak.
+
+Bandingkan `client_ip` dengan alamat publik mesin yang mengirim permintaan.
+
+- Sama, dan `xff_count` 1 → hop 1 cocok dengan satu edge yang menaruh alamat klien di satu-satunya entri.
+- `client_ip` alamat privat (10/8, 172.16/12, 100.64/10) sementara `xff_count` lebih dari 1 → hop terlalu kecil: entri kanan adalah proxy, bukan peramban. Naikkan `TRUST_PROXY_HOPS` sampai `client_ip` sama dengan alamat pengirim.
+- `trust_proxy_hops` 0 → header diabaikan dan `client_ip` adalah soket (proxy Railway). Semua orang berbagi ember. Bukan angka yang dipakai di staging kalau edge-nya satu.
+
 ## LINK HIDUP
 
-Tidak ada yang melayani. Deploy pertama membangun image api lalu container-nya mati; service lain tidak terunggah.
+Smoke run 36118019993 lulus. Checklist V1–V13 di bawah tidak diubah menjadi terbukti oleh smoke itu.
 
 | Layanan | URL yang sudah disiapkan | Bukti hidup dari kode repo ini |
 |---|---|---|
-| web | https://strive-staging-web.vercel.app | TIDAK TERBUKTI — belum di-deploy |
-| api | https://api-staging-af8c.up.railway.app | TIDAK TERBUKTI |
-| ai | https://ai-staging-330d.up.railway.app | TIDAK TERBUKTI |
-| worker | tidak punya domain | TIDAK TERBUKTI. Nanti: log `MODE=worker`, bukan HTTP |
-| dashboard Railway | https://railway.com/project/773fa4e1-589a-4afb-a559-80cfe632f1a5 | project sudah ada; service aplikasi belum menerima kode |
+| web | https://strive-staging-web.vercel.app | Smoke run 36118019993 melaporkan HTTP 200. V3 tetap TIDAK TERBUKTI di checklist ini |
+| api | https://api-staging-af8c.up.railway.app | Smoke run yang sama melaporkan `/health`. V1 tetap TIDAK TERBUKTI di checklist ini |
+| ai | https://ai-staging-330d.up.railway.app | Smoke run yang sama melaporkan service `ai`. V2 tetap TIDAK TERBUKTI di checklist ini |
+| worker | tidak punya domain | Unggahan Railway run itu sukses. Tidak ada pemeriksaan log `MODE=worker` di checklist ini |
+| dashboard Railway | https://railway.com/project/773fa4e1-589a-4afb-a559-80cfe632f1a5 | service menerima kode pada run 36118019993 |
 
 ## SELESAI
 
@@ -40,8 +60,8 @@ Acceptance criteria di backlog, harfiah: "URL staging hidup. Push ke `main` men-
 
 | AC | Hasil |
 |---|---|
-| URL staging hidup | **TIDAK TERBUKTI.** Run pertama gagal sebelum smoke. Tidak ada jawaban `/health` |
-| Push ke `main` men-deploy | **TIDAK TERBUKTI sebagai berhasil.** `workflow_run` setelah CI hijau di `main` memang menyala (run 36114955174), lalu berhenti di image api. Tiga service Railway dan web tidak terunggah |
+| URL staging hidup | Smoke run 36118019993 lulus. Checklist V1–V13 tetap **TIDAK TERBUKTI** — smoke bukan daftar itu |
+| Push ke `main` men-deploy | Run 36118019993 mengunggah api, worker, ai, dan web. Bukan bukti checklist V1–V13 |
 | Rollback < 5 menit | **TIDAK TERBUKTI.** Prosedurnya di `docs/runbooks/rollback-staging.md`. Belum ada stopwatch |
 
 ### V1–V13
@@ -56,7 +76,7 @@ Semua **TIDAK TERBUKTI**. Tidak ada permintaan yang dikirim ke staging dari peke
 | V4 | CORS origin asing bukan `*` | TIDAK TERBUKTI |
 | V5 | Header keamanan API dan web | TIDAK TERBUKTI |
 | V6 | 401 bentuk §10.1, termasuk 404 | TIDAK TERBUKTI |
-| V7 | Rate limit 429, termasuk `X-Forwarded-For` acak | TIDAK TERBUKTI. `TRUST_PROXY_HOPS=1` di service masih provisional, belum diukur |
+| V7 | Rate limit 429, termasuk `X-Forwarded-For` acak | TIDAK TERBUKTI. Better Auth sempat berbagi satu ember karena rantai IP tidak terbaca. Hop diukur dari log `client_ip` / `xff_count` setelah perbaikan, bukan dari tebakan |
 | V8 | AI tanpa token → 401 | TIDAK TERBUKTI, dan **tidak akan lulus** dengan kode sekarang: layanan AI hanya punya `/health` (isu #132). Bukan salah konfigurasi |
 | V9 | Webhook pembayaran tanda tangan asal ditolak | TIDAK TERBUKTI. `MIDTRANS_*` dikosongkan; jalur itu memang mati |
 | V10 | Daftar, masuk, refresh, masih masuk | TIDAK TERBUKTI. Lihat batas cookie di bawah |
@@ -113,7 +133,7 @@ Tidak diperbaiki di PR ini. Jangan dibuka sebagai isu dari PR ini; pemiliknya ya
 10. **Layanan AI hanya `/health`.** V8 tidak bisa lulus. `AiDispatchService` akan mem-POST ke jalur yang tidak ada (isu #132).
 11. **Klien WebSocket web belum ada** (`createWsClient` melempar). V12 hanya bisa diuji dengan klien mentah ke gateway, bukan dari browser.
 12. **Hampir semua layar siswa stub**, dan `createApiClient()` melempar. "Layar tidak kosong" tidak tercapai dengan seed.
-13. **`TRUST_PROXY_HOPS=1` belum diukur** dari header yang benar-benar sampai. Salah satu angka membuat rate limit `/auth/*` bisa dilewati.
+13. **`TRUST_PROXY_HOPS=1` belum diukur** dari header yang benar-benar sampai. Better Auth 1.7.5, tanpa `trustedProxies`, menolak rantai `X-Forwarded-For` dan semua pengguna berbagi satu ember per path (peringatan di log api setelah probe `/api/v1/auth/*`). Pembatas Nest sudah menghitung dari kanan; Better Auth tidak. Perbaikan menimpa header menjadi satu IP dengan hop yang sama, dan setiap request JSON mencatat `client_ip`, `xff_count`, `trust_proxy_hops` tanpa mencetak rantai. Angka hop tetap harus dibaca dari log staging setelah deploy — lihat bagian "IP klien Better Auth". Salah satu angka masih membuat batas bisa dilewati (hop terlalu besar, atau origin terbuka di luar proxy) atau membuat semua orang satu ember (hop terlalu kecil).
 14. **`REDIS_URL` memuat `?family=0`.** Belum terbukti ioredis di repo ini membaca `family` dari query string sebagai angka.
 15. **Postgres publik menerima koneksi tanpa TLS.** Secret migrasi sudah `sslmode=require`. Jangan menyalin URL-nya tanpa parameter itu.
 16. **Akun Railway masih trial** tanpa metode bayar: kredit US$5, 30 hari, batas 5 service. Perkiraan setelah api+worker+ai hidup US$6–7/bulan, jadi kredit habis kira-kira hari ke-20–25, lebih cepat dari 30 hari. Tanpa kartu, service berhenti tanpa tagihan.

@@ -223,6 +223,14 @@ export function createAuth(opts: AuthOptions): StriveAuth {
       // perlindungan ini tanpa error apa pun.
       disableOriginCheck: false,
 
+      // IP klien TIDAK disetel di sini. `trustedProxies` Better-Auth 1.7.5
+      // mencocokkan CIDR, bukan `TRUST_PROXY_HOPS`, dan tanpa itu rantai
+      // X-Forwarded-For ditolak (satu ember untuk semua). Controller HTTP
+      // menimpa header menjadi satu IP dari hop yang sama sebelum handler
+      // ini membaca request. Jangan mengisi `ipAddress.trustedProxies`
+      // dengan rentang lebar: itu melewati alamat klien dan kembali ke ember
+      // bersama.
+
       // F-05 opsi A. Web dan API di staging tinggal di dua situs
       // (vercel.app dan up.railway.app, keduanya Public Suffix List).
       // SameSite=Lax tidak ikut pada fetch lintas situs.
