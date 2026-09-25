@@ -17,6 +17,16 @@ COPY packages packages
 COPY apps/web apps/web
 # `standalone` hanya menyala di sini — lihat komentar di apps/web/next.config.mjs.
 ENV DOCKER_BUILD=1
+# `NEXT_PUBLIC_*` DI-INLINE KE BUNDLE SAAT BUILD, bukan dibaca saat runtime.
+# Tanpa ARG ini, image apa pun yang dibangun di sini membawa fallback
+# `http://localhost:3001` selamanya, dan menyetel variabelnya di runtime tidak
+# mengubah satu byte pun di bundle yang sudah jadi. Gejalanya: halaman terbuka
+# normal lalu setiap panggilan API menembak localhost milik BROWSER pengguna.
+#
+# Staging tidak memakai berkas ini (web dibangun Vercel — lihat infra/README.md),
+# jadi yang dijaga ARG ini adalah build Docker lokal dan pemakaian berikutnya.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN pnpm --filter @strive/web build
 
 FROM node:22-alpine AS runtime
