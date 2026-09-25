@@ -21,6 +21,9 @@ import { ConsoleLogger, type LogLevel } from '@nestjs/common';
  */
 export type Konteks = Record<string, unknown>;
 
+/** Lebih dalam dari ini dipotong — lihat alasannya di `saring()`. */
+export const BATAS_KEDALAMAN = 6;
+
 /** Kunci yang TIDAK PERNAH boleh ikut, di kedalaman berapa pun. */
 const TERLARANG = [
   'password',
@@ -47,9 +50,26 @@ const TERLARANG = [
  *
  * Nilai diganti `'[dibuang]'`, bukan dihapus: kehadiran bidangnya sendiri
  * sering informasi yang berguna saat menelusuri.
+ *
+ * ── Batas kedalaman MEMOTONG, tidak melewatkan ──
+ *
+ * Versi pertama mengembalikan nilai **apa adanya** begitu melewati batas
+ * kedalaman. Itu membuat fungsi yang seluruh gunanya menjamin "tidak pernah
+ * bocor" punya lubang berbentuk kedalaman: objek berisi `token` di lapis
+ * ketujuh lolos utuh ke baris log.
+ *
+ * Yang lebih buruk, test yang menyentuh kasus itu hanya memastikan ia tidak
+ * MELEMPAR — dua puluh lapis dibungkus di sekeliling `{ token }`, dan tidak
+ * satu pun assert memeriksa tokennya. Test yang berhenti tepat sebelum
+ * pertanyaan yang penting.
+ *
+ * Sekarang batasnya memotong: lebih dalam dari itu diganti penanda. Biayanya
+ * nol untuk konteks log kita (semuanya dangkal), dan sekalian membuat panjang
+ * satu baris log punya batas atas.
  */
 export function saring(nilai: unknown, kedalaman = 0): unknown {
-  if (kedalaman > 6 || nilai === null || typeof nilai !== 'object') return nilai;
+  if (nilai === null || typeof nilai !== 'object') return nilai;
+  if (kedalaman > BATAS_KEDALAMAN) return '[terlalu dalam]';
   if (Array.isArray(nilai)) return nilai.map((x) => saring(x, kedalaman + 1));
 
   const keluar: Record<string, unknown> = {};

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { barisLog, formatJson, saring } from './structured-logger';
+import { BATAS_KEDALAMAN, barisLog, formatJson, saring } from './structured-logger';
 
 const asli = process.env['LOG_FORMAT'];
 afterEach(() => {
@@ -44,10 +44,25 @@ describe('R-04 — log terstruktur (PRD §17.1)', () => {
     expect(Object.keys(keluar)).toContain('token');
   });
 
-  it('tidak melingkar tanpa batas pada struktur dalam', () => {
-    let dalam: Record<string, unknown> = { token: 'x' };
+  it('struktur dalam DIPOTONG, bukan dilewatkan apa adanya', () => {
+    // Versi pertama test ini hanya memastikan `saring` tidak MELEMPAR —
+    // dua puluh lapis dibungkus di sekeliling `{ token }`, dan tidak satu pun
+    // assert memeriksa tokennya. Ia berhenti tepat sebelum pertanyaan yang
+    // penting, dan karena itu tidak melihat bahwa versi lama mengembalikan
+    // nilai apa adanya begitu melewati batas kedalaman.
+    let dalam: Record<string, unknown> = { token: 'rahasia-di-lapis-dalam' };
     for (let i = 0; i < 20; i++) dalam = { lapis: dalam };
+
     expect(() => saring(dalam)).not.toThrow();
+    expect(JSON.stringify(saring(dalam))).not.toContain('rahasia-di-lapis-dalam');
+    expect(JSON.stringify(saring(dalam))).toContain('[terlalu dalam]');
+  });
+
+  it('bidang rahasia tepat DI batas kedalaman tetap dibuang', () => {
+    // Batas itu sendiri adalah tempat paling mudah meleset satu lapis.
+    let dalam: Record<string, unknown> = { token: 'tepat-di-batas' };
+    for (let i = 0; i < BATAS_KEDALAMAN; i++) dalam = { lapis: dalam };
+    expect(JSON.stringify(saring(dalam))).not.toContain('tepat-di-batas');
   });
 
   it('barisLog menghasilkan JSON sah dengan ts, level, msg', () => {

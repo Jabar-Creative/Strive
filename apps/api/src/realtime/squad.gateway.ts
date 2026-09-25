@@ -244,22 +244,47 @@ export class SquadGateway implements OnGatewayInit, OnApplicationShutdown {
       };
     }
 
-    if (!(await this.squads.canRead(squadId, user))) {
-      this.log.warn(
-        `Pengguna ${user.id} mencoba berlangganan squad ${squadId} yang bukan miliknya`,
+    // Sisanya dibungkus: exception dari sini TIDAK pernah menjadi balasan.
+    // `AllExceptionsFilter` global (`R-04`) melempar ULANG untuk konteks
+    // non-HTTP, jadi `emitWithAck` klien MENGGANTUNG SELAMANYA — layar squad
+    // diam tanpa galat, tanpa retry, dan tanpa memicu fallback polling
+    // `RT-5`, karena klien tidak pernah tahu ada yang gagal.
+    //
+    // Diam yang tidak bisa dibedakan dari "sedang lambat" lebih buruk
+    // daripada galat: yang pertama tidak punya jalan keluar.
+    try {
+      if (!(await this.squads.canRead(squadId, user))) {
+        this.log.warn(
+          `Pengguna ${user.id} mencoba berlangganan squad ${squadId} yang bukan miliknya`,
+        );
+        return {
+          ok: false,
+          error: {
+            code: 'FORBIDDEN_ROLE',
+            message: 'Kanal squad hanya untuk anggotanya sendiri',
+            details: { squad_id: squadId },
+          },
+        };
+      }
+
+      await socket.join(squadRoom(squadId));
+      return { ok: true };
+    } catch (err) {
+      // Kode yang SAMA dengan jalur handshake di atas, dan alasannya sama:
+      // Postgres yang sedang lambat bukan "kamu tidak berhak". Klien cukup
+      // jatuh ke polling lalu mencoba lagi.
+      this.log.error(
+        `Gagal memproses subscribe squad ${squadId}: ${err instanceof Error ? err.message : String(err)}`,
       );
       return {
         ok: false,
         error: {
-          code: 'FORBIDDEN_ROLE',
-          message: 'Kanal squad hanya untuk anggotanya sendiri',
+          code: 'PROVIDER_UNAVAILABLE',
+          message: 'Tidak bisa memverifikasi akses squad saat ini',
           details: { squad_id: squadId },
         },
       };
     }
-
-    await socket.join(squadRoom(squadId));
-    return { ok: true };
   }
 }
 
