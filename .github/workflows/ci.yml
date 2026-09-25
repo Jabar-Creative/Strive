@@ -135,7 +135,7 @@ jobs:
           set -euo pipefail
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=strive -e MINIO_ROOT_PASSWORD=strive_ci_only \
-            quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z server /data
+            chainguard/minio@sha256:bd014394a80898e68c149f2311fdf8d5a2c2f3bb2c33b9327ae6d02b4b065ae1 server /data
 
           # Tunggu API-nya SIAP, bukan tunggu sekian detik. `sleep` yang cukup
           # hari ini adalah `sleep` yang kurang di runner yang lebih lambat.

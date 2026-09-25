@@ -49,10 +49,25 @@ services:
       retries: 10
       start_period: 5s
 
-  # Image MinIO diambil dari quay.io — repositori resmi mereka. Tag yang sama di
-  # Docker Hub (`minio/minio`) menolak pull tanpa login.
+  # MinIO MENUTUP distribusi publiknya — Docker Hub (`minio/minio`) dan
+  # quay.io (`quay.io/minio/minio`) dua-duanya menolak sekarang. quay.io
+  # bahkan menjawab `no such manifest` untuk tag yang sebelumnya dipakai di
+  # sini, jadi ini bukan rate limit melainkan tag yang ditarik.
+  #
+  # Yang memberi tahu kami bukan dev — mesin lokal masih punya image lama di
+  # cache, jadi `docker compose up` tetap jalan. Yang merah CI, dan ia merah
+  # untuk SETIAP PR.
+  #
+  # `chainguard/minio` adalah MinIO yang sama, dibangun ulang Chainguard:
+  # entrypoint sama, `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` sama,
+  # `/minio/health/live` sama, dan bucket tetap privat bawaan (diverifikasi:
+  # health 200, GET anonim ke bucket 403).
+  #
+  # Dipin ke DIGEST, bukan `:latest`: tier gratis Chainguard hanya menerbitkan
+  # `:latest`, dan tag yang isinya berubah diam-diam adalah cara paling halus
+  # membuat CI hijau hari ini dan merah besok tanpa satu pun commit.
   minio:
-    image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
+    image: chainguard/minio@sha256:bd014394a80898e68c149f2311fdf8d5a2c2f3bb2c33b9327ae6d02b4b065ae1
     container_name: strive-minio
     restart: unless-stopped
     command: ['server', '/data', '--console-address', ':9001']
@@ -73,18 +88,33 @@ services:
 
   # Membuat tiga bucket lalu berhenti. Tiga-tiganya PRIVAT: dokumen pengguna
   # tidak pernah punya bucket publik (docs/PRD.md §12.6, §16.1).
+  #
+  # `aws` CLI, bukan `mc`. Alasannya sama dengan image MinIO di atas: MinIO
+  # menutup distribusi publiknya, dan `mc` hilang dari Docker Hub maupun
+  # quay.io sekalian. CI sudah memakai `aws` lebih dulu (dengan alasan
+  # berbeda — `mc` gagal diunduh di runner), jadi ini sekaligus membuat dev
+  # dan CI memakai perkakas yang SAMA. Perintah yang berbeda di dua tempat
+  # adalah dua peluang berbeda untuk salah.
+  #
+  # `create-bucket` membuat bucket PRIVAT secara bawaan — tidak ada policy
+  # yang disetel di mana pun, dan itu yang membuat §16.1 "tidak ada bucket
+  # publik" benar secara konstruksi. `|| head-bucket` membuatnya idempoten.
   minio-init:
-    image: quay.io/minio/mc:RELEASE.2024-11-21T17-21-54Z
+    image: amazon/aws-cli:2.22.35
     container_name: strive-minio-init
     depends_on:
       minio:
         condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: strive
+      AWS_SECRET_ACCESS_KEY: strive_dev_only
+      AWS_DEFAULT_REGION: us-east-1
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 strive strive_dev_only &&
-      mc mb --ignore-existing local/strive-documents &&
-      mc mb --ignore-existing local/strive-assets &&
-      mc mb --ignore-existing local/strive-public &&
+      for b in strive-documents strive-assets strive-public; do
+        aws --endpoint-url http://minio:9000 s3api create-bucket --bucket $$b ||
+        aws --endpoint-url http://minio:9000 s3api head-bucket --bucket $$b;
+      done &&
       echo '[minio-init] tiga bucket siap (semuanya privat)'
       "
     restart: 'no'
