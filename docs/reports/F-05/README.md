@@ -20,7 +20,7 @@ Require stack:
 
 Penyebab: `infra/Dockerfile.api` menyalin `node_modules` aplikasi ke `/app/apps/api/node_modules` dan hasil build ke `/app/dist`. Node yang menjalankan `/app/dist/main.js` tidak melihat folder itu — pnpm menaruh `reflect-metadata` sebagai symlink di `apps/api/node_modules`, bukan di `node_modules` root. Karena `set -euo pipefail`, worker dan ai tidak terunggah. Web dan smoke tidak jalan. Tidak ada proses yang melayani di staging.
 
-Perbaikan layout image, pemeriksaan boot di CI, dan pesan gagal per service: branch `f-05-perbaiki-image-api` (PR menyusul di catatan ini setelah dibuka). V1–V13 tetap **TIDAK TERBUKTI**. Run itu tidak menghasilkan jawaban HTTP yang bisa dicatat sebagai bukti hidup.
+Perbaikan layout image, pemeriksaan boot di CI, dan pesan gagal per service: https://github.com/Jabar-Creative/Strive/pull/150. V1–V13 tetap **TIDAK TERBUKTI**. Run itu tidak menghasilkan jawaban HTTP yang bisa dicatat sebagai bukti hidup.
 
 ## LINK HIDUP
 
