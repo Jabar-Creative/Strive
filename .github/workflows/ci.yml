@@ -40,6 +40,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # F-05. Skrip yang nanti jalan ke database staging wajib terbukti
+      # menolak INSERT/UPDATE/DELETE tanpa membuka koneksi. Kalau penjaga
+      # ini hilang, job deploy bisa menulis coin_ledger ke staging.
+      - name: Penjaga skema staging hanya baca
+        run: node scripts/schema-check-readonly.mjs --periksa-query
+
       - name: Lint
         run: pnpm lint
 

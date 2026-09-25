@@ -30,6 +30,14 @@ export interface AuthOptions {
    * `RESET_PASSWORD_DISABLED`, persis keadaan sebelum isu #65.
    */
   sendEmail?: SendAuthEmail;
+  /**
+   * Cookie sesi lintas situs (F-05, opsi A).
+   *
+   * `true` hanya kalau `AUTH_COOKIE_CROSS_SITE` persis `true`. Selain itu
+   * atribut cookie dibiarkan bawaan Better-Auth (SameSite=Lax) — lokal dan
+   * produksi satu-domain tidak boleh ikut berubah.
+   */
+  crossSiteCookie?: boolean;
 }
 
 /** Bentuk minimal pengiriman email yang dibutuhkan auth. */
