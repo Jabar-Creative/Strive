@@ -2245,6 +2245,13 @@ Tiga skenario harus punya runbook tertulis sebelum rilis:
 | `staging` | Verifikasi & gate mingguan | DB terkelola kecil | Semua sandbox |
 | `production` | Beta tertutup | DB terkelola + PITR | Live |
 
+**Staging yang disiapkan F-05 (2026-09-25) bukan satu project untuk semuanya.**
+Web di Vercel (Hobby, root `apps/web`). API, worker, layanan AI, PostgreSQL 16,
+dan Redis 7 di Railway project `strive-staging` (region Singapore). Object
+storage di Cloudflare R2. Deploy dari GitHub Actions setelah CI di `main`
+hijau — bukan Railway GitHub App, dan bukan integrasi Git Vercel. Rincian,
+batas, dan yang belum terbukti ada di `docs/reports/F-05/`.
+
 ### 19.2 Variabel environment
 
 ```bash
@@ -2257,7 +2264,8 @@ AI_SERVICE_PORT=8000      # FastAPI
 # Core
 NODE_ENV=                 # development | production
 APP_URL=                  # https://app.striveacademy.id  <- WAJIB diisi: kosong = CORS jatuh ke origin dev, frontend ditolak (R-03)
-API_URL=
+API_URL=                  # URL Core API. Middleware Next membacanya saat runtime.
+NEXT_PUBLIC_API_URL=      # URL yang sama, di-inline ke bundle browser SAAT BUILD.
 TRUST_PROXY_HOPS=0        # jumlah reverse proxy TEPERCAYA di depan API. 0 = X-Forwarded-For diabaikan total.
                           # Isi hanya setelah F-05: header itu dikirim klien, dan mempercayainya tanpa proxy
                           # membuat rate limit §16.1 bisa dilewati dengan satu header acak per request.
@@ -2267,11 +2275,17 @@ REDIS_URL=                # redis://...
 
 # Auth
 AUTH_SECRET=              # >= 32 byte
-ACCESS_TOKEN_TTL=15m
-REFRESH_TOKEN_TTL=30d
+# ACCESS_TOKEN_TTL / REFRESH_TOKEN_TTL dihapus di A-03 (isu #18): sesi server
+# Better-Auth 30 hari, bukan JWT. Tidak ada kode yang membaca keduanya.
+# Cookie lintas situs. Kosong = SameSite=Lax bawaan. Hanya `true` yang
+# memasang SameSite=None dan Secure (staging: web di vercel.app, API di
+# up.railway.app). /mentor dan /admin tetap ke /login — middleware web
+# tidak melihat cookie yang dipasang di domain API. Safari/iOS kemungkinan
+# memblokir cookie pihak ketiga ini.
+AUTH_COOKIE_CROSS_SITE=
 
 # Storage
-S3_ENDPOINT= S3_BUCKET_DOCUMENTS= S3_BUCKET_ASSETS=
+S3_ENDPOINT= S3_REGION= S3_BUCKET_DOCUMENTS= S3_BUCKET_ASSETS=
 S3_ACCESS_KEY= S3_SECRET_KEY=
 
 # Payment

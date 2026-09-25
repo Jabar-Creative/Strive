@@ -25,6 +25,9 @@ blob-report/
 .env.*
 !.env.example
 
+# Artefak `vercel pull` — memuat VERCEL_OIDC_TOKEN. Jangan di-commit.
+.vercel/
+
 # ── Python ─────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]

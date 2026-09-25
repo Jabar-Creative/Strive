@@ -12,6 +12,7 @@ langkah yang membuat orang mengulanginya terus karena tidak tahu apakah sudah be
 | Redis mati | [`redis-mati.md`](redis-mati.md) |
 | Vendor scan down | [`vendor-scan-down.md`](vendor-scan-down.md) |
 | Biaya LLM melonjak | [`biaya-llm-melonjak.md`](biaya-llm-melonjak.md) |
+| Rollback staging | [`rollback-staging.md`](rollback-staging.md) |
 
 ## Yang berlaku untuk ketiganya
 
@@ -43,4 +44,11 @@ ada kode yang menulis saldo di luar `CoinLedgerService`. Koreksi ditulis sebagai
   semuanya dipanggil manual. Runbook di bawah menyebutkan cara memanggilnya.
 - **Agregator log.** `error_rate_5xx` dan `p95_latency_hub` (§17.2) belum bisa dihitung;
   sumbernya sudah ada di log per-request, yang mengagregasinya bagian `F-05`.
-- **Staging.** Isu #29. Seluruh langkah di bawah ditulis untuk produksi/lokal.
+- **Staging hidup.** Lingkungan sudah disiapkan (Railway `strive-staging` +
+  Vercel `strive-staging-web`) dan prosedur rollback ada di
+  [`rollback-staging.md`](rollback-staging.md). Deploy otomatis dari `main`
+  menyusul begitu workflow-nya ada di branch default. Belum ada bukti V1–V13
+  — jangan anggap staging sudah melayani trafik. Isu #29 ditutup 2026-09-16;
+  pelonggaran baris DoD "ter-deploy ke staging" di `CLAUDE.md` **tetap**,
+  sampai Dev A mengumumkan staging siap. Runbook insiden di bawah ini masih
+  ditulis untuk produksi dan lokal.

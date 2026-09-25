@@ -1,5 +1,5 @@
 import type { SendAuthEmail, StriveAuth } from './auth.types';
-import { createAuth } from './auth.config';
+import { cookieLintasSitus, createAuth } from './auth.config';
 import { appOrigins } from '../../common/app-origin';
 
 /**
@@ -39,5 +39,7 @@ export function createAuthFromEnv(sendEmail?: SendAuthEmail): StriveAuth {
     basePath: AUTH_HTTP_BASE_PATH,
     trustedOrigins: appOrigins(),
     sendEmail,
+    // Kosong / selain `true` = SameSite=Lax bawaan. Jangan dibalik di lokal.
+    crossSiteCookie: cookieLintasSitus(process.env['AUTH_COOKIE_CROSS_SITE']),
   });
 }
