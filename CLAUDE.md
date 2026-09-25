@@ -634,7 +634,7 @@ Jangan bangun ulang; baca dulu.
 **Retool membaca lewat role, bukan lewat kepercayaan.** Dua hal yang mudah salah soal
 migrasi 006:
 
-- **View bukan tabel.** Assert CI "tepat 33 tabel" menghitung `BASE TABLE` saja, jadi
+- **View bukan tabel.** Assert CI "tepat 32 tabel" menghitung `BASE TABLE` saja, jadi
   menambah view tidak membuatnya merah. Menambah **tabel** tetap merah — itu memang
   pembedaan yang diinginkan.
 - **View yang dibuat SETELAH migrasi 006 tidak otomatis terbaca Retool.** Ada
