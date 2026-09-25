@@ -6,9 +6,25 @@
 
 Infrastruktur (project Railway, service, variabel, bucket R2, secret GitHub, project Vercel) sudah disiapkan sebelumnya. PR ini tidak mengubahnya. Tidak ada rahasia di berkas ini.
 
+## Deploy pertama — gagal, tidak ada yang melayani
+
+Run: https://github.com/Jabar-Creative/Strive/actions/runs/36114955174
+
+CI lulus. Migrasi 001–008 diterapkan. Pemeriksaan skema hanya-baca lulus (32 tabel domain, trigger `coin_ledger_no_mutate`, FK `peer_reviews_attempt_fk`). Lalu `railway up --ci` membangun image `api`, tetapi container berulang crash dan tidak pernah lulus `/health`:
+
+```
+Error: Cannot find module 'reflect-metadata'
+Require stack:
+- /app/dist/main.js
+```
+
+Penyebab: `infra/Dockerfile.api` menyalin `node_modules` aplikasi ke `/app/apps/api/node_modules` dan hasil build ke `/app/dist`. Node yang menjalankan `/app/dist/main.js` tidak melihat folder itu — pnpm menaruh `reflect-metadata` sebagai symlink di `apps/api/node_modules`, bukan di `node_modules` root. Karena `set -euo pipefail`, worker dan ai tidak terunggah. Web dan smoke tidak jalan. Tidak ada proses yang melayani di staging.
+
+Perbaikan layout image, pemeriksaan boot di CI, dan pesan gagal per service: branch `f-05-perbaiki-image-api` (PR menyusul di catatan ini setelah dibuka). V1–V13 tetap **TIDAK TERBUKTI**. Run itu tidak menghasilkan jawaban HTTP yang bisa dicatat sebagai bukti hidup.
+
 ## LINK HIDUP
 
-Tidak ada. Belum ada image dari repo ini yang dijalankan di staging.
+Tidak ada yang melayani. Deploy pertama membangun image api lalu container-nya mati; service lain tidak terunggah.
 
 | Layanan | URL yang sudah disiapkan | Bukti hidup dari kode repo ini |
 |---|---|---|
@@ -24,8 +40,8 @@ Acceptance criteria di backlog, harfiah: "URL staging hidup. Push ke `main` men-
 
 | AC | Hasil |
 |---|---|
-| URL staging hidup | **TIDAK TERBUKTI.** Workflow menulis curl smoke, dan workflow itu belum pernah jalan |
-| Push ke `main` men-deploy | **TIDAK TERBUKTI.** Pemicunya `workflow_run` setelah workflow `CI` sukses di `main`, plus `workflow_dispatch`. Keduanya baru aktif setelah berkas workflow ada di branch default |
+| URL staging hidup | **TIDAK TERBUKTI.** Run pertama gagal sebelum smoke. Tidak ada jawaban `/health` |
+| Push ke `main` men-deploy | **TIDAK TERBUKTI sebagai berhasil.** `workflow_run` setelah CI hijau di `main` memang menyala (run 36114955174), lalu berhenti di image api. Tiga service Railway dan web tidak terunggah |
 | Rollback < 5 menit | **TIDAK TERBUKTI.** Prosedurnya di `docs/runbooks/rollback-staging.md`. Belum ada stopwatch |
 
 ### V1–V13

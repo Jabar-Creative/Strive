@@ -101,16 +101,28 @@ jobs:
           # di bawah yang menunggu jawabannya.
           # railway.json disalin per service supaya Dockerfile-nya tidak
           # tertukar. Berkas itu tidak di-commit; sumbernya infra/railway/.
+          # Urutan tetap api, lalu worker, lalu ai. Kegagalan tetap
+          # menghentikan yang berikutnya (`set -e` lewat `exit 1`) — yang
+          # berubah hanya pesan: nama service tertulis di log, bukan cuma
+          # baris perintah yang keluar non-nol. Smoke di job berikut tetap
+          # gerbang /health; langkah ini tidak menunggu sehat dan tidak
+          # melonggarkannya.
           deploy() {
-            layanan="$1"
-            sumber="$2"
+            nama="$1"
+            layanan="$2"
+            sumber="$3"
+            echo "mulai unggah Railway: ${nama} (${layanan})"
             cp "$sumber" railway.json
-            railway up --ci --service "$layanan" --environment "$RAILWAY_ENVIRONMENT_ID"
+            if ! railway up --ci --service "$layanan" --environment "$RAILWAY_ENVIRONMENT_ID"; then
+              echo "::error::Unggah Railway gagal untuk ${nama} (${layanan}). Service berikutnya tidak diunggah."
+              exit 1
+            fi
             rm -f railway.json
+            echo "unggah Railway selesai: ${nama}"
           }
-          deploy "$RAILWAY_SERVICE_API" infra/railway/api.json
-          deploy "$RAILWAY_SERVICE_WORKER" infra/railway/worker.json
-          deploy "$RAILWAY_SERVICE_AI" infra/railway/ai.json
+          deploy api "$RAILWAY_SERVICE_API" infra/railway/api.json
+          deploy worker "$RAILWAY_SERVICE_WORKER" infra/railway/worker.json
+          deploy ai "$RAILWAY_SERVICE_AI" infra/railway/ai.json
 
   web:
     needs: railway

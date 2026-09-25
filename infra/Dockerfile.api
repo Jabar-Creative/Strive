@@ -19,12 +19,26 @@ RUN pnpm --filter @strive/api build && pnpm prune --prod
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 ENV MODE=api
-WORKDIR /app
+# cwd HARUS `apps/api`, sama seperti skrip `start` (`node dist/main.js`).
+#
+# pnpm isolated tidak mengangkat paket ke `node_modules` root. Yang dipakai
+# proses adalah symlink relatif terhadap kedalaman repo:
+#   apps/api/node_modules/reflect-metadata
+#     -> ../../../node_modules/.pnpm/reflect-metadata@…/node_modules/reflect-metadata
+#   apps/api/node_modules/@strive/contracts
+#     -> ../../../../packages/contracts
+# Menaruh `dist` di `/app/dist` dan modul di `/app/apps/api/node_modules`
+# membuat Node, yang berjalan dari `/app/dist/main.js`, hanya mencari
+# `/app/node_modules`. Di situ tidak ada `reflect-metadata` — hanya toko
+# `.pnpm`. Container staging crash-loop `MODULE_NOT_FOUND` sebelum `/health`
+# pernah menjawab (run 36114955174).
+WORKDIR /repo/apps/api
 RUN addgroup -S strive && adduser -S strive -G strive
-COPY --from=build --chown=strive:strive /repo/node_modules          ./node_modules
-COPY --from=build --chown=strive:strive /repo/apps/api/node_modules ./apps/api/node_modules
-COPY --from=build --chown=strive:strive /repo/apps/api/dist         ./dist
-COPY --from=build --chown=strive:strive /repo/packages              ./packages
+COPY --from=build --chown=strive:strive /repo/node_modules          /repo/node_modules
+COPY --from=build --chown=strive:strive /repo/apps/api/node_modules /repo/apps/api/node_modules
+COPY --from=build --chown=strive:strive /repo/apps/api/dist         /repo/apps/api/dist
+COPY --from=build --chown=strive:strive /repo/apps/api/package.json /repo/apps/api/package.json
+COPY --from=build --chown=strive:strive /repo/packages              /repo/packages
 USER strive
 EXPOSE 3001
 # MODE=worker menjalankan pool BullMQ dari image yang sama (lihat src/main.ts).

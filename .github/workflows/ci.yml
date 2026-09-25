@@ -275,3 +275,136 @@ jobs:
           pnpm db:types
           git diff --exit-code -- apps/api/src/infra/kysely/database.d.ts \
             || { echo "::error::database.d.ts tidak sinkron dengan db/migrations — jalankan \`pnpm db:types\` lalu commit"; exit 1; }
+
+  # Image produksi tidak pernah dibangun di job lain. `nest build` di host
+  # memakai node_modules workspace; kegagalan Railway pertama adalah image
+  # yang hasil build-nya tidak melihat dependensi itu (MODULE_NOT_FOUND
+  # `reflect-metadata` dari `/app/dist/main.js`). Job ini membangun image
+  # runtime dan menyalakannya. Worker memakai Dockerfile yang sama.
+  #
+  # Nama job ini BELUM masuk status check wajib di branch protection (setelan
+  # itu di luar repo). Workflow `CI` yang gagal tetap menahan `workflow_run`
+  # deploy. Yang belum tertahan: merge, selama tiga check lama tetap hijau.
+  image:
+    name: image runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bangun image api dan ai
+        run: |
+          set -euo pipefail
+          docker build -f infra/Dockerfile.api -t strive-api:ci .
+          docker build -f infra/Dockerfile.ai -t strive-ai:ci .
+
+      - name: Modul terselesaikan dari cwd image api
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint node strive-api:ci -e '
+            const fs = require("fs");
+            const path = require("path");
+            require("reflect-metadata");
+            require("@nestjs/core");
+            require("@node-rs/argon2");
+            const resolved = require.resolve("@strive/contracts");
+            let dir = path.dirname(resolved);
+            let nama = "";
+            while (dir !== path.dirname(dir)) {
+              const pj = path.join(dir, "package.json");
+              if (fs.existsSync(pj)) {
+                const pkg = JSON.parse(fs.readFileSync(pj, "utf8"));
+                if (pkg.name === "@strive/contracts") { nama = pkg.name; break; }
+              }
+              dir = path.dirname(dir);
+            }
+            if (nama !== "@strive/contracts") {
+              console.error("kontrak tidak terselesaikan dari image:", resolved);
+              process.exit(1);
+            }
+            console.log("modul-ok", resolved);
+          '
+
+      - name: API /health dan worker dari image yang sama
+        run: |
+          set -euo pipefail
+          bersih() { docker rm -f api-image worker-image redis-image >/dev/null 2>&1 || true; }
+          trap bersih EXIT
+          docker run -d --name redis-image -p 127.0.0.1:6379:6379 redis:7-alpine
+          for i in $(seq 1 30); do
+            docker exec redis-image redis-cli ping | grep -q PONG && break
+            if [ "$i" = 30 ]; then echo "::error::Redis untuk boot image tidak siap"; exit 1; fi
+            sleep 1
+          done
+          # Bukan rahasia staging. Panjangnya hanya supaya Better-Auth mau boot
+          # sampai /health. Postgres tidak dijalankan: /health tidak menyentuhnya,
+          # dan pool pg baru menyambung saat ada query.
+          bersama=(
+            --network host
+            -e NODE_ENV=production
+            -e DATABASE_URL=postgres://ci:ci@127.0.0.1:1/none
+            -e REDIS_URL=redis://127.0.0.1:6379
+            -e AUTH_SECRET=image-ci-bukan-rahasia-min-32-byte
+            -e API_PORT=3001
+          )
+          docker run -d --name api-image "${bersama[@]}" -e MODE=api strive-api:ci
+          for i in $(seq 1 40); do
+            if curl -fsS --max-time 2 http://127.0.0.1:3001/health | grep -Eq '"service"[[:space:]]*:[[:space:]]*"api"'; then
+              echo "api-health-ok"
+              break
+            fi
+            if ! docker inspect -f '{{.State.Running}}' api-image | grep -q true; then
+              echo "::error::proses api mati sebelum /health"
+              docker logs api-image
+              exit 1
+            fi
+            if [ "$i" = 40 ]; then
+              echo "::error::API tidak menjawab /health"
+              docker logs api-image
+              exit 1
+            fi
+            sleep 1
+          done
+          docker run -d --name worker-image "${bersama[@]}" -e MODE=worker strive-api:ci
+          for i in $(seq 1 40); do
+            if docker logs worker-image 2>&1 | grep -q 'Worker pool hidup'; then
+              docker inspect -f '{{.State.Running}}' worker-image | grep -q true
+              echo "worker-ok"
+              break
+            fi
+            if ! docker inspect -f '{{.State.Running}}' worker-image | grep -q true; then
+              echo "::error::proses worker mati sebelum pool hidup"
+              docker logs worker-image
+              exit 1
+            fi
+            if [ "$i" = 40 ]; then
+              echo "::error::worker tidak mencatat pool hidup"
+              docker logs worker-image
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Image ai menjawab /health
+        run: |
+          set -euo pipefail
+          bersih() { docker rm -f ai-image >/dev/null 2>&1 || true; }
+          trap bersih EXIT
+          docker run -d --name ai-image -p 127.0.0.1:8000:8000 strive-ai:ci
+          for i in $(seq 1 40); do
+            if curl -fsS --max-time 2 http://127.0.0.1:8000/health | grep -Eq '"service"[[:space:]]*:[[:space:]]*"ai"'; then
+              echo "ai-health-ok"
+              exit 0
+            fi
+            if ! docker inspect -f '{{.State.Running}}' ai-image | grep -q true; then
+              echo "::error::proses ai mati sebelum /health"
+              docker logs ai-image
+              exit 1
+            fi
+            if [ "$i" = 40 ]; then
+              echo "::error::AI tidak menjawab /health"
+              docker logs ai-image
+              exit 1
+            fi
+            sleep 1
+          done

@@ -13,6 +13,13 @@ Ketiga Dockerfile dibangun dari **root repo**, bukan dari folder ini:
 docker build -f infra/Dockerfile.api -t strive-api .
 ```
 
+Image api dijalankan dari `/repo/apps/api` (`node dist/main.js`), dengan
+`node_modules` dan `packages/` tetap di kedalaman yang sama seperti repo.
+Symlink pnpm (`reflect-metadata`, `@strive/contracts`) relatif terhadap
+kedalaman itu. Jangan memindahkan `dist` ke folder lain tanpa memindahkan
+modulnya — itu yang membuat container staging pertama crash sebelum
+`/health`. Worker memakai image yang sama; `MODE` disetel saat dijalankan.
+
 ## Port
 
 Digeser dari default agar tidak bentrok dengan layanan yang mungkin sudah
