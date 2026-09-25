@@ -6,6 +6,12 @@ Checklist §16.1 punya 19 baris. Laporan ini memberi status dan **bukti** untuk 
 baris — bukan penilaian. Baris yang lulus menyebut berkas dan barisnya; baris yang
 gagal menyebut apa yang dicoba dan tidak ditemukan.
 
+> **DIKOREKSI 25 Sep 2026.** Dua perbaikan yang laporan ini sebut selesai ternyata
+> **belum menutup apa yang dijanjikannya**, dan itu baru ketahuan dua hari kemudian lewat
+> review bermusuhan — bukan lewat audit ini. Lihat bagian
+> [Apa yang audit ini LEWATKAN](#apa-yang-audit-ini-lewatkan) di bawah sebelum memakai
+> laporan ini sebagai dasar keputusan rilis.
+>
 > **Batas yang perlu dibaca lebih dulu.** Audit ini memeriksa **kode**, bukan
 > deployment: `F-05` (staging) masih `blocked`, jadi tidak ada TLS, reverse proxy,
 > maupun konfigurasi produksi yang bisa diperiksa. Tiga baris checklist menunggu itu
@@ -206,3 +212,72 @@ Lima penjaga baru disabotase satu per satu:
 | #126 | Bentuk kunci `rl:` di §9.4 (per rute) bertentangan dengan §7/§10.1 (global per pengguna) |
 | #127 | Bucket `strive-public` yang privat (T-6) |
 | #128 | `pricing-config.service.spec.ts` **tidak pernah jalan di CI** — test jalur uang yang hijau tanpa menguji apa pun. Ditemukan bukan dari checklist, tapi dari menelusuri kegagalan test yang ternyata sebabnya lain |
+
+---
+
+## Apa yang audit ini LEWATKAN
+
+Ditulis 25 Sep, dua hari setelah laporan aslinya. Semuanya ditemukan **review bermusuhan
+atas kode audit ini sendiri**, bukan oleh audit ini.
+
+Bagian ini ada karena laporan audit yang tidak mencatat apa yang dilewatkannya tidak
+mengajari siapa pun apa-apa — ia hanya membuat pembacanya lebih percaya diri daripada
+yang pantas.
+
+### L-1 · Rate limit yang dipasang T-1 bisa dilewati dengan satu header
+
+`identitas()` membaca `X-Forwarded-For` **tanpa syarat** dan mengambil entri **paling
+kiri**. Header itu dikirim klien, dan repo ini belum punya reverse proxy sama sekali —
+jadi penyerang cukup mengirim nilai acak tiap request untuk mendapat ember baru setiap
+kali. Batas **10/menit di `/auth/*`**, yang justru menjaga brute force login, lewat begitu
+saja.
+
+Entri paling kiri juga tetap milik klien **setelah** proxy berdiri: proxy hanya
+*menambahkan* alamat yang dilihatnya di ujung kanan. Jadi T-1 spoofable bahkan setelah
+`F-05`.
+
+**Artinya baris §16.1 "Rate limit 120 req/menit" dicentang berdasarkan pembatas yang
+ornamental untuk lalu lintas tak terautentikasi** — justru yang paling butuh dibatasi.
+
+Kenapa audit ini tidak melihatnya: test T-1 memakai `X-Forwarded-For` untuk memisahkan
+ember per test. Spoofability-nya ada di depan mata dan terbaca sebagai fitur.
+
+Diperbaiki #138 — header diabaikan total kecuali `TRUST_PROXY_HOPS > 0`, dan saat
+dipercaya dihitung dari kanan.
+
+### L-2 · "Secret tidak pernah masuk log" punya lubang berbentuk kedalaman
+
+Audit ini menyatakan baris itu bersih "tanpa kualifikasi", dan memang benar untuk semua
+call site yang ada. Yang tidak diperiksa: **penyaringnya sendiri**.
+
+`saring()` mengembalikan nilai **apa adanya** begitu melewati kedalaman 6 — jadi fungsi
+yang seluruh gunanya menjamin "tidak pernah bocor" bisa melewatkan objek berisi `token`.
+
+Kenapa tidak terlihat: test yang menyentuh kasus itu membungkus dua puluh lapis di
+sekeliling `{ token }` dan hanya meng-assert **tidak melempar**. Ia berdiri tepat di depan
+pertanyaan yang penting dan tidak menanyakannya.
+
+Diperbaiki #144 — batasnya memotong, dan test-nya sekarang meng-assert nilainya **tidak
+ada** di keluaran.
+
+### L-3 · Pembatas HTTP tidak melindungi WebSocket
+
+`RateLimitInterceptor` keluar lebih awal untuk konteks non-HTTP. Audit ini memeriksa
+"rute mana yang kena pembatas" dan tidak menanyakan "pintu masuk mana yang **bukan**
+rute". `subscribe` di gateway WS tidak punya jatah sama sekali, dan tiap panggilan
+menembak query ke Postgres.
+
+Diperbaiki #142.
+
+### Polanya
+
+Ketiganya ada di **seam**, bukan di dalam fungsi mana pun: antara header yang dipercaya
+dan yang mengirimkannya, antara penyaring dan batasnya sendiri, antara HTTP dan WS.
+
+Audit ini berjalan per baris checklist. Baris checklist memetakan **kontrol**, dan tidak
+satu pun dari ketiga cacat ini hidup di dalam satu kontrol — mereka hidup di antara dua.
+
+Pelajarannya bukan "checklist-nya kurang panjang". Checklist yang lebih panjang akan
+melewatkan hal yang sama. Yang menemukan ketiganya adalah pertanyaan yang berbeda
+bentuknya: *"kalau aku penyerang, pintu mana yang tidak dijaga siapa pun?"* dan
+*"penjaga ini menjanjikan apa, dan apa yang membuktikan janjinya?"*

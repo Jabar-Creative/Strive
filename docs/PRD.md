@@ -2121,7 +2121,7 @@ Setiap warna aksen dipatok ke **satu makna** dan tidak boleh dipinjam. Ini atura
 - [ ] ➖ JWT ditandatangani dengan secret ≥ 32 byte dari env — *tidak berlaku: tidak ada JWT, sesi berbasis tabel `sessions` (`A-01`)*
 - [ ] ➖ Refresh token disimpan sebagai **hash**, bukan plaintext — *tidak berlaku: `refresh_tokens` dibuang migrasi 007. Soal `sessions.token` plaintext: isu #124*
 - [ ] ➖ Deteksi token reuse aktif dan mencabut rantai sesi — *tidak berlaku, sama seperti di atas*
-- [x] Rate limit 120 req/menit per pengguna, lebih ketat untuk `/auth/*` (10/menit) — *`RateLimitInterceptor`; bentuk kunci §9.4 bertentangan, isu #126*
+- [x] Rate limit 120 req/menit per pengguna, lebih ketat untuk `/auth/*` (10/menit) — *`RateLimitInterceptor`. **Dicentang 23 Sep atas pembatas yang ternyata bisa dilewati satu header** (`X-Forwarded-For` dipercaya tanpa syarat); ditutup 24 Sep di #138 dengan `TRUST_PROXY_HOPS`. WS mendapat jatahnya sendiri di #142. Bentuk kunci §9.4 masih bertentangan, isu #126*
 - [x] Webhook memverifikasi signature **sebelum** memproses apa pun
 - [x] Upload divalidasi tipe **dan** magic bytes, bukan hanya ekstensi
 - [x] Upload disimpan di luar webroot, diakses hanya lewat signed URL
@@ -2129,7 +2129,7 @@ Setiap warna aksen dipatok ke **satu makna** dan tidak boleh dipinjam. Ini atura
 - [x] Query memakai parameter binding (Kysely), tidak ada string concat
 - [x] Header keamanan: `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` — *CSP `apps/web` menunggu nonce App Router, isu #125*
 - [x] CORS whitelist eksplisit, bukan `*`
-- [x] Secret tidak pernah masuk log, error message, atau respons API
+- [x] Secret tidak pernah masuk log, error message, atau respons API — *disiplin call site bersih sejak 23 Sep, tapi **penyaringnya sendiri melewatkan nilai di luar kedalaman 6** sampai #144*
 - [x] Dependency audit (`pnpm audit`, `pip-audit`) nol kerentanan tinggi — *16 advisory ditriase; nol yang bisa dicapai. Digerbangi `pnpm audit:kebijakan` di CI*
 - [x] Kepemilikan sumber daya dicek di service, bukan hanya di guard
 - [x] Reviewer tidak bisa melihat identitas penulis di respons API mana pun
