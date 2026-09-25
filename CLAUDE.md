@@ -366,6 +366,10 @@ Item belum selesai sampai **semua** baris ini benar:
 > sampai saat itu, tidak ada staging untuk di-deploy, dan DoD yang mensyaratkannya membuat
 > **nol item bisa `done`** — termasuk item yang sudah ter-merge dan ter-review.
 >
+> **Staging sudah BERDIRI sejak 25 Sep 2026 (isu #151) dan itu belum mengubah apa pun
+> di sini** — `F-05` masih `review`, V1–V13 belum terbukti. Jangan membaca "URL-nya
+> hidup" sebagai "staging siap". Lihat bagian **Staging** di bawah.
+>
 > **Saat Dev A bilang "staging ready": kembalikan baris pertama menjadi**
 > `Ter-merge ke `main` **dan ter-deploy ke staging**`, hapus blok catatan ini, lalu
 > periksa ulang item yang sudah `done` — sebagian mungkin belum pernah menyentuh staging.
@@ -422,6 +426,63 @@ berubah isi setelah disetujui**.
 Yang menahannya tinggal dua: `strict` status checks (CI wajib hijau pada commit terakhir)
 dan kebiasaan melihat ulang diff sebelum merge. **Periksa `git log` PR Dev B sejak approval
 sebelum me-merge-nya** — tidak ada lagi yang melakukannya untukmu.
+
+---
+
+## Staging — berdiri 25 September 2026, BELUM dinyatakan siap
+
+Ringkasan hidupnya ada di **isu #151**; yang di sini cuma yang perlu diketahui
+sebelum menyentuh sesuatu. `F-05` berstatus `review`, bukan `done`: V1–V13 di
+`docs/reports/F-05/README.md` belum terbukti, dan **"URL menjawab `/health`"
+bukan "fitur jalan di staging"**.
+
+| Proses | Tempat | Catatan |
+|---|---|---|
+| web | **Vercel** (`strive-staging-web`), tanpa koneksi Git | `infra/Dockerfile.web` TIDAK dipakai staging — hanya percobaan Docker lokal |
+| api | Railway `strive-staging`, region Singapura | `infra/Dockerfile.api`, `MODE=api` |
+| worker | Railway, image **yang sama**, tanpa domain | Tanpa healthcheck HTTP — ia memang tidak mendengarkan HTTP |
+| ai | Railway | Baru punya `/health` (#132) |
+| PostgreSQL 16 · Redis 7 | Railway terkelola | Redis `maxmemory-policy noeviction`, tidak diekspos publik |
+| objek | Cloudflare R2 | Tiga bucket privat |
+
+**Web di Vercel bukan pilihan arsitektur, melainkan batas trial Railway** —
+lima service per project sudah habis oleh postgres, redis, api, worker, ai.
+Akibatnya nyata dan bukan detail: web dan API jadi **dua situs berbeda**, dan
+dari situlah seluruh urusan cookie di bawah berasal.
+
+Alurnya: push ke `main` → CI → workflow `Deploy staging` (`workflow_run`, hanya
+kalau CI sukses) → migrasi → cek skema hanya-baca → api, worker, ai berurutan →
+Vercel → smoke. Berkasnya `.github/workflows/deploy-staging.yml`,
+`infra/railway/*.json`, `scripts/schema-check-readonly.mjs`, rollback di
+`docs/runbooks/rollback-staging.md`.
+
+**Empat hal yang jangan dilakukan:**
+
+1. **Jangan menyambungkan integrasi Git Vercel atau Railway GitHub App.**
+   Keduanya men-deploy langsung dari push, melewati CI **dan** melewati urutan
+   migrasi→deploy. Seluruh gerbang repo ini jadi hiasan dalam satu klik.
+2. **Jangan menulis SQL ke database staging.** Data demo lewat API sungguhan —
+   alasan yang sama dengan aturan keras 1–3. Pemeriksaan skema di staging
+   sengaja HANYA BACA, dan perilaku trigger tetap diuji di CI `migrasi kering`
+   (yang boleh meng-INSERT karena databasenya sekali pakai).
+3. **Jangan mengubah `sslmode` di `STAGING_DATABASE_URL`**, dan jangan
+   menambahkannya ke `DATABASE_URL` privat. Lihat baris `sslmode` di tabel
+   jebakan.
+4. **Jangan mengembalikan baris DoD "ter-deploy ke staging"** hanya karena
+   staging sudah hidup. Itu menunggu pengumuman Dev A, dan pengumuman itu
+   menuntut V1–V13 terbukti lebih dulu.
+
+**Yang mati di staging, dan sebabnya** — supaya tidak dikira bug baru:
+tidak ada email (`RESEND_API_KEY` kosong, jadi reset password mustahil dan
+`email_verified` tidak pernah `true`); tidak ada kunci LLM; scan dan top-up
+mati karena kredensial vendor kosong, **bukan** karena feature flag; papan
+peringatan tidak bergerak karena tidak ada penjadwal (#131); dan `/mentor`
+serta `/admin` memulangkan siapa pun ke `/login` karena seam Bearer↔cookie.
+
+**Railway trial: kredit US$5, tanpa metode bayar.** Perkiraan pemakaian
+±US$6–7/bulan, jadi seluruh service Railway akan **berhenti sekitar 20–25 hari
+sejak 25 Sep** tanpa peringatan tagihan — web di Vercel tetap hidup tapi tanpa
+backend. Ini tenggat kalender, bukan risiko.
 
 ---
 
@@ -519,6 +580,11 @@ memakan waktu nyata. Jangan diulang.
 | `@socket.io/redis-emitter` dipakai apa adanya di atas klien `createRedis()` | Pustakanya memanggil `redisClient.publish(channel, msg)` dan **MEMBUANG Promise-nya**. Klien repo ini memakai `enableOfflineQueue: false`, jadi `publish` saat koneksi belum siap atau sudah putus **menolak**, bukan mengantre — dan Promise tertolak tanpa `.catch()` menjadi `unhandledRejection`, yang diakhiri Node 22 dengan mematikan proses. Artinya Redis realtime yang bermasalah **mematikan seluruh worker**, termasuk `syncMember` dan pembukuan outbox yang tidak ada hubungannya dengan WebSocket. Komentar di berkasnya sendiri sudah menjanjikan kebalikannya (*"kegagalan realtime tidak ikut menjatuhkan penulisan papan peringkat"*) — janji yang tidak ditegakkan apa pun | Yang diberikan ke `Emitter` adalah pembungkus `{ publish }`, bukan klien ioredis-nya (tipe parameternya `any`, jadi tidak ada cast). **Menangkap saja tidak cukup dan sempat membuatnya lebih buruk:** penyebab penolakan yang paling sering bukan Redis mati melainkan Redis BELUM SIAP, dan `.catch()` sendirian mengubah crash menjadi event yang hilang tanpa suara — test RT-4 merah karenanya. Penerbitan dirantai pada kesiapan pertama dengan batas waktu, lalu menolak cepat seperti biasa. Lihat `apps/api/src/realtime/realtime.emitter.ts`. **Berlaku untuk SETIAP pemakai `createRedis()`**: perintah pertama setelah membuat klien wajib menunggu `redisSiap()` — jebakan ini sudah menggigit tiga kali (adapter WS, emitter, test keamanan `R-03`) |
 | Berkas di `apps/api/test/` dikira ikut `pnpm typecheck` | Tidak. `apps/api/tsconfig.json` memakai `include: ["src/**/*.ts"]`, dan Vitest mentranspilasi lewat swc **tanpa** memeriksa tipe. Jadi test adalah satu-satunya tempat di repo ini yang TypeScript-nya tidak pernah diperiksa siapa pun. Saat `OutboxWorkerService` mendapat parameter ketiga (`RealtimeEmitter`), empat pemanggilan di `outbox.integration.spec.ts` tetap mengirim dua argumen: `tsc` diam, dan gejalanya bukan galat tipe melainkan `this.realtime` bernilai `undefined` — `TypeError` di dalam `try/catch` handler, yang membuat event dihitung **gagal** alih-alih meledak. Kegagalan test yang menunjuk ke tempat yang salah | **Sudah ditutup (isu #120).** `apps/api/tsconfig.test.json` mencakup `src` + `test` dan ikut dijalankan `pnpm typecheck`; konfigurasinya TERPISAH dan `noEmit`, karena `include` yang memuat `test/` akan mengubah `rootDir` dan repo ini sudah pernah kehilangan isi `dist/` karena perubahan sejenis. Saat dinyalakan ia langsung menemukan **14 galat nyata** di enam berkas — termasuk `r.rows` pada array Kysely (cabang yang tidak pernah tercapai), `refType: 'lesson'` yang bukan `RefType` sah, dan tiruan `CoinLedgerService` bertanda tangan `never` yang berhenti ikut berubah. Dugaan awal "paling cuma config" meleset |
 | `betterAuth({…}) as SomeType` | Objek literalnya menghasilkan tipe generik yang jauh lebih sempit daripada `Auth<BetterAuthOptions>`, jadi cast-nya berhenti bisa dikompilasi begitu ada opsi baru. Godaannya menambah `as unknown as` — yang menutup gejalanya **sekaligus mematikan pengecekan tipe atas seluruh objek konfigurasi**, termasuk salah ketik nama opsi yang lalu diabaikan diam-diam | Anotasi variabelnya `BetterAuthOptions` lalu `return betterAuth(opsi)` tanpa cast sama sekali. Dibuktikan menangkap salah ketik dengan `TS2353` |
+| Memindahkan `dist` di image tanpa memindahkan modulnya | pnpm isolated TIDAK mengangkat paket ke `node_modules` root — yang dipakai proses adalah symlink yang relatif terhadap kedalaman repo (`apps/api/node_modules/reflect-metadata -> ../../../node_modules/.pnpm/…`). `infra/Dockerfile.api` menaruh `dist` di `/app/dist` sementara modulnya di `/app/apps/api/node_modules`, jadi Node yang berjalan dari `/app/dist/main.js` hanya mencari `/app/node_modules` — di situ cuma ada toko `.pnpm`. Container staging **crash-loop `Cannot find module 'reflect-metadata'` sebelum `/health` pernah menjawab sekali pun**, dan `docker build` hijau sempurna. Pola "build hijau tapi rusak saat dijalankan" yang KELIMA | cwd runtime = `apps/api`, dengan `node_modules` dan `packages/` tetap di kedalaman yang sama seperti repo. Penjaganya job CI `image runtime` (#150): ia membangun image api/ai, memeriksa resolusi modul, lalu benar-benar mem-boot api + worker + ai. **Job itu belum jadi required status check** — lihat #151 |
+| `sslmode=require` dikira "TLS, apa adanya" oleh `pg` | libpq memperlakukan `require` sebagai *terenkripsi tanpa verifikasi*; driver `pg` memperlakukannya sebagai **verifikasi penuh**. Sertifikat proxy publik Railway self-signed, jadi job migrasi gagal `SELF_SIGNED_CERT_IN_CHAIN` — dan godaannya mematikan TLS atau memakai `sslmode=no-verify`, yang dua-duanya menurunkan keamanan untuk memperbaiki ketidakcocokan semantik | `uselibpqcompat=true` bersama `sslmode=require`: semantiknya jadi sama dengan `psql`. Dan `DATABASE_URL` privat di service Railway justru **tidak boleh** punya `sslmode` sama sekali — jaringan privatnya sudah terenkripsi, dan menambahkannya memicu persoalan sertifikat yang sama saat runtime |
+| `/health` yang tidak menyentuh apa pun dipakai sebagai healthcheck orkestrator | `HealthService.check()` hanya mengembalikan status, service, mode, dan timestamp — nol koneksi ke Postgres maupun Redis. Healthcheck platform yang hijau karenanya berarti **"proses Node masih hidup"**, bukan "aplikasi bisa melayani". Database mati total akan meninggalkan seluruh probe hijau, dan yang pertama tahu adalah pengguna. Worker malah tidak punya health sama sekali | Probe kesiapan wajib menyentuh dependensi yang benar-benar dibutuhkan, dan dipisahkan dari probe keaktifan. Sampai itu ada, **jangan membaca "healthcheck hijau" sebagai bukti apa pun di laporan** |
+| Variabel env yang terdokumentasi rapi tapi tidak dibaca satu baris kode pun | Ditemukan sekaligus empat saat deploy F-05: `LOG_LEVEL` ada di PRD §19.2 dan `.env.example` (yang dibaca logger justru `LOG_FORMAT`, yang tidak terdokumentasi di mana pun); `S3_BUCKET_ASSETS` ada di `.env.example` tapi `StorageService` hanya membaca `S3_BUCKET_DOCUMENTS`; dan **keempat kill switch `FEATURE_*` PRD §19.3 nol yang dibaca** — `grep -rn "FEATURE_" apps/api/src apps/web` hanya menemukan satu komentar. Akibatnya bukan sepele: §19.3 menjanjikan fitur bisa dimatikan TANPA deploy, dan di staging scan serta top-up ternyata mati karena kredensialnya kosong — kebetulan, bukan karena tombolnya | Variabel yang ditulis di PRD atau `.env.example` adalah JANJI. Sebelum mengandalkan satu pun, `grep` dulu apakah ada yang membacanya; tombol mati yang terlihat menyala lebih berbahaya daripada tombol yang jelas-jelas tidak ada |
+| Dua lapis auth yang masing-masing benar dan tidak pernah bertemu | `SessionGuard` (dipakai **18 controller**) hanya menerima `Authorization: Bearer`; `apps/web/middleware.ts` meneruskan **cookie** ke `GET /api/v1/me`. Tidak ada plugin bearer di Better-Auth dan tidak ada jembatan cookie→sesi di rute bisnis mana pun, jadi `/me` selalu 401 dan `putusAksesConsole(401, …)` memulangkan `mentor` maupun `superadmin` ke `/login` — selamanya, juga di lokal. Yang membuatnya bertahan: unit test A-04 menyuapkan `200` sebagai angka harfiah ke fungsi murninya, jadi ia menguji KEPUTUSANNYA dan tidak pernah menyentuh panggilan yang menghasilkan angka itu. `createApiClient()` pun masih stub yang `throw`. Papan menulis A-04 "terbukti di browser sungguhan: mentor → 200" — klaim yang tidak bisa direproduksi terhadap kode hari ini | Satu keputusan otorisasi = satu test yang melewati SELURUH jalurnya, bukan fungsi murni yang diberi angka. Dan saat dua lapis dipisah dua pemilik (guard milik Dev A, middleware milik Dev B), yang wajib punya test bersama adalah SEAM-nya — bukan masing-masing sisi |
 
 ---
 
