@@ -7,6 +7,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Inject, Injectable } from '@nestjs/common';
+import { envTeks, produksi } from '../../common/env';
 
 /** Token injeksi klien S3 — memudahkan menggantinya di test tanpa memalsukan HTTP. */
 export const S3 = Symbol('S3');
@@ -86,23 +87,51 @@ export class StorageService {
   }
 }
 
-/** Klien S3 dari env. Satu-satunya tempat kredensial storage dibaca. */
+/** Variabel yang WAJIB eksplisit di produksi — bawaan dev-nya menyesatkan. */
+const WAJIB_DI_PRODUKSI = ['S3_ENDPOINT', 'S3_ACCESS_KEY', 'S3_SECRET_KEY'] as const;
+
+/**
+ * Klien S3 dari env. Satu-satunya tempat kredensial storage dibaca.
+ *
+ * ── Kenapa ini melempar, bukan diam-diam memakai bawaan ──
+ *
+ * Bawaan di bawah menunjuk MinIO lokal dengan password yang tertulis di repo
+ * PUBLIK ini. Di produksi itu bukan "kurang optimal": endpoint `localhost`
+ * membuat setiap unggahan gagal dengan galat jaringan yang tidak menyebut
+ * kredensial sama sekali, dan yang lebih buruk, ia gagal SAAT PENGGUNA
+ * MENGUNGGAH skripsinya — bukan saat deploy, ketika masih ada yang menonton.
+ *
+ * Melempar di sini berarti gagal saat boot: container tidak pernah sehat,
+ * healthcheck platform merah, dan deployment sebelumnya tetap melayani. Pola
+ * yang sama dengan `createAuthFromEnv()` untuk `AUTH_SECRET`.
+ *
+ * Di luar produksi bawaan tetap berlaku, karena CLAUDE.md menjanjikan stack
+ * ini jalan tanpa `.env` sama sekali.
+ */
 export function createS3FromEnv(): S3Client {
+  const hilang = produksi() ? WAJIB_DI_PRODUKSI.filter((n) => envTeks(n) === undefined) : [];
+  if (hilang.length > 0) {
+    throw new Error(
+      `Storage belum dikonfigurasi untuk produksi: ${hilang.join(', ')} kosong. ` +
+        'Bawaan dev menunjuk MinIO lokal dengan kredensial yang ada di repo publik, ' +
+        'jadi ia TIDAK dipakai di produksi.',
+    );
+  }
   return new S3Client({
-    endpoint: process.env['S3_ENDPOINT'] ?? 'http://localhost:59000',
+    endpoint: envTeks('S3_ENDPOINT') ?? 'http://localhost:59000',
     // MinIO tidak punya DNS per-bucket. Tanpa ini, SDK membentuk
     // `http://strive-documents.localhost:59000` dan setiap panggilan gagal
     // dengan galat DNS yang tidak menyebut bucket sama sekali.
     forcePathStyle: true,
-    region: process.env['S3_REGION'] ?? 'us-east-1',
+    region: envTeks('S3_REGION') ?? 'us-east-1',
     credentials: {
-      accessKeyId: process.env['S3_ACCESS_KEY'] ?? 'strive',
-      secretAccessKey: process.env['S3_SECRET_KEY'] ?? 'strive_dev_only',
+      accessKeyId: envTeks('S3_ACCESS_KEY') ?? 'strive',
+      secretAccessKey: envTeks('S3_SECRET_KEY') ?? 'strive_dev_only',
     },
   });
 }
 
 /** Bucket dokumen pengguna — privat, isinya skripsi yang belum disidangkan. */
 export function bucketDocuments(): string {
-  return process.env['S3_BUCKET_DOCUMENTS'] ?? 'strive-documents';
+  return envTeks('S3_BUCKET_DOCUMENTS') ?? 'strive-documents';
 }

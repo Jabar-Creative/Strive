@@ -249,7 +249,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 >
 > `F-05` tetap dibutuhkan sebelum rilis. Ia hanya berhenti menjadi prasyarat pekerjaan.
 
-**Status:** lihat papan status di atas · **Selesai berarti:** URL staging hidup. Push ke `main` men-deploy ketiganya. Rollback ke commit sebelumnya bisa dilakukan dalam <5 menit.
+**Status:** lihat papan status di atas · **Selesai berarti:** URL staging hidup. Push ke `main` men-deploy ketiganya — web, api, ai; worker ikut karena ia **image yang sama dengan api**, `MODE` berbeda (PRD §8.1 "tiga deployable", empat proses). Rollback ke commit sebelumnya bisa dilakukan dalam <5 menit.
 
 ### `F-06` — Token design system -> tailwind.config, init Shadcn, mode gelap
 
