@@ -10,7 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { KyselyModule, createDatabase, type DB } from '../src/infra/kysely';
 import { RedisModule, createRedis } from '../src/infra/redis';
 import { LeaderboardService } from '../src/modules/league';
-import { SquadModule } from '../src/modules/squad';
+import { SquadModule, SquadReadService } from '../src/modules/squad';
 import {
   BATAS_SUBSCRIBE,
   RealtimeEmitter,
@@ -442,6 +442,38 @@ describe('RT-01 — WS gateway + Redis pub/sub (dua instance nyata)', () => {
     const b = await sambung(portA, await sesi(ANGGOTA));
     expect(await b.emitWithAck('subscribe', { squad_id: SQUAD })).toEqual({ ok: true });
   });
+
+  it('galat database saat subscribe DIJAWAB, bukan menggantung klien', async () => {
+    if (!reachable) return;
+    // `AllExceptionsFilter` global (R-04) melempar ULANG untuk konteks
+    // non-HTTP (`if (host.getType() !== 'http') throw exception`). Kalau
+    // lemparan itu tidak pernah menjadi balasan, `emitWithAck` klien
+    // menggantung selamanya — dan layar squad diam tanpa pesan galat apa pun,
+    // yang jauh lebih buruk daripada galat yang terlihat.
+    const moduleRef = await Test.createTestingModule({
+      imports: [KyselyModule, RedisModule, SquadModule, RealtimeModule],
+    })
+      .overrideProvider(SquadReadService)
+      .useValue({ canRead: () => Promise.reject(new Error('postgres mati')) })
+      .compile();
+    const rapuh = moduleRef.createNestApplication();
+    const adapter = new RedisIoAdapter(rapuh, redisUrl);
+    await adapter.connect();
+    rapuh.useWebSocketAdapter(adapter);
+    await rapuh.listen(0, '127.0.0.1');
+    const alamat = rapuh.getHttpServer().address() as AddressInfo;
+
+    try {
+      const s = await sambung(alamat.port, await sesi(ANGGOTA));
+      const ack = await Promise.race([
+        s.emitWithAck('subscribe', { squad_id: SQUAD }),
+        new Promise((r) => setTimeout(() => r('MENGGANTUNG'), 3_000)),
+      ]);
+      expect(ack, 'klien tidak pernah mendapat balasan').not.toBe('MENGGANTUNG');
+    } finally {
+      await rapuh.close();
+    }
+  }, 30_000);
 
   // ── Autentikasi handshake ──────────────────────────────────────────────
 

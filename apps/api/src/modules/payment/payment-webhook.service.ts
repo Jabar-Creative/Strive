@@ -129,18 +129,35 @@ export class PaymentWebhookService {
       // sini. Tanpanya keduanya membaca `pending` dan keduanya menambah koin —
       // lapis unique di ledger akan menyelamatkan saldonya, tapi dengan galat
       // 500 dan satu webhook yang dijawab gagal lalu dikirim ulang selamanya.
-      const order = await trx
-        .selectFrom('orders')
-        .select(['id', 'user_id', 'coins', 'status'])
-        .where('id', '=', n.order_id)
-        .forUpdate()
-        .executeTakeFirst();
+      // `orders.id` bertipe uuid, jadi membandingkannya dengan string
+      // sembarang membuat POSTGRES yang melempar — di dalam transaksi, SETELAH
+      // tanda tangan lolos. Hasilnya 500, dan Midtrans mengulang notifikasi
+      // yang dijawab bukan-200 sampai menyerah.
+      //
+      // Tanda tangan sah dengan `order_id` yang bukan uuid kita bukan hal
+      // aneh: bentuk `order_id` bebas bagi merchant, jadi integrasi LAIN yang
+      // memakai `MIDTRANS_SERVER_KEY` yang sama — aplikasi lain di akun yang
+      // sama, atau kunci sandbox yang tertukar dengan produksi — akan
+      // mengirimkannya. Bagi kita ia memang order yang tidak dikenal, dan
+      // jawabannya sama: 200, dicatat, selesai.
+      const order = berbentukUuid(n.order_id)
+        ? await trx
+            .selectFrom('orders')
+            .select(['id', 'user_id', 'coins', 'status'])
+            .where('id', '=', n.order_id)
+            .forUpdate()
+            .executeTakeFirst()
+        : undefined;
 
       if (!order) {
         // 200, bukan 404: order yang tidak ada hari ini tidak akan ada besok,
         // dan retry Midtrans hanya menambah beban.
         await this.catat('payment.unknown_order', n.order_id, {
           transaction_status: n.transaction_status,
+          // Dibedakan supaya bisa ditelusuri: bentuk yang bukan uuid berarti
+          // KUNCI SERVER DIPAKAI BERSAMA, bukan order lama yang hilang — dan
+          // itu masalah konfigurasi, bukan masalah data.
+          sebab: berbentukUuid(n.order_id) ? 'order tidak ada' : 'order_id bukan uuid kita',
         });
         this.log.warn(`Webhook pembayaran untuk order tidak dikenal: ${n.order_id}`);
         return { credited: false, orderStatus: null, alasan: 'order_tidak_dikenal' as const };
@@ -263,6 +280,17 @@ function tanpaTandaTangan(body: unknown): unknown {
   if (typeof body !== 'object' || body === null) return body;
   const { signature_key: _rahasia, ...sisa } = body as Record<string, unknown>;
   return { ...sisa, signature_key: '[dibuang — R-03]' };
+}
+
+/**
+ * `true` untuk string berbentuk uuid.
+ *
+ * Diperiksa di Node, bukan diserahkan ke Postgres: yang diserahkan ke Postgres
+ * bukan jawaban "tidak ada", melainkan exception yang membatalkan seluruh
+ * transaksi.
+ */
+function berbentukUuid(v: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 }
 
 /** `transaction_status` yang mengakhiri order tanpa koin — PRD §7 E6. */

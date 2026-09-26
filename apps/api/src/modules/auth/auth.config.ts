@@ -15,6 +15,33 @@ import { ZONA_DEFAULT, skemaZonaWaktu } from './timezone';
 const logger = new Logger('AuthEmail');
 
 /**
+ * Hanya string `true` (setelah trim) yang menyalakan cookie lintas situs.
+ *
+ * Sengaja ketat: `TRUE`, `1`, dan string kosong tetap mati. Staging menyetel
+ * persis `true`. Nilai lain — termasuk variabel yang terpasang tapi salah
+ * ketik — mempertahankan SameSite=Lax, bukan diam-diam melonggarkan cookie.
+ */
+export function cookieLintasSitus(nilai: string | undefined): boolean {
+  return nilai?.trim() === 'true';
+}
+
+/**
+ * Atribut yang ditimpa di atas bawaan Better-Auth saat cookie lintas situs
+ * menyala. `undefined` = jangan pasang `defaultCookieAttributes` sama sekali,
+ * supaya httpOnly, path, dan SameSite=Lax bawaan tidak tersentuh.
+ *
+ * Better-Auth menggabungkan objek ini dengan spread SETELAH
+ * `{ sameSite: 'lax', httpOnly: true, path: '/' }`, jadi `httpOnly` tetap ada
+ * selama kita tidak menuliskannya di sini.
+ */
+export function atributCookieLintasSitus(
+  nyala: boolean,
+): { sameSite: 'none'; secure: true } | undefined {
+  if (!nyala) return undefined;
+  return { sameSite: 'none', secure: true };
+}
+
+/**
  * Membungkus pengiriman email auth supaya kegagalan vendor TIDAK menggagalkan
  * registrasi atau permintaan reset (isu #65 poin 1).
  *
@@ -68,6 +95,7 @@ function kirimAman(send: SendAuthEmail, jenis: string) {
  */
 export function createAuth(opts: AuthOptions): StriveAuth {
   const kirim = opts.sendEmail;
+  const atributCookie = atributCookieLintasSitus(opts.crossSiteCookie === true);
 
   // Dianotasi `BetterAuthOptions`, bukan dibiarkan inferensi lalu di-cast.
   //
@@ -194,6 +222,26 @@ export function createAuth(opts: AuthOptions): StriveAuth {
       // proses — API yang kebetulan berjalan dengan env test akan kehilangan
       // perlindungan ini tanpa error apa pun.
       disableOriginCheck: false,
+
+      // IP klien TIDAK disetel di sini. `trustedProxies` Better-Auth 1.7.5
+      // mencocokkan CIDR, bukan `TRUST_PROXY_HOPS`, dan tanpa itu rantai
+      // X-Forwarded-For ditolak (satu ember untuk semua). Controller HTTP
+      // menimpa header menjadi satu IP dari hop yang sama sebelum handler
+      // ini membaca request. Jangan mengisi `ipAddress.trustedProxies`
+      // dengan rentang lebar: itu melewati alamat klien dan kembali ke ember
+      // bersama.
+
+      // F-05 opsi A. Web dan API di staging tinggal di dua situs
+      // (vercel.app dan up.railway.app, keduanya Public Suffix List).
+      // SameSite=Lax tidak ikut pada fetch lintas situs.
+      //
+      // Batas yang diterima sadar, bukan yang terlewat:
+      // - middleware Next membaca cookie permintaan di DOMAIN WEB, sementara
+      //   sesi dipasang di domain API. /mentor dan /admin tetap terpental
+      //   ke /login.
+      // - Safari/iOS memblokir cookie pihak ketiga, jadi login dari sana
+      //   kemungkinan gagal walau SameSite=None; Secure.
+      ...(atributCookie ? { defaultCookieAttributes: atributCookie } : {}),
     },
 
     // ── pemetaan nama tabel & kolom ──────────────────────────────────────

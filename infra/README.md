@@ -13,6 +13,13 @@ Ketiga Dockerfile dibangun dari **root repo**, bukan dari folder ini:
 docker build -f infra/Dockerfile.api -t strive-api .
 ```
 
+Image api dijalankan dari `/repo/apps/api` (`node dist/main.js`), dengan
+`node_modules` dan `packages/` tetap di kedalaman yang sama seperti repo.
+Symlink pnpm (`reflect-metadata`, `@strive/contracts`) relatif terhadap
+kedalaman itu. Jangan memindahkan `dist` ke folder lain tanpa memindahkan
+modulnya — itu yang membuat container staging pertama crash sebelum
+`/health`. Worker memakai image yang sama; `MODE` disetel saat dijalankan.
+
 ## Port
 
 Digeser dari default agar tidak bentrok dengan layanan yang mungkin sudah
@@ -30,5 +37,22 @@ berjalan di mesin developer.
 
 ## Deploy staging
 
-Belum ada — itu item `F-05` (Dev A, W1). Sampai itu selesai, `infra/` hanya
-melayani pengembangan lokal.
+Staging tidak lagi "belum ada", dan **web tidak dibangun dari `Dockerfile.web`**.
+
+| Proses                 | Tempat                                  | Cara bangun                                                                                            |
+| ---------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| web                    | Vercel, project `strive-staging-web`    | `vercel build` di GitHub Actions. Root `apps/web`. `Dockerfile.web` hanya untuk percobaan Docker lokal |
+| api                    | Railway `strive-staging`, service `api` | `infra/Dockerfile.api`, `MODE=api`. Konteks build = root repo                                          |
+| worker                 | Railway, service `worker`, tanpa domain | **image yang sama** dengan api, `MODE=worker`. Tanpa healthcheck HTTP                                  |
+| ai                     | Railway, service `ai`                   | `infra/Dockerfile.ai`                                                                                  |
+| PostgreSQL 16, Redis 7 | Railway, region Singapore               | image terkelola, bukan Dockerfile repo ini                                                             |
+| objek                  | Cloudflare R2                           | tiga bucket privat                                                                                     |
+
+Deploy otomatis ada di `.github/workflows/deploy-staging.yml`: setelah CI
+di `main` hijau, urutannya migrasi, pemeriksaan skema hanya-baca, ketiga
+service Railway, lalu Vercel, lalu smoke. Path Dockerfile yang di-commit
+ada di `infra/railway/`. Rollback ada di `docs/runbooks/rollback-staging.md`.
+
+Yang belum terbukti — URL hidup, deploy dari push, rollback di bawah lima
+menit — tertulis di `docs/reports/F-05/`. Jangan membaca bagian ini sebagai
+klaim bahwa staging sudah melayani.

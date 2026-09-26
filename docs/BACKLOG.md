@@ -69,7 +69,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-01` | Monorepo pnpm, TypeScript strict, ESLint, Prettie… | A | W1 | 1 | `done` | `3836fed` | 2026-09-15 | PR #4 ter-merge. 4 AC terbukti + penegakan versi Python (keputusan 1 PR #3), 5 jalur diuji. |
 | `F-03` | CI: lint, typecheck, unit test, build, migrasi ke… | A | W1 | 1 | `done` | `973d7cf` | 2026-09-15 | PR #11 ter-merge. PR merah dibuktikan lewat PR #7 sungguhan, CI 77 dtk, migrasi terhadap DB kosong + verifikasi 31 tabel & trigger. |
 | `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | A | W1 | 1,5 | `done` | `9aa3037` | 2026-09-15 | PR #5 ter-merge. 31 tabel cocok PRD §9.1 (nol hilang, nol berlebih). Trigger append-only, partisi attempt_date, PK surrogate squad_members terbukti. BELUM di-review Dev B. |
-| `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `blocked` | — | 2026-09-15 | DITUNDA atas keputusan Dev A (isu #29), bukan menggantung tanpa pemilik. Staging tidak diadakan sampai Dev A mengumumkan siap. DoD dilonggarkan sementara: baris "ter-deploy ke staging" dinonaktifkan (CLAUDE.md). TIDAK lagi menahan item mana pun sejak 2026-09-20 (isu #70): `K-01` dan `AI-01` dipindah ke `F-02`, yang memang menyediakan infrastruktur lokalnya. `F-05` tetap dibutuhkan sebelum rilis. |
+| `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `review` | #149 | 2026-09-25 | Workflow CD di #149. Image api diperbaiki #150. **V1–V13 dijalankan 25 Sep (#164): SEMBILAN terbukti** (V1–V6 health/CORS/header/bentuk galat, V9 webhook ditolak-tapi-hampa, V10 login bertahan muat ulang di Chrome, V12 WSS+canRead menjawab). Tetap `review` karena TIGA menahan, dan tidak satu pun soal kode: V7 menunggu #152 ter-deploy (run-nya dibatalkan diam-diam — #165), V11 terblokir karena staging tidak punya konten (workflow tidak menyemai), V13 rollback butuh akses Railway. Dua cacat ditemukan JUSTRU karena V dijalankan: `/admin` memulangkan pengguna yang sudah masuk (#154) dan sign-out lewat Bearer tidak mencabut apa pun. Tiga env yang gagal TERBUKA ditutup #156. Sembilan temuan dipecah jadi isu #154–#163, plus #165. DoD di CLAUDE.md tidak dikembalikan — itu pengumuman Dev A. |
 | `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
 | `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `done` | `b060129` | 2026-09-15 | PR #12 ter-merge & di-review. 10/10 token cocok PRD §14.1, kontras teks utama 15,68-18,24:1 di kedua mode. Bukti hidup: /_specimen. Menutup isu #16. |
@@ -161,9 +161,9 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 80 | 78,5 |
 | `done` | 52 | 50,0 |
-| `review` | 0 | 0,0 |
+| `review` | 1 | 1,5 |
 | `in_progress` | 0 | 0,0 |
-| `blocked` | 4 | 4,5 |
+| `blocked` | 3 | 3,0 |
 | `todo` | 24 | 24,0 |
 
 ---
@@ -177,7 +177,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 | Epik | Nama | Hari | Item | Selesai | Blocked |
 |---|---|---:|---:|---:|---:|
-| `E0` | Fondasi & Setup | 10,5 | 12 | 11/12 · **86%** | 1 |
+| `E0` | Fondasi & Setup | 10,5 | 12 | 11/12 · **86%** | — |
 | `E1` | Auth & RBAC | 6,5 | 7 | 7/7 · **100%** | — |
 | `E4` | Coin & Wallet | 4,0 | 4 | 3/4 · **75%** | — |
 | `E2` | Learning Engine | 7,5 | 5 | 4/5 · **87%** | — |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **52/80 · 64%** | **4** |
+| | **Total** | **78,5** | **80** | **52/80 · 64%** | **3** |
 
 ---
 
@@ -249,7 +249,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 >
 > `F-05` tetap dibutuhkan sebelum rilis. Ia hanya berhenti menjadi prasyarat pekerjaan.
 
-**Status:** lihat papan status di atas · **Selesai berarti:** URL staging hidup. Push ke `main` men-deploy ketiganya. Rollback ke commit sebelumnya bisa dilakukan dalam <5 menit.
+**Status:** lihat papan status di atas · **Selesai berarti:** URL staging hidup. Push ke `main` men-deploy ketiganya — web, api, ai; worker ikut karena ia **image yang sama dengan api**, `MODE` berbeda (PRD §8.1 "tiga deployable", empat proses). Rollback ke commit sebelumnya bisa dilakukan dalam <5 menit.
 
 ### `F-06` — Token design system -> tailwind.config, init Shadcn, mode gelap
 

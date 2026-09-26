@@ -12,6 +12,7 @@ langkah yang membuat orang mengulanginya terus karena tidak tahu apakah sudah be
 | Redis mati | [`redis-mati.md`](redis-mati.md) |
 | Vendor scan down | [`vendor-scan-down.md`](vendor-scan-down.md) |
 | Biaya LLM melonjak | [`biaya-llm-melonjak.md`](biaya-llm-melonjak.md) |
+| Rollback staging | [`rollback-staging.md`](rollback-staging.md) |
 
 ## Yang berlaku untuk ketiganya
 
@@ -43,4 +44,16 @@ ada kode yang menulis saldo di luar `CoinLedgerService`. Koreksi ditulis sebagai
   semuanya dipanggil manual. Runbook di bawah menyebutkan cara memanggilnya.
 - **Agregator log.** `error_rate_5xx` dan `p95_latency_hub` (§17.2) belum bisa dihitung;
   sumbernya sudah ada di log per-request, yang mengagregasinya bagian `F-05`.
-- **Staging.** Isu #29. Seluruh langkah di bawah ditulis untuk produksi/lokal.
+- **Staging hidup, dan sebagian sudah terbukti.** Railway `strive-staging` +
+  Vercel `strive-staging-web`, deploy otomatis dari `main` sudah berjalan
+  (`.github/workflows/deploy-staging.yml`), rollback di
+  [`rollback-staging.md`](rollback-staging.md). Per 25 Sep: **V1–V6, V9, V10,
+  V12 terbukti**; V7 menunggu #152 ter-deploy, V11 terblokir karena staging
+  belum punya konten, **V13 (rollback < 5 menit) belum pernah diukur** — dan
+  itu justru baris yang paling dibutuhkan runbook ini. Lihat
+  `docs/reports/F-05/README.md`. Pelonggaran baris DoD "ter-deploy ke staging"
+  di `CLAUDE.md` **tetap**, sampai Dev A mengumumkan staging siap.
+- **Login ke `/mentor` dan `/admin` di staging** memulangkan siapa pun ke
+  `/login`, juga pengguna yang sesinya sah (#154). Kalau kamu sedang menangani
+  insiden dan tidak bisa masuk konsol, itu sebabnya — bukan sesimu.
+  Runbook insiden di bawah ini masih ditulis untuk produksi dan lokal.

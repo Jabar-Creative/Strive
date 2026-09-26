@@ -1,7 +1,8 @@
-import { All, Controller, Inject, Req, Res } from '@nestjs/common';
+import { All, Controller, Inject, Logger, Req, Res } from '@nestjs/common';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { toNodeHandler } from 'better-auth/node';
 
+import { pasangIpBetterAuth, type SumberIp } from '../../common/client-ip';
 import { AUTH, type StriveAuth } from './auth.types';
 
 /**
@@ -21,16 +22,37 @@ import { AUTH, type StriveAuth } from './auth.types';
  */
 @Controller()
 export class AuthHttpController {
+  private readonly log = new Logger(AuthHttpController.name);
   private readonly handler: (req: IncomingMessage, res: ServerResponse) => Promise<void>;
 
   constructor(@Inject(AUTH) auth: StriveAuth) {
     this.handler = toNodeHandler(auth);
   }
 
+  /**
+   * Better-Auth 1.7.5 menolak rantai `X-Forwarded-For` dan, di produksi,
+   * semua pengguna lalu berbagi satu ember per path. Header ditimpa menjadi
+   * satu IP dari `TRUST_PROXY_HOPS` sebelum handler-nya membaca request.
+   * Log ini hanya tiga angka: IP yang dipilih, jumlah entri, dan hop.
+   * Rantainya tidak dicetak.
+   */
+  private teruskan(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const sumber = req as IncomingMessage & SumberIp;
+    const ringkas = pasangIpBetterAuth({
+      ip: sumber.ip,
+      headers: req.headers,
+      socket: req.socket,
+    });
+    this.log.log(
+      `pengukuran proxy client_ip=${ringkas.clientIp ?? '-'} xff_count=${ringkas.xffCount} trust_proxy_hops=${ringkas.hops}`,
+    );
+    return this.handler(req, res);
+  }
+
   /** Rute tanpa segmen (mis. GET /api/v1/auth/ok untuk probe). */
   @All('auth')
   async root(@Req() req: IncomingMessage, @Res() res: ServerResponse): Promise<void> {
-    await this.handler(req, res);
+    await this.teruskan(req, res);
   }
 
   /** Seluruh endpoint Better-Auth bercabang di bawah sini. */
@@ -40,6 +62,6 @@ export class AuthHttpController {
   // endpoint 404. (Dibuktikan lewat spec isolasi rute sebelum fix ini.)
   @All('auth/*')
   async proxy(@Req() req: IncomingMessage, @Res() res: ServerResponse): Promise<void> {
-    await this.handler(req, res);
+    await this.teruskan(req, res);
   }
 }

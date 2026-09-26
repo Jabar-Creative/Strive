@@ -2121,7 +2121,7 @@ Setiap warna aksen dipatok ke **satu makna** dan tidak boleh dipinjam. Ini atura
 - [ ] ➖ JWT ditandatangani dengan secret ≥ 32 byte dari env — *tidak berlaku: tidak ada JWT, sesi berbasis tabel `sessions` (`A-01`)*
 - [ ] ➖ Refresh token disimpan sebagai **hash**, bukan plaintext — *tidak berlaku: `refresh_tokens` dibuang migrasi 007. Soal `sessions.token` plaintext: isu #124*
 - [ ] ➖ Deteksi token reuse aktif dan mencabut rantai sesi — *tidak berlaku, sama seperti di atas*
-- [x] Rate limit 120 req/menit per pengguna, lebih ketat untuk `/auth/*` (10/menit) — *`RateLimitInterceptor`; bentuk kunci §9.4 bertentangan, isu #126*
+- [x] Rate limit 120 req/menit per pengguna, lebih ketat untuk `/auth/*` (10/menit) — *`RateLimitInterceptor`. **Dicentang 23 Sep atas pembatas yang ternyata bisa dilewati satu header** (`X-Forwarded-For` dipercaya tanpa syarat); ditutup 24 Sep di #138 dengan `TRUST_PROXY_HOPS`. WS mendapat jatahnya sendiri di #142. Bentuk kunci §9.4 masih bertentangan, isu #126*
 - [x] Webhook memverifikasi signature **sebelum** memproses apa pun
 - [x] Upload divalidasi tipe **dan** magic bytes, bukan hanya ekstensi
 - [x] Upload disimpan di luar webroot, diakses hanya lewat signed URL
@@ -2129,7 +2129,7 @@ Setiap warna aksen dipatok ke **satu makna** dan tidak boleh dipinjam. Ini atura
 - [x] Query memakai parameter binding (Kysely), tidak ada string concat
 - [x] Header keamanan: `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` — *CSP `apps/web` menunggu nonce App Router, isu #125*
 - [x] CORS whitelist eksplisit, bukan `*`
-- [x] Secret tidak pernah masuk log, error message, atau respons API
+- [x] Secret tidak pernah masuk log, error message, atau respons API — *disiplin call site bersih sejak 23 Sep, tapi **penyaringnya sendiri melewatkan nilai di luar kedalaman 6** sampai #144*
 - [x] Dependency audit (`pnpm audit`, `pip-audit`) nol kerentanan tinggi — *16 advisory ditriase; nol yang bisa dicapai. Digerbangi `pnpm audit:kebijakan` di CI*
 - [x] Kepemilikan sumber daya dicek di service, bukan hanya di guard
 - [x] Reviewer tidak bisa melihat identitas penulis di respons API mana pun
@@ -2245,6 +2245,13 @@ Tiga skenario harus punya runbook tertulis sebelum rilis:
 | `staging` | Verifikasi & gate mingguan | DB terkelola kecil | Semua sandbox |
 | `production` | Beta tertutup | DB terkelola + PITR | Live |
 
+**Staging yang disiapkan F-05 (2026-09-25) bukan satu project untuk semuanya.**
+Web di Vercel (Hobby, root `apps/web`). API, worker, layanan AI, PostgreSQL 16,
+dan Redis 7 di Railway project `strive-staging` (region Singapore). Object
+storage di Cloudflare R2. Deploy dari GitHub Actions setelah CI di `main`
+hijau — bukan Railway GitHub App, dan bukan integrasi Git Vercel. Rincian,
+batas, dan yang belum terbukti ada di `docs/reports/F-05/`.
+
 ### 19.2 Variabel environment
 
 ```bash
@@ -2257,7 +2264,8 @@ AI_SERVICE_PORT=8000      # FastAPI
 # Core
 NODE_ENV=                 # development | production
 APP_URL=                  # https://app.striveacademy.id  <- WAJIB diisi: kosong = CORS jatuh ke origin dev, frontend ditolak (R-03)
-API_URL=
+API_URL=                  # URL Core API. Middleware Next membacanya saat runtime.
+NEXT_PUBLIC_API_URL=      # URL yang sama, di-inline ke bundle browser SAAT BUILD.
 TRUST_PROXY_HOPS=0        # jumlah reverse proxy TEPERCAYA di depan API. 0 = X-Forwarded-For diabaikan total.
                           # Isi hanya setelah F-05: header itu dikirim klien, dan mempercayainya tanpa proxy
                           # membuat rate limit §16.1 bisa dilewati dengan satu header acak per request.
@@ -2267,11 +2275,17 @@ REDIS_URL=                # redis://...
 
 # Auth
 AUTH_SECRET=              # >= 32 byte
-ACCESS_TOKEN_TTL=15m
-REFRESH_TOKEN_TTL=30d
+# ACCESS_TOKEN_TTL / REFRESH_TOKEN_TTL dihapus di A-03 (isu #18): sesi server
+# Better-Auth 30 hari, bukan JWT. Tidak ada kode yang membaca keduanya.
+# Cookie lintas situs. Kosong = SameSite=Lax bawaan. Hanya `true` yang
+# memasang SameSite=None dan Secure (staging: web di vercel.app, API di
+# up.railway.app). /mentor dan /admin tetap ke /login — middleware web
+# tidak melihat cookie yang dipasang di domain API. Safari/iOS kemungkinan
+# memblokir cookie pihak ketiga ini.
+AUTH_COOKIE_CROSS_SITE=
 
 # Storage
-S3_ENDPOINT= S3_BUCKET_DOCUMENTS= S3_BUCKET_ASSETS=
+S3_ENDPOINT= S3_REGION= S3_BUCKET_DOCUMENTS= S3_BUCKET_ASSETS=
 S3_ACCESS_KEY= S3_SECRET_KEY=
 
 # Payment

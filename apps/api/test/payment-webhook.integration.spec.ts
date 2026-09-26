@@ -406,6 +406,31 @@ describe('P-03 — POST /webhooks/payment (database nyata)', () => {
     expect(jejak).toHaveLength(1);
   });
 
+  it('order_id yang BUKAN uuid → 200, bukan 500 yang diulang selamanya', async () => {
+    if (!reachable) return;
+    // `orders.id` bertipe uuid, jadi membandingkannya dengan string sembarang
+    // membuat POSTGRES yang melempar — dan itu terjadi SETELAH tanda tangan
+    // lolos, di dalam transaksi. Hasilnya 500, dan Midtrans mengulang
+    // notifikasi yang dijawab bukan-200 sampai menyerah.
+    //
+    // Kapan tanda tangan sah membawa order_id yang bukan uuid kita?
+    // `order_id` bebas bentuknya bagi merchant, jadi setiap integrasi LAIN
+    // yang memakai MIDTRANS_SERVER_KEY yang sama — aplikasi lain di akun yang
+    // sama, atau kunci sandbox yang tertukar dengan produksi — menghasilkan
+    // notifikasi bertanda tangan sah dengan order_id bentuknya sendiri.
+    const r = await kirim(notif('ORDER-DARI-SISTEM-LAIN'));
+    expect(r.status).toBe(200);
+
+    const jejak = await db
+      .selectFrom('audit_log')
+      .select(['action', 'subject_id'])
+      .where('action', '=', 'payment.unknown_order')
+      .execute();
+    expect(jejak).toHaveLength(1);
+    expect(jejak[0]?.subject_id).toBe('ORDER-DARI-SISTEM-LAIN');
+    expect(await saldo()).toEqual({ cache: 0, ledger: 0 });
+  });
+
   it('badan tidak lengkap ditolak sebelum menyentuh apa pun', async () => {
     if (!reachable) return;
     const busukTapiObjek = [

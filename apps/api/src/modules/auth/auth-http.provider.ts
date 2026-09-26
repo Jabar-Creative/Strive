@@ -1,6 +1,7 @@
 import type { SendAuthEmail, StriveAuth } from './auth.types';
-import { createAuth } from './auth.config';
+import { cookieLintasSitus, createAuth } from './auth.config';
 import { appOrigins } from '../../common/app-origin';
+import { envTeks } from '../../common/env';
 
 /**
  * Instance Better-Auth untuk proses API nyata (A-03).
@@ -35,9 +36,15 @@ export function createAuthFromEnv(sendEmail?: SendAuthEmail): StriveAuth {
   return createAuth({
     connectionString,
     secret,
-    baseURL: process.env['API_URL'] ?? 'http://localhost:3001',
+    // `envTeks`, bukan `??` — `API_URL=` yang di-set tapi KOSONG lolos sebagai
+    // baseURL string kosong, dan Better-Auth memakainya untuk menyusun tautan
+    // verifikasi email dan reset password. Kelas yang sama dengan `APP_URL`
+    // (R-03); lubangnya tersalin ke sini dan tidak ikut ditutup saat itu.
+    baseURL: envTeks('API_URL') ?? 'http://localhost:3001',
     basePath: AUTH_HTTP_BASE_PATH,
     trustedOrigins: appOrigins(),
     sendEmail,
+    // Kosong / selain `true` = SameSite=Lax bawaan. Jangan dibalik di lokal.
+    crossSiteCookie: cookieLintasSitus(process.env['AUTH_COOKIE_CROSS_SITE']),
   });
 }
