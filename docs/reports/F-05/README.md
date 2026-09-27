@@ -78,13 +78,24 @@ Terhadap deployment yang sedang melayani (`c8dd108`). Perintah dan keluarannya d
 | V4 | CORS origin asing bukan `*` | **LULUS** — origin asing tidak mendapat header `Access-Control-Allow-Origin` sama sekali; origin web sah mendapat dirinya sendiri persis |
 | V5 | Header keamanan API dan web | **LULUS** — keempatnya ada di kedua sisi, plus HSTS. `Referrer-Policy` berbeda antar sisi (`no-referrer` di API, `strict-origin-when-cross-origin` di web) dan itu memang disengaja |
 | V6 | 401 bentuk §10.1, termasuk 404 | **LULUS** — rute tak dikenal → `{"error":{"code":"NOT_FOUND",…}}` 404; rute terlindung → `{"error":{"code":"UNAUTHENTICATED",…}}` 401. Keduanya `error` sebagai OBJEK ber-`code`, bukan string bawaan Nest |
-| V7 | Rate limit 429, termasuk `X-Forwarded-For` acak | **SENGAJA TIDAK DIJALANKAN.** Perbaikan #152 belum ter-deploy (run deploy-nya macet, lihat bawah), jadi ember rate limit masih satu untuk semua. Menembak `/auth/*` sekarang berarti **mengunci login semua orang** — biaya yang tidak sebanding dengan satu baris checklist. Dijalankan setelah #152 hidup |
+| V7 | Rate limit 429, termasuk `X-Forwarded-For` acak | **LULUS** — dijalankan 27 Sep setelah #152 hidup. Tepat 10 lolos, ke-11 → 429. Lalu, masih di jendela yang sama: `X-Forwarded-For` **acak tiap request** → tetap 429 (5×), dan rantai palsu dengan klien di kiri → tetap 429 (3×). Badan galat `{"code":"RATE_LIMITED","details":{"limit":10,"window_seconds":60,"retry_after":42}}`. Pemalsuan header tidak memberi ember baru |
 | V8 | AI tanpa token → 401 | **TIDAK BERLAKU, bukan gagal.** Satu-satunya endpoint adalah `/health`, dan probe kesiapan memang tidak boleh butuh token. Yang sebenarnya perlu diperiksa saat router `AI-01` mendarat: apakah `AI_SERVICE_TOKEN` ditegakkan. Sekarang belum ada yang menegakkannya (#132, #162) |
 | V9 | Webhook pembayaran tanda tangan asal ditolak | **LULUS, TAPI HAMPA.** 401 `INVALID_SIGNATURE` untuk tanda tangan asal maupun `order_id` bukan-UUID. Dengan `MIDTRANS_SERVER_KEY` kosong, **semua** ditolak — jadi ini membuktikan gagal-tertutup, bukan bahwa perhitungan tanda tangannya benar. Yang membuktikan itu test integrasi `P-03` |
 | V10 | Daftar, masuk, refresh, masih masuk | **LULUS di Chrome.** Registrasi lewat halaman web sungguhan → mendarat di `/hub` dengan sesi aktif → muat ulang penuh → **masih masuk**. Cookie `__Secure-better-auth.session_token; HttpOnly; Secure; SameSite=None` — keputusan opsi A (#149) bekerja. **Safari/iOS belum diuji** dan tetap risiko ITP |
 | V11 | Satu lesson, koin, ledger, rekonsiliasi nol baris | **TERBLOKIR.** `GET /hub` dengan sesi sah mengembalikan `"next_cards":[]` dan `"balance":0` — **staging tidak punya konten sama sekali**, karena workflow tidak menjalankan `pnpm seed`. Tidak ada lesson untuk dikerjakan, jadi tidak ada jalur uang untuk diuji |
 | V12 | WebSocket subscribe | **LULUS.** WSS ke `/api/v1/ws` dengan `transports: ['websocket']` saja (bukan polling): tersambung, handshake menolak sesi palsu dengan pesan yang benar, lalu dengan sesi sah `subscribe` **dijawab** `FORBIDDEN_ROLE` — artinya `canRead` benar-benar meng-query Postgres dan handler membalas, bukan menggantung (jebakan yang ditutup #144) |
 | V13 | Rollback diukur | **TIDAK TERBUKTI.** Butuh akses dashboard/CLI Railway; CLI tidak terpasang di mesin yang menjalankan verifikasi ini. Tetap milik manusia |
+
+### Susulan 27 September — V7 lulus, dan deploy akhirnya mendarat
+
+Run [36125323914](https://github.com/Jabar-Creative/Strive/actions/runs/36125323914) **sukses** dari `0a3b907`, jadi #152 (IP klien) dan #156 (env gagal-tertutup) hidup di staging. Dua hal ikut terbukti dari situ tanpa perlu uji terpisah:
+
+- **`S3_*` memang terkonfigurasi di Railway.** Penjaga baru di `createS3FromEnv()` melempar saat boot kalau tidak — deploy yang sukses adalah buktinya.
+- **V7 bisa dijalankan tanpa mengunci siapa pun**, karena ember rate limit tidak lagi dibagi bersama.
+
+Empat run di antaranya (`03b860b`, `26f0aa0`, `ffa9e78`, `62f3af0`) tercatat `cancelled` — bukan karena ada yang membatalkannya, melainkan karena antrean `concurrency` hanya memuat satu run pending. Isu #165.
+
+Sisa yang menahan `F-05`: **V11** (staging tidak punya konten), **V13** (butuh akses Railway), dan **V8** (tidak berlaku sampai `AI-01`).
 
 ### Dua hal yang ditemukan JUSTRU karena V dijalankan
 
