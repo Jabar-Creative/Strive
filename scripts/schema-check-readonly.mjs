@@ -41,6 +41,36 @@ export const PEMERIKSAAN = [
   },
 ];
 
+/**
+ * Bukti bahwa semai BERISI — dipakai `--hitung-konten` setelah `pnpm seed`.
+ *
+ * Ambang MINIMAL, bukan sama-dengan: `pnpm seed:content` menambah kartu, dan
+ * pemeriksaan yang menuntut angka persis akan merah justru saat kontennya
+ * bertambah. Angkanya dari apa yang dijamin `pnpm seed` (F-13): satu track ->
+ * 2 modul -> 6 lesson -> 12 kartu, plus 8 store_items dan satu pricing_config.
+ *
+ * Kenapa ini ada sama sekali: seeder yang idempoten tetap keluar 0 kalau ia
+ * gagal menyisipkan apa pun. "Perintahnya sukses" bukan bukti datanya ada.
+ */
+export const HITUNG_KONTEN = [
+  { nama: 'pricing_config', sql: 'SELECT count(*)::text AS n FROM pricing_config', minimal: 1 },
+  { nama: 'tracks', sql: 'SELECT count(*)::text AS n FROM tracks', minimal: 1 },
+  { nama: 'lessons', sql: 'SELECT count(*)::text AS n FROM lessons', minimal: 6 },
+  { nama: 'lesson_cards', sql: 'SELECT count(*)::text AS n FROM lesson_cards', minimal: 12 },
+  { nama: 'store_items', sql: 'SELECT count(*)::text AS n FROM store_items', minimal: 8 },
+];
+
+/**
+ * SEMUA daftar query yang dijalankan berkas ini.
+ *
+ * Dipisah jadi konstanta sendiri supaya penjaga hanya-baca di bawah tidak
+ * perlu diingat-ingat saat daftar baru ditambahkan. Penjaga yang menyebut
+ * satu daftar secara harfiah akan berhenti menjaga pada daftar kedua, dan
+ * tidak ada yang memberi tahu — itu persis bentuk kegagalan yang sudah
+ * berulang di repo ini.
+ */
+export const SEMUA_DAFTAR = [PEMERIKSAAN, HITUNG_KONTEN];
+
 /** Menolak query yang bukan SELECT tunggal, sebelum ia menyentuh database. */
 export function pastikanHanyaBaca(sql) {
   const inti = sql
@@ -85,14 +115,32 @@ function wajibMenolak(sql) {
   throw new Error(`penjaga lolos untuk query yang seharusnya ditolak: ${sql}`);
 }
 
+/** Menjalankan ambang minimal `HITUNG_KONTEN`. Hanya SELECT. */
+export async function hitungKonten(client) {
+  const hasil = [];
+  for (const item of HITUNG_KONTEN) {
+    pastikanHanyaBaca(item.sql);
+    const { rows } = await client.query(item.sql);
+    const dapat = Number(rows[0]?.n ?? -1);
+    if (!Number.isInteger(dapat) || dapat < item.minimal) {
+      throw new Error(
+        `${item.nama}: minimal ${item.minimal}, dapat ${dapat < 0 ? 'kosong' : dapat}`,
+      );
+    }
+    hasil.push(`${item.nama}: ${dapat} (minimal ${item.minimal})`);
+  }
+  return hasil;
+}
+
 function periksaDaftarQuery() {
-  for (const item of PEMERIKSAAN) pastikanHanyaBaca(item.sql);
+  for (const daftar of SEMUA_DAFTAR) for (const item of daftar) pastikanHanyaBaca(item.sql);
   // Penjaga yang tidak pernah diuji merah adalah penjaga yang tidak ada.
   wajibMenolak('INSERT INTO coin_ledger (amount) VALUES (1)');
   wajibMenolak('UPDATE coin_ledger SET amount = 1');
   wajibMenolak('DELETE FROM streaks');
   wajibMenolak('SELECT 1; DROP TABLE users');
-  console.log(`[schema-check] ${PEMERIKSAAN.length} query hanya-baca, tanpa koneksi`);
+  const jumlah = SEMUA_DAFTAR.reduce((n, d) => n + d.length, 0);
+  console.log(`[schema-check] ${jumlah} query hanya-baca, tanpa koneksi`);
 }
 
 if (process.argv[1]?.endsWith('schema-check-readonly.mjs')) {
@@ -117,7 +165,9 @@ if (process.argv[1]?.endsWith('schema-check-readonly.mjs')) {
   const client = new pg.Client({ connectionString: url });
   try {
     await client.connect();
-    const hasil = await periksaSkema(client);
+    const hasil = process.argv.includes('--hitung-konten')
+      ? await hitungKonten(client)
+      : await periksaSkema(client);
     for (const baris of hasil) console.log(`[schema-check] ${baris}`);
   } catch (error) {
     const pesan = error instanceof Error ? error.message : String(error);
