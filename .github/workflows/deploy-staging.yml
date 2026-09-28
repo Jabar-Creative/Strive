@@ -12,13 +12,26 @@ name: Deploy staging
 
 on:
   workflow_dispatch:
+    inputs:
+      semai:
+        description: 'Semai konten ke database staging (pnpm seed + seed:content). Idempoten, hanya INSERT ... ON CONFLICT DO NOTHING.'
+        type: boolean
+        default: false
   workflow_run:
     workflows: ['CI']
     types: [completed]
     branches: [main]
 
-# Satu deploy pada satu waktu. Jangan batalkan yang sedang berjalan:
-# migrasi yang terputus di tengah unggahan lebih sulit dibaca daripada antrean.
+# Satu deploy pada satu waktu. Jangan batalkan yang sedang berjalan: migrasi
+# yang terputus di tengah unggahan lebih sulit dibaca daripada antrean.
+#
+# TAPI "antrean" di sini berkapasitas SATU, dan itu bukan yang dulu diduga
+# baris ini. GitHub hanya menyimpan satu run `pending` per grup: run pending
+# yang BARU membatalkan yang lama. Saat satu `railway up` menggantung 50 menit
+# (25 Sep), tiga merge berikutnya masuk-keluar antrean dan dua perbaikan tidak
+# pernah ter-deploy — riwayatnya cuma tertulis `cancelled`, tidak ada yang
+# merah. Isu #165. Batas waktu per service di bawah yang menutup sebabnya;
+# kapasitas antrean ini tidak bisa diubah dari sini.
 concurrency:
   group: deploy-staging
   cancel-in-progress: false
@@ -78,10 +91,48 @@ jobs:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         run: node scripts/schema-check-readonly.mjs
 
+      # Hanya lewat workflow_dispatch dengan centang `semai`. TIDAK pernah
+      # otomatis: staging punya database permanen, dan langkah yang menulis
+      # ke sana pada setiap push adalah langkah yang suatu saat menulis
+      # sesuatu yang tidak diniatkan.
+      #
+      # Aman dijalankan berkali-kali secara KONSTRUKSI, bukan karena
+      # hati-hati: kedua seeder hanya `INSERT ... ON CONFLICT DO NOTHING`,
+      # tidak pernah UPDATE dan tidak pernah DELETE. `pricing_config` bahkan
+      # hanya disemai kalau tabelnya kosong, supaya versi aktif tidak
+      # melompat dan order lama tidak menunjuk harga yang bukan harganya.
+      #
+      # Ini BUKAN pelanggaran "jangan menulis SQL ke staging" (#151): yang
+      # dilarang di sana adalah mengarang data supaya layar terlihat ramai.
+      # Semai konten adalah perkakas resmi repo ini (F-13, F-11), dan tanpa
+      # konten tidak ada lesson untuk dikerjakan — V11 tidak bisa dijalankan
+      # sama sekali.
+      - name: Semai konten staging
+        if: ${{ inputs.semai }}
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          pnpm seed
+          pnpm seed:content db/seeds/content/contoh-track.json
+
+      # Membuktikan semainya BERISI, bukan sekadar keluar 0. Seeder yang
+      # idempoten akan tetap keluar 0 kalau ia gagal menyisipkan apa pun,
+      # jadi "perintahnya sukses" bukan bukti datanya ada.
+      - name: Buktikan konten ada — hanya baca
+        if: ${{ inputs.semai }}
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: node scripts/schema-check-readonly.mjs --hitung-konten
+
   railway:
     needs: migrasi
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # 30, bukan 90. Deploy sehat 6-7 menit untuk ketiganya; 90 menit bukan
+    # batas melainkan menyerah, dan selama itu seluruh pipeline terblokir
+    # sementara run berikutnya dibatalkan diam-diam (#165). Batas per service
+    # di bawah yang memberi pesannya; ini jaring terakhir.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -107,18 +158,33 @@ jobs:
           # baris perintah yang keluar non-nol. Smoke di job berikut tetap
           # gerbang /health; langkah ini tidak menunggu sehat dan tidak
           # melonggarkannya.
+          # Batas per service, bukan cuma batas job. Tanpa ini, satu `railway up`
+          # yang menggantung membuat job diam sampai timeout-nya dan log-nya
+          # tidak menyebut service mana yang berhenti bergerak — persis yang
+          # terjadi 25 Sep. `timeout` keluar 124 saat waktunya habis, dan itu
+          # DIBEDAKAN dari build yang gagal: keduanya sama-sama menghentikan
+          # deploy, tapi yang dicari orang berikutnya berbeda.
+          BATAS_DETIK=600
           deploy() {
             nama="$1"
             layanan="$2"
             sumber="$3"
-            echo "mulai unggah Railway: ${nama} (${layanan})"
+            echo "mulai unggah Railway: ${nama} (${layanan}) — batas ${BATAS_DETIK} detik"
+            mulai=$SECONDS
             cp "$sumber" railway.json
-            if ! railway up --ci --service "$layanan" --environment "$RAILWAY_ENVIRONMENT_ID"; then
-              echo "::error::Unggah Railway gagal untuk ${nama} (${layanan}). Service berikutnya tidak diunggah."
+            kode=0
+            timeout "${BATAS_DETIK}" railway up --ci --service "$layanan" --environment "$RAILWAY_ENVIRONMENT_ID" || kode=$?
+            lama=$((SECONDS - mulai))
+            if [ "$kode" = "124" ]; then
+              echo "::error::Unggah Railway MENGGANTUNG untuk ${nama} (${layanan}): tidak selesai dalam ${BATAS_DETIK} detik. Deploy sehat 6-7 menit untuk ketiganya — periksa antrean build Railway, bukan kode. Service berikutnya tidak diunggah."
+              exit 1
+            fi
+            if [ "$kode" != "0" ]; then
+              echo "::error::Unggah Railway GAGAL untuk ${nama} (${layanan}) setelah ${lama} detik, keluar ${kode}. Service berikutnya tidak diunggah."
               exit 1
             fi
             rm -f railway.json
-            echo "unggah Railway selesai: ${nama}"
+            echo "unggah Railway selesai: ${nama} (${lama} detik)"
           }
           deploy api "$RAILWAY_SERVICE_API" infra/railway/api.json
           deploy worker "$RAILWAY_SERVICE_WORKER" infra/railway/worker.json

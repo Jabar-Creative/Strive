@@ -76,6 +76,11 @@ export const ACCESS_MATRIX: readonly AccessRule[] = [
     allow: [],
     note: 'probe orkestrator. Dikecualikan dari prefiks global di main.ts, dan memang harus terjangkau tanpa sesi',
   },
+  {
+    route: 'GET /health/ready',
+    allow: [],
+    note: 'probe KESIAPAN (isu #155). Publik dengan alasan yang sama seperti /health — orkestrator tidak punya sesi. Yang dilaporkan hanya ok/gagal per dependensi: tanpa host, tanpa versi, tanpa pesan galat mentah, supaya ia tidak jadi jalan mengintip keadaan infrastruktur',
+  },
   { route: 'GET /wallet', allow: BELAJAR },
   { route: 'GET /wallet/ledger', allow: BELAJAR },
   { route: 'POST /payments/checkout', allow: BELAJAR },

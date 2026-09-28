@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { BATAS_KEDALAMAN, barisLog, formatJson, saring } from './structured-logger';
+import {
+  BATAS_KEDALAMAN,
+  StructuredLogger,
+  barisLog,
+  formatJson,
+  levelDariEnv,
+  saring,
+} from './structured-logger';
 
 const asli = process.env['LOG_FORMAT'];
 afterEach(() => {
@@ -93,5 +100,76 @@ describe('R-04 — log terstruktur (PRD §17.1)', () => {
     expect(formatJson()).toBe(false);
     process.env['LOG_FORMAT'] = 'JSON';
     expect(formatJson()).toBe(true);
+  });
+});
+
+describe('LOG_LEVEL (isu #158)', () => {
+  const asliLevel = process.env['LOG_LEVEL'];
+
+  afterEach(() => {
+    if (asliLevel === undefined) delete process.env['LOG_LEVEL'];
+    else process.env['LOG_LEVEL'] = asliLevel;
+  });
+
+  it('tidak disetel → undefined, dan bawaan Nest TIDAK disentuh', () => {
+    // Memberi bawaan di sini akan mendiamkan log yang selama ini muncul di
+    // setiap lingkungan yang belum menyetelnya. Baris log yang hilang tanpa
+    // ada yang memintanya baru ketahuan saat ia dibutuhkan.
+    for (const kosong of [undefined, '', '   ']) {
+      if (kosong === undefined) delete process.env['LOG_LEVEL'];
+      else process.env['LOG_LEVEL'] = kosong;
+      expect(levelDariEnv(), JSON.stringify(kosong)).toBeUndefined();
+    }
+  });
+
+  it('tangga level naik, bukan satu level saja', () => {
+    // `LOG_LEVEL=warn` berarti "warn ke atas", bukan "hanya warn". Yang
+    // kedua akan menyembunyikan error justru saat orang menaikkan ambang.
+    expect(levelDariEnv('error')).toEqual(['fatal', 'error']);
+    expect(levelDariEnv('warn')).toEqual(['fatal', 'error', 'warn']);
+    expect(levelDariEnv('info')).toEqual(['fatal', 'error', 'warn', 'log']);
+    expect(levelDariEnv('debug')).toEqual(['fatal', 'error', 'warn', 'log', 'debug', 'verbose']);
+  });
+
+  it('`info` PRD dipetakan ke `log` Nest — dokumen tidak diubah demi nama pustaka', () => {
+    expect(levelDariEnv('info')).toContain('log');
+    expect(levelDariEnv('info')).not.toContain('debug');
+  });
+
+  it('nilai tidak dikenal → undefined, bukan diam-diam dianggap salah satu', () => {
+    for (const aneh of ['INFO ', 'trace', 'silly', '3', 'true']) {
+      const hasil = levelDariEnv(aneh);
+      if (aneh === 'INFO ') expect(hasil).toEqual(['fatal', 'error', 'warn', 'log']);
+      else expect(hasil, aneh).toBeUndefined();
+    }
+  });
+
+  it('JALUR JSON ikut tersaring — ini yang paling mudah terlewat', () => {
+    // Jalur JSON tidak lewat `super`, jadi `setLogLevels` tidak menyaringnya.
+    // Tanpa penyaringan sendiri, LOG_LEVEL bekerja di dev dan diam-diam tidak
+    // bekerja di produksi — satu-satunya tempat ia dibutuhkan.
+    process.env['LOG_FORMAT'] = 'json';
+    process.env['LOG_LEVEL'] = 'warn';
+
+    const baris: string[] = [];
+    const asliTulis = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((teks: string) => {
+      baris.push(String(teks));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const logger = new StructuredLogger();
+      logger.warn('ini harus muncul');
+      logger.log('ini harus DIAM');
+      logger.debug('ini juga harus DIAM');
+    } finally {
+      process.stdout.write = asliTulis;
+    }
+
+    const gabung = baris.join('');
+    expect(gabung).toContain('ini harus muncul');
+    expect(gabung).not.toContain('ini harus DIAM');
+    expect(gabung).not.toContain('ini juga harus DIAM');
   });
 });

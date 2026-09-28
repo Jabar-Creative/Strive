@@ -2303,7 +2303,9 @@ AI_SERVICE_URL= AI_SERVICE_TOKEN=
 RESEND_API_KEY= EMAIL_FROM=
 
 # Observability
-SENTRY_DSN= LOG_LEVEL=info
+SENTRY_DSN= LOG_LEVEL=info   # error|warn|info|debug, tangga NAIK. Kosong = bawaan Nest
+LOG_FORMAT=                  # `json` = satu baris JSON per log. Selain itu ConsoleLogger berwarna.
+                             # BENTUK, bukan level — dua hal berbeda. Staging & produksi: json
 
 # Feature flags
 FEATURE_SCAN_ENABLED=true

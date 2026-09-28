@@ -95,12 +95,72 @@ export function barisLog(level: LogLevel, pesan: string, konteks: Konteks = {}):
 }
 
 /**
+ * `LOG_LEVEL` -> daftar level Nest yang dinyalakan — isu #158.
+ *
+ * ── Kenapa ini sempat tidak ada ──
+ *
+ * `LOG_LEVEL` tercantum di PRD §19.2 DAN `.env.example` (`error | warn | info
+ * | debug`), dan tidak satu baris kode pun membacanya. Yang benar-benar
+ * menentukan sesuatu adalah `LOG_FORMAT`, yang tidak terdokumentasi di
+ * keduanya. Jadi orang yang menyetel `LOG_LEVEL=debug` saat insiden tidak
+ * mendapat apa pun, lalu mencari sebabnya di tempat yang salah — dan waktu
+ * insiden adalah waktu paling mahal untuk itu.
+ *
+ * ── Kenapa `info`, bukan `log` ──
+ *
+ * Nama levelnya di Nest `log`; yang ditulis PRD dan dipakai hampir semua
+ * perkakas `info`. Yang dipetakan di sini adalah kosakata PRD ke kosakata
+ * Nest, bukan sebaliknya: dokumen yang sudah dibaca orang tidak diubah
+ * supaya cocok dengan nama internal pustaka.
+ *
+ * ── Kenapa tidak disetel berarti TIDAK MENYENTUH apa pun ──
+ *
+ * Memberi bawaan di sini akan mendiamkan log yang selama ini muncul, di
+ * setiap lingkungan yang belum menyetelnya sekarang. Perubahan yang membuat
+ * baris log HILANG tanpa ada yang memintanya adalah perubahan yang baru
+ * ketahuan saat baris itu dibutuhkan.
+ */
+const TANGGA: Record<string, LogLevel[]> = {
+  error: ['fatal', 'error'],
+  warn: ['fatal', 'error', 'warn'],
+  info: ['fatal', 'error', 'warn', 'log'],
+  debug: ['fatal', 'error', 'warn', 'log', 'debug', 'verbose'],
+};
+
+/** `undefined` berarti tidak disetel — biarkan bawaan Nest apa adanya. */
+export function levelDariEnv(mentah = process.env['LOG_LEVEL']): LogLevel[] | undefined {
+  const kunci = (mentah ?? '').trim().toLowerCase();
+  if (kunci.length === 0) return undefined;
+  return TANGGA[kunci];
+}
+
+/**
  * Logger Nest yang mengeluarkan JSON saat `LOG_FORMAT=json`.
  *
  * Meng-extend `ConsoleLogger` alih-alih menulis dari nol supaya seluruh
  * perilaku Nest (level, konteks, `setLogLevels`) tetap jalan apa adanya.
  */
 export class StructuredLogger extends ConsoleLogger {
+  // Tanpa parameter: kedua pemanggil (`main.ts`) memang tidak mengirim apa
+  // pun, dan `ConstructorParameters<typeof ConsoleLogger>` mengambil overload
+  // TERAKHIR — yang menuntut dua argumen — sehingga `new StructuredLogger()`
+  // berhenti bisa dikompilasi. Kalau suatu saat butuh konteks, tambahkan
+  // overload di sini; jangan ganti dengan cast.
+  constructor() {
+    super();
+    const level = levelDariEnv();
+    if (level) this.setLogLevels(level);
+    else if (process.env['LOG_LEVEL']?.trim()) {
+      // Nilai yang di-set tapi tidak dikenali JANGAN didiamkan: ia terlihat
+      // seperti konfigurasi yang bekerja. Dilaporkan lewat jalur yang pasti
+      // hidup, dan tidak mengubah level apa pun.
+      super.warn(
+        `LOG_LEVEL="${process.env['LOG_LEVEL']}" tidak dikenali. Yang sah: ${Object.keys(TANGGA).join(' | ')}. Level dibiarkan bawaan.`,
+        'StructuredLogger',
+      );
+    }
+  }
+
   private tulis(level: LogLevel, pesan: unknown, konteksTambahan: unknown[]): void {
     const konteks = konteksTambahan.find((x) => typeof x === 'string');
     process.stdout.write(`${barisLog(level, String(pesan), konteks ? { scope: konteks } : {})}\n`);
@@ -108,21 +168,37 @@ export class StructuredLogger extends ConsoleLogger {
 
   override log(pesan: unknown, ...rest: unknown[]): void {
     if (!formatJson()) return super.log(pesan as string, ...(rest as string[]));
+    // Jalur JSON TIDAK lewat `super`, jadi `setLogLevels` tidak menyaringnya.
+    // Tanpa baris ini `LOG_LEVEL` bekerja di dev dan diam-diam tidak bekerja
+    // di produksi — tempat ia satu-satunya dibutuhkan.
+    if (!this.isLevelEnabled('log')) return;
     this.tulis('log', pesan, rest);
   }
 
   override warn(pesan: unknown, ...rest: unknown[]): void {
     if (!formatJson()) return super.warn(pesan as string, ...(rest as string[]));
+    // Jalur JSON TIDAK lewat `super`, jadi `setLogLevels` tidak menyaringnya.
+    // Tanpa baris ini `LOG_LEVEL` bekerja di dev dan diam-diam tidak bekerja
+    // di produksi — tempat ia satu-satunya dibutuhkan.
+    if (!this.isLevelEnabled('warn')) return;
     this.tulis('warn', pesan, rest);
   }
 
   override error(pesan: unknown, ...rest: unknown[]): void {
     if (!formatJson()) return super.error(pesan as string, ...(rest as string[]));
+    // Jalur JSON TIDAK lewat `super`, jadi `setLogLevels` tidak menyaringnya.
+    // Tanpa baris ini `LOG_LEVEL` bekerja di dev dan diam-diam tidak bekerja
+    // di produksi — tempat ia satu-satunya dibutuhkan.
+    if (!this.isLevelEnabled('error')) return;
     this.tulis('error', pesan, rest);
   }
 
   override debug(pesan: unknown, ...rest: unknown[]): void {
     if (!formatJson()) return super.debug(pesan as string, ...(rest as string[]));
+    // Jalur JSON TIDAK lewat `super`, jadi `setLogLevels` tidak menyaringnya.
+    // Tanpa baris ini `LOG_LEVEL` bekerja di dev dan diam-diam tidak bekerja
+    // di produksi — tempat ia satu-satunya dibutuhkan.
+    if (!this.isLevelEnabled('debug')) return;
     this.tulis('debug', pesan, rest);
   }
 }
