@@ -28,9 +28,9 @@ let reachable = false;
 const EMAIL = 'guard@uji.test';
 const SANDI = 'kataSandiPanjang123';
 
-function ctx(header?: string): ExecutionContext {
+function ctx(header?: string, tambahan?: Record<string, string>): ExecutionContext {
   const request: { headers: Record<string, string | undefined>; user?: unknown } = {
-    headers: header ? { authorization: header } : {},
+    headers: { ...(header ? { authorization: header } : {}), ...(tambahan ?? {}) },
   };
   return {
     switchToHttp: () => ({ getRequest: () => request }),
@@ -147,5 +147,49 @@ describe('SessionGuard (database nyata)', () => {
       getAllAndOverride: () => ['student', 'mentor'],
     } as never);
     expect(() => roles.canActivate(c)).toThrow(ForbiddenException);
+  });
+
+  // ── Keputusan #154 opsi (b): cookie sesi ikut diterima ────────────────────
+
+  it('COOKIE sesi yang sah diterima, sama seperti Bearer', async () => {
+    if (!reachable) return;
+    const { userId, token } = await sesiBaru();
+
+    // Bentuk cookie Better-Auth yang sungguhan: `<token>.<tanda-tangan>`.
+    const c = ctx(undefined, {
+      cookie: `__Secure-better-auth.session_token=${token}.tandaTanganApaPun%3D%3D`,
+      origin: 'http://localhost:3000',
+    });
+    expect(await guard.canActivate(c)).toBe(true);
+    expect(reqDari(c).user).toEqual({ id: userId, role: 'student' });
+  });
+
+  it('cookie dari asal ASING DIABAIKAN — inilah harga opsi (b) yang dibayar', async () => {
+    if (!reachable) return;
+    const { token } = await sesiBaru();
+
+    // Sesi SAH, cookie SAH, tapi request dipicu situs lain. Diperlakukan
+    // anonim: itu yang membuat cookie tidak bisa dipakai lintas situs.
+    const c = ctx(undefined, {
+      cookie: `__Secure-better-auth.session_token=${token}.sig`,
+      origin: 'https://jahat.example',
+    });
+    await expect(guard.canActivate(c)).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('BEARER dari asal asing TETAP jalan — header tidak terpasang sendiri', async () => {
+    if (!reachable) return;
+    const { token } = await sesiBaru();
+    const c = ctx(`Bearer ${token}`, { origin: 'https://jahat.example' });
+    expect(await guard.canActivate(c)).toBe(true);
+  });
+
+  it('cookie yang tokennya tidak ada di `sessions` tetap ditolak', async () => {
+    if (!reachable) return;
+    await expect(
+      guard.canActivate(
+        ctx(undefined, { cookie: '__Secure-better-auth.session_token=karangan.sig' }),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
