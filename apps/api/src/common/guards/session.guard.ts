@@ -9,6 +9,7 @@ import { type Kysely, sql } from 'kysely';
 
 import { DATABASE, type DB } from '../../infra/kysely';
 import type { UserRole } from './roles.decorator';
+import { tokenSesiDari } from './token-sesi';
 
 export interface SessionRequest {
   headers: Record<string, string | string[] | undefined>;
@@ -27,9 +28,19 @@ export interface SessionRequest {
  * kelas ini `JwtGuard` berarti menaruh kebohongan di tempat yang paling sering
  * dibaca orang.
  *
- * Token Bearer dicocokkan ke baris `sessions` (kolom `token` UNIQUE sejak
- * migrasi 004), dan masa berlakunya dibandingkan **di dalam SQL** — jam proses
- * Node tidak dipercaya untuk itu.
+ * Token dicocokkan ke baris `sessions` (kolom `token` UNIQUE sejak migrasi
+ * 004), dan masa berlakunya dibandingkan **di dalam SQL** — jam proses Node
+ * tidak dipercaya untuk itu.
+ *
+ * **Dua jalan masuk sejak keputusan #154 opsi (b):** `Authorization: Bearer`
+ * dan cookie sesi Better-Auth. Sebelumnya hanya Bearer, sementara `apps/web`
+ * mengirim cookie — dua lapis yang masing-masing benar dan tidak pernah
+ * bertemu. Pemilihannya ada di `tokenSesiDari()`, satu tempat, dipakai juga
+ * oleh apa pun yang butuh jawaban yang sama.
+ *
+ * Cookie berarti request bisa dibawa browser TANPA sepengetahuan pengguna,
+ * jadi rute yang mengubah keadaan sekarang juga dijaga `OriginCsrfGuard`.
+ * Itu harga opsi (b), dibayar di tempat yang benar — bukan di sini.
  */
 @Injectable()
 export class SessionGuard implements CanActivate {
@@ -42,16 +53,18 @@ export class SessionGuard implements CanActivate {
   }
 
   private async resolve(request: SessionRequest): Promise<{ id: string; role: UserRole }> {
-    const header = request.headers['authorization'];
-    const value = Array.isArray(header) ? header[0] : header;
+    const token = tokenSesiDari(request.headers);
 
-    if (!value?.startsWith('Bearer ')) {
+    if (token.length === 0) {
       throw new UnauthorizedException({
-        error: { code: 'UNAUTHENTICATED', message: 'Header Authorization Bearer tidak ada' },
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Tidak ada sesi: kirim cookie sesi atau header Authorization Bearer',
+        },
       });
     }
 
-    const user = await resolveSessionToken(this.db, value.slice('Bearer '.length).trim());
+    const user = await resolveSessionToken(this.db, token);
     if (!user) {
       throw new UnauthorizedException({
         error: { code: 'UNAUTHENTICATED', message: 'Sesi tidak valid atau sudah berakhir' },
