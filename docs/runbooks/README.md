@@ -54,6 +54,9 @@ ada kode yang menulis saldo di luar `CoinLedgerService`. Koreksi ditulis sebagai
   `docs/reports/F-05/README.md`. Pelonggaran baris DoD "ter-deploy ke staging"
   di `CLAUDE.md` **tetap**, sampai Dev A mengumumkan staging siap.
 - **Login ke `/mentor` dan `/admin` di staging** memulangkan siapa pun ke
-  `/login`, juga pengguna yang sesinya sah (#154). Kalau kamu sedang menangani
-  insiden dan tidak bisa masuk konsol, itu sebabnya — bukan sesimu.
+  `/login`, juga pengguna yang sesinya sah. Kalau kamu sedang menangani insiden
+  dan tidak bisa masuk konsol, itu sebabnya — bukan sesimu. Sebabnya **#176**,
+  bukan lagi #154: cookie sesi dipasang di domain API, dan middleware berjalan
+  di domain web yang tidak pernah melihatnya. Selama itu, pakai `Authorization:
+  Bearer` langsung ke API — jalur itu tidak lewat middleware sama sekali.
   Runbook insiden di bawah ini masih ditulis untuk produksi dan lokal.
