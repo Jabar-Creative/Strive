@@ -14,6 +14,12 @@ FROM deps AS runtime
 RUN useradd --create-home --uid 10001 strive
 COPY --chown=strive:strive services/ai/app ./app
 COPY --chown=strive:strive services/ai/pyproject.toml ./
+# Uvicorn bawaan mengirim logger `uvicorn` — termasuk keempat baris INFO saat
+# boot — ke STDERR, dan Railway menandai setiap baris stderr sebagai [error].
+# Log yang semuanya merah sama tidak bergunanya dengan log yang semuanya
+# hijau: saat insiden yang dicari adalah baris yang BERBEDA. Isu #162.
+# Diverifikasi lokal: stdout 8 baris, stderr NOL, /health tetap 200.
+COPY --chown=strive:strive infra/uvicorn-log-config.json ./uvicorn-log-config.json
 USER strive
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-config", "uvicorn-log-config.json"]
