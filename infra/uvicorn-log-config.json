@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "_catatan": "Uvicorn bawaan mengirim logger `uvicorn` (termasuk baris INFO saat boot) ke STDERR, dan Railway menandai setiap baris stderr sebagai [error]. Log yang semuanya merah sama tidak bergunanya dengan log yang semuanya hijau: saat insiden, yang dicari adalah baris yang BERBEDA. Di sini keduanya ke stdout, dan level tetap dibedakan lewat field `levelname`.",
+  "formatters": {
+    "biasa": {
+      "format": "%(levelname)s %(name)s %(message)s"
+    }
+  },
+  "handlers": {
+    "keluar": {
+      "class": "logging.StreamHandler",
+      "formatter": "biasa",
+      "stream": "ext://sys.stdout"
+    }
+  },
+  "loggers": {
+    "uvicorn": { "handlers": ["keluar"], "level": "INFO", "propagate": false },
+    "uvicorn.error": { "handlers": ["keluar"], "level": "INFO", "propagate": false },
+    "uvicorn.access": { "handlers": ["keluar"], "level": "INFO", "propagate": false }
+  }
+}
