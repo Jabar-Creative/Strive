@@ -145,3 +145,66 @@ describe('createApiClient — error', () => {
     expect((err as ApiError).status).toBe(500);
   });
 });
+
+/** Satu entri ledger sah bentuk kontrak untuk respons wallet (C-03). */
+function entriLedger(id: string) {
+  return {
+    id,
+    entry_type: 'earn_lesson' as const,
+    amount: 14,
+    balance_after: 8450,
+    ref_type: null,
+    ref_id: null,
+    note: null,
+    created_at: '2026-09-28T07:02:00Z',
+  };
+}
+
+describe('createApiClient — getWallet (C-03)', () => {
+  it('GET /api/v1/wallet dengan kredensial cookie, respons terparse', async () => {
+    const fetchMock = mockFetch(200, { balance: 8450, recent_entries: [entriLedger('1')] });
+    const client = createApiClient({ baseUrl: BASE });
+    const hasil = await client.getWallet();
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${BASE}/api/v1/wallet`);
+    expect(init.method).toBe('GET');
+    expect(init.credentials).toBe('include');
+    expect(hasil.balance).toBe(8450);
+    expect(hasil.recent_entries[0]?.entry_type).toBe('earn_lesson');
+  });
+});
+
+describe('createApiClient — getWalletLedger (C-03)', () => {
+  it('tanpa cursor: URL TANPA query string sama sekali', async () => {
+    const fetchMock = mockFetch(200, { data: [], next_cursor: null });
+    const client = createApiClient({ baseUrl: BASE });
+    await client.getWalletLedger({});
+
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${BASE}/api/v1/wallet/ledger`);
+    expect(url.includes('?')).toBe(false);
+  });
+
+  it('dengan cursor dan limit: query benar (cursor terenkode, limit 1..50)', async () => {
+    const fetchMock = mockFetch(200, { data: [], next_cursor: null });
+    const client = createApiClient({ baseUrl: BASE });
+    await client.getWalletLedger({ cursor: 'cl:abc', limit: 20 });
+    await client.getWalletLedger({ cursor: 'cl:abc', limit: 99 });
+
+    const url = (i: number) => (fetchMock.mock.calls[i] as [string, RequestInit])[0];
+    expect(url(0)).toBe(`${BASE}/api/v1/wallet/ledger?cursor=cl%3Aabc&limit=20`);
+    expect(url(1)).toBe(`${BASE}/api/v1/wallet/ledger?cursor=cl%3Aabc&limit=50`);
+  });
+
+  it('respons 400 INVALID_CURSOR melempar ApiError code INVALID_CURSOR status 400', async () => {
+    mockFetch(400, {
+      error: { code: 'INVALID_CURSOR', message: 'Cursor tidak dikenal', details: {} },
+    });
+    const client = createApiClient({ baseUrl: BASE });
+    const err = await client.getWalletLedger({ cursor: 'cl:basah' }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).code).toBe('INVALID_CURSOR');
+    expect((err as ApiError).status).toBe(400);
+  });
+});
