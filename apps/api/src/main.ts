@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { StructuredLogger, appOrigins, headerKeamanan } from './common';
+import { ruteHealthTanpaPrefiks } from './modules/health';
 import { RedisIoAdapter } from './realtime';
 import { WorkerModule } from './workers';
 
@@ -47,7 +48,12 @@ async function bootstrapApi(): Promise<void> {
 
   // Prefiks /api/v1 — docs/PRD.md §10. `/health` dikecualikan agar probe
   // orkestrator tidak ikut terpengaruh saat versi API naik.
-  app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+  // Daftarnya diturunkan dari metadata `HealthController`, bukan diketik di
+  // sini. `exclude: ['health']` yang dulu tertulis mengecualikan path PERSIS
+  // `health` saja, jadi `/health/ready` mendarat di `/api/v1/health/ready` —
+  // dan seluruh alasan pengecualian ini ada adalah supaya probe orkestrator
+  // TIDAK ikut berubah. Lihat `rute-tanpa-prefiks.ts`.
+  app.setGlobalPrefix('api/v1', { exclude: ruteHealthTanpaPrefiks() });
 
   // Header keamanan §16.1 — DIPASANG SEBELUM rute apa pun, supaya respons
   // galat dan 404 ikut membawanya.
