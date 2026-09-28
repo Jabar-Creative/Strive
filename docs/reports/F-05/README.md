@@ -82,7 +82,7 @@ Terhadap deployment yang sedang melayani (`c8dd108`). Perintah dan keluarannya d
 | V8 | AI tanpa token → 401 | **TIDAK BERLAKU, bukan gagal.** Satu-satunya endpoint adalah `/health`, dan probe kesiapan memang tidak boleh butuh token. Yang sebenarnya perlu diperiksa saat router `AI-01` mendarat: apakah `AI_SERVICE_TOKEN` ditegakkan. Sekarang belum ada yang menegakkannya (#132, #162) |
 | V9 | Webhook pembayaran tanda tangan asal ditolak | **LULUS, TAPI HAMPA.** 401 `INVALID_SIGNATURE` untuk tanda tangan asal maupun `order_id` bukan-UUID. Dengan `MIDTRANS_SERVER_KEY` kosong, **semua** ditolak — jadi ini membuktikan gagal-tertutup, bukan bahwa perhitungan tanda tangannya benar. Yang membuktikan itu test integrasi `P-03` |
 | V10 | Daftar, masuk, refresh, masih masuk | **LULUS di Chrome.** Registrasi lewat halaman web sungguhan → mendarat di `/hub` dengan sesi aktif → muat ulang penuh → **masih masuk**. Cookie `__Secure-better-auth.session_token; HttpOnly; Secure; SameSite=None` — keputusan opsi A (#149) bekerja. **Safari/iOS belum diuji** dan tetap risiko ITP |
-| V11 | Satu lesson, koin, ledger, rekonsiliasi nol baris | **TERBLOKIR.** `GET /hub` dengan sesi sah mengembalikan `"next_cards":[]` dan `"balance":0` — **staging tidak punya konten sama sekali**, karena workflow tidak menjalankan `pnpm seed`. Tidak ada lesson untuk dikerjakan, jadi tidak ada jalur uang untuk diuji |
+| V11 | Satu lesson, koin, ledger, rekonsiliasi nol baris | **LULUS** — 28 Sep, setelah job semai (#168) dijalankan. `/hub` mengembalikan lesson sungguhan; `POST /attempts` menjawab `rewarded: true`, `score: 0` (tebakan salah, **dinilai server**), `points: 5`, `coins: 8`, streak dibuat, quest naik. Kirim ulang dengan Idempotency-Key SAMA → saldo tetap 8 dan ledger tetap **satu** entri `earn_lesson` +8 ber-`ref_type: attempt`. `users.coin_balance` = `SUM(coin_ledger)` |
 | V12 | WebSocket subscribe | **LULUS.** WSS ke `/api/v1/ws` dengan `transports: ['websocket']` saja (bukan polling): tersambung, handshake menolak sesi palsu dengan pesan yang benar, lalu dengan sesi sah `subscribe` **dijawab** `FORBIDDEN_ROLE` — artinya `canRead` benar-benar meng-query Postgres dan handler membalas, bukan menggantung (jebakan yang ditutup #144) |
 | V13 | Rollback diukur | **TIDAK TERBUKTI.** Butuh akses dashboard/CLI Railway; CLI tidak terpasang di mesin yang menjalankan verifikasi ini. Tetap milik manusia |
 
@@ -96,6 +96,28 @@ Run [36125323914](https://github.com/Jabar-Creative/Strive/actions/runs/36125323
 Empat run di antaranya (`03b860b`, `26f0aa0`, `ffa9e78`, `62f3af0`) tercatat `cancelled` — bukan karena ada yang membatalkannya, melainkan karena antrean `concurrency` hanya memuat satu run pending. Isu #165.
 
 Sisa yang menahan `F-05`: **V11** (staging tidak punya konten), **V13** (butuh akses Railway), dan **V8** (tidak berlaku sampai `AI-01`).
+
+### Susulan 28 September — V11 lulus, staging akhirnya berisi
+
+Job semai (#168) dijalankan lewat `workflow_dispatch` dengan centang `semai`: run [36375775003](https://github.com/Jabar-Creative/Strive/actions/runs/36375775003), keempat job hijau. `pnpm seed` menambahkan 1 pricing · 1 track · 2 modul · 6 lesson · 12 kartu · 8 store item, lalu `pnpm seed:content` mengimpor track `content-writing-dasar`.
+
+Jalur uang penuh dijalankan lewat API sungguhan, bukan SQL:
+
+```
+GET /hub                → next_cards berisi lesson sungguhan (sebelumnya [])
+GET /lessons/:id/cards  → 2 kartu, TANPA `correct` dan TANPA `why` (aturan keras 9)
+POST /attempts          → 201 rewarded:true score:0 points:5 coins:8 balance:8
+                          streak {kind:reset, current:1, is_new_record:true}
+                          quest {done_tasks:1}
+POST /attempts (kunci SAMA) → 201, balance TETAP 8
+GET /wallet             → balance 8, satu entri earn_lesson +8 ref_type:attempt
+```
+
+`score: 0` karena jawaban yang kukirim memang salah — kunci jawabannya tidak ada di respons kartu, jadi tidak ada cara menebaknya dari klien. Itu justru buktinya: penilaian terjadi di server.
+
+**Satu hal yang tidak bisa kubereskan, dan itu temuannya sendiri:** akun uji tidak bisa di-sign-out. `POST /auth/sign-out` dengan Bearer menjawab 200 tanpa mencabut sesi (#154), dan aku tidak menyimpan cookie bertanda tangannya. Sesi itu hidup 30 hari. Akunnya throwaway `@strive.test` tanpa hak apa pun, tapi ketidakmampuan mencabut sesi sendiri adalah gejala yang pantas dicatat di sini, bukan di catatan kaki.
+
+**Yang menahan `F-05` sekarang tinggal V13** — rollback diukur dengan stopwatch, dan itu butuh dashboard/CLI Railway.
 
 ### Dua hal yang ditemukan JUSTRU karena V dijalankan
 
