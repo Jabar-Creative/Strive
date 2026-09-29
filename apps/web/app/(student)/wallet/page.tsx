@@ -1,5 +1,9 @@
-import { PageStub } from '@/components/page-stub';
+import { WalletScreen } from '@/components/wallet-screen';
 
+/**
+ * Layar dompet — C-03. Seluruh isi layar butuh cookie sesi ke API, jadi
+ * layarnya komponen klien; halaman ini Server Component tipis pola L-04.
+ */
 export default function Page() {
-  return <PageStub title="Dompet" item="C-03" dev="B" prd="PRD §7 E4 · §10.3 GET /wallet" />;
+  return <WalletScreen />;
 }

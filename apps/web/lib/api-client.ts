@@ -1,7 +1,7 @@
 /**
  * Klien API terketik untuk web. Implementasi pertamanya datang bersama
  * endpoint pertama yang benar-benar dipakai UI — L-04: GET /lessons/:id/cards
- * (L-01) dan POST /attempts (L-03).
+ * (L-01) dan POST /attempts (L-03). Endpoint dompet menyusul di C-03.
  *
  * Dua aturan yang harus bertahan saat file ini diisi (dari F-08):
  *   1. Percabangan error SELALU pada `error.code`, tidak pernah pada `message`.
@@ -15,6 +15,17 @@
  * Autentikasi lewat cookie sesi httpOnly milik API — `credentials:
  * 'include'`, tidak ada token di JavaScript.
  */
+
+// Tipe dompet hidup di @strive/contracts (satu definisi untuk dua sisi);
+// diekspor ulang di sini supaya komponen cukup impor dari satu tempat.
+import type { WalletLedgerResponse, WalletResponse } from '@strive/contracts';
+
+export type {
+  CoinEntryType,
+  CoinLedgerEntry,
+  WalletLedgerResponse,
+  WalletResponse,
+} from '@strive/contracts';
 
 /** Bentuk error API yang dijanjikan docs/PRD.md §10.1. */
 export interface ApiErrorBody {
@@ -150,6 +161,30 @@ export function createApiClient(config: ApiClientConfig) {
         idempotencyKey,
         signal: opts?.signal,
       });
+    },
+
+    /** GET /wallet — saldo + 20 entri terakhir (C-03, PRD §10.3). */
+    getWallet(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<WalletResponse>('/wallet', { signal: opts?.signal });
+    },
+
+    /**
+     * GET /wallet/ledger — riwayat lengkap, cursor pagination (C-03).
+     * Query hanya memuat kunci yang nilainya ADA: tanpa cursor tidak ada
+     * param cursor sama sekali. `limit` dijepit 1..50 sebagai lapis pertama;
+     * server tetap menjepit ulang — client tidak pernah dipercaya.
+     */
+    getWalletLedger(
+      params: { cursor?: string; limit?: number },
+      opts?: Pick<RequestOptions, 'signal'>,
+    ) {
+      const qs = new URLSearchParams();
+      if (params.cursor) qs.set('cursor', params.cursor);
+      if (params.limit !== undefined) {
+        qs.set('limit', String(Math.min(50, Math.max(1, Math.round(params.limit)))));
+      }
+      const query = qs.toString() === '' ? '' : `?${qs.toString()}`;
+      return request<WalletLedgerResponse>(`/wallet/ledger${query}`, { signal: opts?.signal });
     },
   };
 }

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Design Brief — C-03 UI Dompet</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root { --ink:#14122B; --ink5:#5A5680; --paper:#FBFAFE; --surface:#FFFFFF; --line:#E7E4F2; --brand:#4F3DE8; --coin:#FFC24B; --mint:#3FBF8F; --rose:#E5484D; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--paper); color:var(--ink); line-height:1.6; }
+  main { max-width:880px; margin:0 auto; padding:32px 20px 80px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:20px; margin-top:40px; border-bottom:2px solid var(--line); padding-bottom:8px; }
+  .sub { color:var(--ink5); margin:0 0 24px; }
+  code { background:#F1EFFA; padding:1px 6px; border-radius:6px; font-size:13px; }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th,td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:#F1EFFA; }
+  .mock { width:340px; border:1px solid var(--line); border-radius:18px; background:var(--surface); overflow:hidden; box-shadow:0 8px 24px rgba(20,18,43,.08); font-size:14px; }
+  .mock .saldo { padding:20px 18px 14px; }
+  .mock .label { color:var(--ink5); font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+  .mock .angka { font-size:32px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .mock .angka small { font-size:13px; color:var(--ink5); font-weight:400; }
+  .mock ul { list-style:none; margin:0; padding:0; }
+  .mock li { display:flex; gap:10px; align-items:center; padding:10px 18px; border-top:1px solid var(--line); }
+  .mock .arah { width:34px; height:34px; border-radius:999px; display:grid; place-items:center; font-size:15px; flex:none; }
+  .plus { background:#E9F9F2; color:#1E7A58; } .minus { background:#FDECEC; color:#B3261E; } .tahan { background:#FFF6E0; color:#8A6100; }
+  .mock .isi { flex:1; min-width:0; }
+  .mock .jenis { font-weight:600; }
+  .mock .meta { color:var(--ink5); font-size:12px; }
+  .mock .kanan { text-align:right; font-variant-numeric:tabular-nums; }
+  .mock .kanan .after { color:var(--ink5); font-size:11px; }
+  .mock .aksi { padding:12px 18px; border-top:1px solid var(--line); }
+  .mock .btn { display:block; width:100%; padding:10px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-size:13px; }
+  .mock .legend { padding:12px 18px; border-top:1px dashed var(--line); color:var(--ink5); font-size:12px; }
+  .two { display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start; }
+  .note { background:#F1EFFA; border-left:4px solid var(--brand); padding:10px 14px; border-radius:0 10px 10px 0; font-size:14px; }
+  .mermaid { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; overflow-x:auto; }
+</style>
+</head>
+<body>
+<main>
+<h1>C-03 — UI Dompet</h1>
+<p class="sub">Design brief · Senin 28 Sep 2026 · Dev B (Kemal) · dokumen sesi auto mode, ikut ter-commit sebagai bahan review</p>
+
+<h2>1 · Ringkasan fitur</h2>
+<p><strong>Masalah.</strong> Saldo Strive Coins pengguna berubah oleh banyak hal (lesson, streak, scan, store, penahanan saat pekerjaan berjalan) dan sampai hari ini tidak ada layar yang menunjukkan kenapa. Satu-satunya jawaban tersedia adalah bertanya ke support.</p>
+<p><strong>Sebelum.</strong> <code>/wallet</code> hanya stub <code>PageStub</code> bertuliskan "C-03".</p>
+<p><strong>Sesudah.</strong> Satu layar menampilkan saldo terkini, 20 entri terakhir, penelusuran riwayat lengkap sampai entri pertama (cursor pagination, tombol muat lagi), dan penjelasan bahasa manusia untuk setiap jenis entri. Target AC: <em>pengguna bisa menjawab sendiri "kenapa saldo saya berubah" tanpa menghubungi support</em>.</p>
+
+<h2>2 · Keputusan build</h2>
+<table>
+<tr><th>Keputusan</th><th>Pilihan</th><th>Alasan</th></tr>
+<tr><td>Arsitektur komponen</td><td>Server Component tipis + <code>'use client'</code> layar penuh + mesin murni di <code>lib/wallet-screen.ts</code></td><td>Pola L-04 yang sudah lolos review; aturan bisa diuji tanpa DOM</td></tr>
+<tr><td>Sumber data awal</td><td><code>GET /wallet</code> (saldo + 20 terakhir), tombol "Muat riwayat lengkap" baru menyentuh <code>GET /wallet/ledger</code></td><td>Satu request untuk layar pertama; ledger hanya saat pengguna benar-benar menelusuri</td></tr>
+<tr><td>Cursor</td><td>String buram, tidak diparse, tidak direkayasa client</td><td>Kontrak §10.1 + catatan #52 (isi cursor bukan janji bentuk)</td></tr>
+<tr><td>Transisi recent → ledger</td><td>Gabung + dedupe berdasarkan <code>id</code> entri</td><td>Halaman pertama ledger tumpang tindih dengan recent_entries; id bigserial unik</td></tr>
+<tr><td>Penjelasan jenis entri</td><td>Kamus 11 jenis di mesin murni: label, kalimat alasan, arah tampilan (+ / − / tahan)</td><td>AC inti C-03; testable per jenis</td></tr>
+<tr><td>Tombol top-up</td><td><strong>Tidak dibuat</strong> (P-04 belum ada, PRD melarang checkout sendiri)</td><td>Tidak ada tombol mati di UI</td></tr>
+<tr><td>Komponen kosong/galat</td><td>Inline ala <code>PesanKosong</code> L-04, menampilkan <code>error.code</code></td><td><code>EmptyState</code>/<code>ErrorState</code> PRD §14.4 belum ada di packages/ui; membangunnya = perubahan packages/ui terpisah</td></tr>
+<tr><td>Animasi</td><td>Entrance daftar framer-motion, durasi 0 saat <code>prefers-reduced-motion</code> (hook manual)</td><td>PRD §14.3: animasi hanya untuk "sesuatu diperoleh"; konsisten L-04</td></tr>
+</table>
+
+<h2>3 · Flow diagram</h2>
+<div class="mermaid">
+flowchart TD
+  A["Buka /wallet"] --> B["GET /wallet"]
+  B -->|"2xx"| C{"recent_entries kosong?"}
+  B -->|"jaringan / 5xx"| E1["State galat<br/>kode ditampilkan<br/>tombol Coba lagi"]
+  B -->|"401"| E2["State galat UNAUTHENTICATED<br/>tautan ke /login"]
+  C -->|"ya"| D1["State kosong<br/>penjelasan cara dapat koin"]
+  C -->|"tidak"| D2["Render saldo + daftar entri<br/>tiap baris: jenis, alasan, jumlah,<br/>saldo setelahnya, tanggal"]
+  D2 --> F{"len = 20 dan belum<br/>pernah muat ledger?"}
+  F -->|"tidak"| G["Selesai, tanpa tombol"]
+  F -->|"ya"| H["Tombol: Muat riwayat lengkap"]
+  H --> I["GET /wallet/ledger"]
+  I -->|"2xx"| J["Gabung + dedupe id<br/>simpan next_cursor"]
+  I -->|"INVALID_CURSOR"| E3["State galat kode<br/>tombol Coba lagi"]
+  J --> K{"next_cursor null?"}
+  K -->|"tidak"| L["Tombol: Muat lagi"]
+  L --> I
+  K -->|"ya"| G
+</div>
+
+<h2>4 · Peta sistem dan aktor</h2>
+<table>
+<tr><th>Aktor / komponen</th><th>Peran dalam fitur ini</th></tr>
+<tr><td>Student, Mentor</td><td>Pengguna layar (RBAC API: dua peran ini boleh <code>GET /wallet</code>; superadmin lewat <code>/admin/transactions</code>)</td></tr>
+<tr><td><code>apps/web</code> halaman <code>/wallet</code></td><td>Render saldo, daftar, penjelasan, tombol muat</td></tr>
+<tr><td><code>lib/api-client.ts</code></td><td>Tambah <code>getWallet()</code> dan <code>getWalletLedger(cursor?, limit?)</code>, cookie <code>credentials: 'include'</code> (seam #154 sudah dibereskan #175)</td></tr>
+<tr><td><code>apps/api</code> wallet controller (Dev A, jangan disentuh)</td><td>Sumber data; limit dijepit 1–50, default 20; cursor berprefiks <code>cl:</code> base64url</td></tr>
+<tr><td><code>packages/contracts</code> (wallet)</td><td>Sumber tipe: <code>WalletResponse</code>, <code>WalletLedgerResponse</code>, enum 11 jenis entri — tidak diubah</td></tr>
+<tr><td><code>packages/ui</code></td><td><code>CoinPill</code> (balance dan delta), token warna — dipakai apa adanya</td></tr>
+</table>
+
+<h2>5 · Mockup (360px)</h2>
+<div class="two">
+<div class="mock">
+  <div class="saldo">
+    <div class="label">Saldo kamu</div>
+    <div class="angka">8.450 <small>Strive Coins</small></div>
+  </div>
+  <ul>
+    <li><span class="arah plus">＋</span><span class="isi"><span class="jenis">Kartu lesson selesai</span><br/><span class="meta">Parafrasa vs kutipan · 28 Sep, 14.02</span></span><span class="kanan">+14<div class="after">saldo 8.450</div></span></li>
+    <li><span class="arah minus">−</span><span class="isi"><span class="jenis">Scan plagiarisme</span><br/><span class="meta">Klinik · 27 Sep, 09.10</span></span><span class="kanan">−2.400<div class="after">saldo 8.436</div></span></li>
+    <li><span class="arah tahan">◌</span><span class="isi"><span class="jenis">Ditahan untuk CV builder</span><br/><span class="meta">Sedang diproses · 27 Sep, 09.09</span></span><span class="kanan">−400<div class="after">saldo 10.836</div></span></li>
+    <li><span class="arah plus">＋</span><span class="isi"><span class="jenis">Penahanan dikembalikan</span><br/><span class="meta">Pekerjaan gagal, koin kembali · 27 Sep, 09.12</span></span><span class="kanan">+400<div class="after">saldo 11.236</div></span></li>
+  </ul>
+  <div class="aksi"><button class="btn">Muat riwayat lengkap</button></div>
+  <div class="legend">Setiap baris bisa diketuk untuk penjelasan jenis entri. Tahan lalu kembali = pekerjaan gagal dan koin dikembalikan penuh.</div>
+</div>
+<div>
+<p><strong>Aturan tampilan baris:</strong></p>
+<ul>
+<li>Delta memakai <code>CoinPill variant="delta"</code> (warna mengikuti tanda).</li>
+<li>Baris <code>hold</code> tampil sebagai penahanan (bukan pengeluaran final), <code>release</code> sebagai pengembalian, <code>adjust</code> berkomentar "koreksi sistem" tanpa menyalahkan pengguna.</li>
+<li><code>note</code> dari server (bila ada) ditampilkan menggantikan teks bawaan.</li>
+<li>Saldo-setelah memakai <code>balance_after</code> server, tidak dihitung client.</li>
+</ul>
+</div>
+</div>
+
+<h2>6 · Skenario negatif</h2>
+<table>
+<tr><th>Skenario</th><th>Perilaku diharapkan</th></tr>
+<tr><td>Koneksi putus saat memuat</td><td>State galat <code>NETWORK_ERROR</code>, tombol Coba lagi</td></tr>
+<tr><td>Sesi habis (401)</td><td>Pesan sesi berakhir + tautan ke <code>/login</code> (bukan redirect paksa; konsisten pola L-04)</td></tr>
+<tr><td>Cursor basi/dikorupsi (400 <code>INVALID_CURSOR</code>)</td><td>Daftar yang sudah tampil tetap; tombol muat menampilkan galat dan bisa dicoba ulang dari awal</td></tr>
+<tr><td>Riwayat kosong</td><td>Empty state menjelaskan cara mendapat koin (belajar, streak), bukan layar kosong polos</td></tr>
+<tr><td>Tepat 20 entri lalu ternyata itu semua</td><td>Tombol "Muat riwayat lengkap" muncul, hasil dedupe nol, tombol hilang (next_cursor null)</td></tr>
+<tr><td>Klik ganda tombol muat</td><td>Masih satu request (guard "sedang memuat" di mesin)</td></tr>
+<tr><td><code>prefers-reduced-motion</code></td><td>Semua animasi durasi 0</td></tr>
+<tr><td>Viewport 360px</td><td>Tanpa scroll horizontal; angka dan label tidak terpotong</td></tr>
+</table>
+
+<h2>7 · Titik verifikasi terbuka</h2>
+<ul>
+<li>Verifikasi visual di browser 360px dan staging — sesi auto mode ini tidak punya alat browser (MCP chrome-devtools tidak terpasang), jadi bukti visual menyusul dari pemeriksaan manual / staging seperti alur L-04.</li>
+<li>Data nyata berisi transaksi campuran (hold, release, adjust) baru lengkap di staging setelah alur scan dan store hidup (kredensial vendor).</li>
+<li>Empty state dan copy penjelasan jenis entri idealnya dibaca ulang oleh non-engineer sebelum dianggap final.</li>
+</ul>
+</main>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'neutral' });</script>
+</body>
+</html>
