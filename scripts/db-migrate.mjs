@@ -18,6 +18,12 @@ import { fileURLToPath } from 'node:url';
 
 import pg from 'pg';
 
+import { muatEnv } from './env-berkas.mjs';
+
+// `.env` dimuat lebih dulu supaya petunjuk di galat di bawah benar-benar
+// menolong. Shell menang atas berkas — lihat scripts/env-berkas.mjs.
+muatEnv();
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir = path.join(root, 'db', 'migrations');
 

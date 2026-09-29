@@ -13,6 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { resolveBin } from './resolve-bin.mjs';
+import { muatEnv } from './env-berkas.mjs';
 
 const COMMANDS = ['dev', 'start'];
 const command = process.argv[2] ?? 'dev';
@@ -22,6 +23,10 @@ if (!COMMANDS.includes(command)) {
   );
   process.exit(1);
 }
+
+// `.env` dimuat SEBELUM env anak disusun — lihat scripts/env-berkas.mjs.
+// Shell tetap menang atas berkas.
+muatEnv();
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkgDir = path.join(root, 'apps', 'web');

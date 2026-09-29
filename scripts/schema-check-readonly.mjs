@@ -12,6 +12,12 @@
 // BUKAN bukti bahwa trigger menolak UPDATE — itu tetap milik CI.
 import pg from 'pg';
 
+import { muatEnv } from './env-berkas.mjs';
+
+// `.env` dimuat lebih dulu supaya petunjuk di galat di bawah benar-benar
+// menolong. Shell menang atas berkas — lihat scripts/env-berkas.mjs.
+muatEnv();
+
 /** Kata yang tidak boleh muncul di query. Pemeriksaan ini gagal tertutup. */
 const TULISAN = /\b(insert|update|delete|truncate|alter|drop|create|grant|revoke|copy|call|do)\b/i;
 

@@ -19,6 +19,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { muatEnv } from './env-berkas.mjs';
+
+// `.env` dimuat lebih dulu supaya petunjuk di galat di bawah benar-benar
+// menolong. Shell menang atas berkas — lihat scripts/env-berkas.mjs.
+muatEnv();
+
 // Versi Python — keputusan F-01 (lihat PR #3, jawaban keputusan 1).
 //
 // LANTAI ditegakkan keras: di bawah ini, venv tidak dibuat sama sekali.
