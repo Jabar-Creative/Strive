@@ -94,7 +94,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `S-01` | StreakService timezone-aware + kredit freeze | A | W3 | 1,5 | `done` | #23 | 2026-09-16 | Ter-merge lewat #23. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `S-02` | GET /hub agregat: streak, quest, peringkat, saldo… | A | W3 | 1 | `done` | #51 | 2026-09-17 | Lima bagian dalam satu request, dijalankan bersamaan lewat Promise.all. Seluruh tanggal dihitung di SQL. AC p95<250ms diuji dengan menyemai 1.000 attempt sungguhan. Tipe respons masih lokal: /hub TIDAK ADA di packages/contracts. |
 | `AI-01` | FastAPI skeleton + auth service-to-service + conf… | B | W3 | 1 | `todo` | — | — | — |
-| `C-03` | UI dompet: saldo, riwayat, penjelasan tiap jenis … | B | W3 | 1 | `todo` | — | — | — |
+| `C-03` | UI dompet: saldo, riwayat, penjelasan tiap jenis … | B | W3 | 1 | `done` | #178 | 2026-09-29 | **AC TERBUKTI di staging, browser sungguhan, 360px.** Dompet menampilkan saldo **28** dengan riwayat yang bercerita: dua entri `Kartu lesson selesai`, masing-masing `+14` dengan saldo berjalan 14 lalu 28, waktu lokal, dan kalimat alasannya — diketuk memunculkan penjelasan jenis entri. AC berbunyi "pengguna bisa menjawab sendiri kenapa saldo saya berubah", dan layar itu menjawabnya tanpa istilah teknis. Kemal SENGAJA tidak mengklaim verifikasi browser (MCP devtools tidak ada di sesinya) dan meninggalkan kotaknya terbuka — pelajaran `L-04` diterapkan tanpa diminta. Review Dev A memverifikasi sendiri: klaim "settle tidak menulis entri ledger" BENAR (menulis `audit_log`), server menolak `limit` di luar 1–50 dengan 400, nol `dangerouslySetInnerHTML`. Desain yang dicatat: saldo TIDAK PERNAH dihitung ulang di klien (aturan keras 2), cursor diperlakukan buram, respons ledger yang datang TERLAMBAT ditolak diam-diam, guard klik ganda ada di mesin bukan cuma tombol, dan `Record<CoinEntryType, …>` membuat jenis entri baru yang lupa dipetakan GAGAL di typecheck. Empat catatan non-penahan diserahkan ke Dev B: `50` dan `20` ditulis harfiah di web sementara konstantanya hidup di `apps/api` (kelas yang sama dengan "32 tabel di tiga tempat"), `formatWaktu` memaku `Asia/Jakarta` padahal `users.timezone` per pengguna, dan `arah` untuk `adjust` di kamus tidak pernah terpakai. |
 | `L-05` | Layar daftar track & progres | B | W3 | 1 | `todo` | — | — | — |
 | `S-03` | UI Hub + streak chip 4 status + quest harian | B | W3 | 1,5 | `todo` | — | — | — |
 | `C-04` | Job rekonsiliasi harian + alert selisih | A | W4 | 0,5 | `done` | #53 | 2026-09-17 | Job hanya MEMBACA — tidak memperbaiki apa pun, karena menambal angkanya menghapus bukti penyebabnya. Baris audit ditulis meski nol selisih. Diuji dengan sengaja menulis coin_balance langsung, satu-satunya tempat di repo yang melakukannya. |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 51 | 49,5 |
+| `done` | 52 | 50,5 |
 | `review` | 1 | 1,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 3,5 |
-| `todo` | 24 | 24,0 |
+| `todo` | 23 | 23,0 |
 
 ---
 ## Ringkasan per epik
@@ -179,7 +179,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---|---:|---:|---:|---:|
 | `E0` | Fondasi & Setup | 10,5 | 12 | 11/12 · **86%** | — |
 | `E1` | Auth & RBAC | 6,5 | 7 | 6/7 · **92%** | 1 |
-| `E4` | Coin & Wallet | 4,0 | 4 | 3/4 · **75%** | — |
+| `E4` | Coin & Wallet | 4,0 | 4 | 4/4 · **100%** | — |
 | `E2` | Learning Engine | 7,5 | 5 | 4/5 · **87%** | — |
 | `E3` | Career Streak | 5,5 | 5 | 4/5 · **73%** | — |
 | `E5` | Squad & Liga | 6,0 | 6 | 5/6 · **75%** | — |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **51/80 · 63%** | **4** |
+| | **Total** | **78,5** | **80** | **52/80 · 64%** | **4** |
 
 ---
 
