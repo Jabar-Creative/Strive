@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 52 | 50,5 |
+| `done` | 53 | 51,5 |
 | `review` | 1 | 1,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 3,5 |
-| `todo` | 23 | 23,0 |
+| `todo` | 22 | 22,0 |
 
 ---
 ## Ringkasan per epik
@@ -189,12 +189,12 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E14` | Strive Store | 2,0 | 2 | 1/2 · **50%** | — |
 | `E7` | Klinik Plagiarisme | 5,0 | 4 | 2/4 · **50%** | 1 |
 | `E11` | Peer Review & Mentor | 4,0 | 4 | 2/4 · **50%** | — |
-| `E8` | ATS CV Builder | 6,5 | 7 | 1/7 · **15%** | — |
+| `E8` | ATS CV Builder | 6,5 | 7 | 2/7 · **31%** | — |
 | `E12` | International Mastery Track | 4,0 | 4 | 1/4 · **12%** | — |
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **52/80 · 64%** | **4** |
+| | **Total** | **78,5** | **80** | **53/80 · 66%** | **4** |
 
 ---
 
