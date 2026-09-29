@@ -63,8 +63,46 @@ def test_token_kosong_gagal_tertutup(monkeypatch: pytest.MonkeyPatch) -> None:
     get_settings.cache_clear()
 
 
+def test_bearer_non_ascii_401_bukan_500(token_terpasang: str) -> None:
+    # Regresi temuan audit AI-01: header non-ASCII ("Bearer café") pernah
+    # memicu TypeError dari compare_digest(str, str) dan menjawab 500
+    # lengkap dengan traceback di log — untuk penyerang tanpa kredensial.
+    # httpx menolak mengirim header non-ASCII, jadi dependency dipanggil
+    # dengan Request ASGI mentah — byte UTF-8 di header, persis yang
+    # diterima aplikasi dari socket sungguhan (Starlette mendekode latin-1).
+    from starlette.requests import Request
+
+    from app.core.auth import butuh_token_core
+    from app.core.errors import GalatLayanan
+
+    request = Request(
+        scope={
+            "type": "http",
+            "method": "POST",
+            "headers": [(b"authorization", "Bearer café".encode("utf-8"))],
+        }
+    )
+    try:
+        butuh_token_core(request)
+    except GalatLayanan as galat:
+        assert galat.status == 401
+    except TypeError:  # pragma: no cover — justru yang dijaga test ini
+        pytest.fail("compare_digest masih membandingkan str non-ASCII")
+
+
 def test_health_terbuka_tanpa_token() -> None:
     assert client.get("/health").status_code == 200
+
+
+def test_galat_framework_pakai_bentuk_101() -> None:
+    # Regresi audit AI-01: 404/405/422 bawaan FastAPI berbentuk {"detail"},
+    # melanggar §10.1 yang layanan ini sendiri deklarasikan.
+    assert client.get("/v1/tidak-ada").json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_docs_dimatikan() -> None:
+    assert client.get("/docs").status_code == 404
+    assert client.get("/openapi.json").status_code == 404
 
 
 @pytest.mark.parametrize("jalur", JALUR)
@@ -72,9 +110,20 @@ def test_body_wajib_job_dan_input(jalur: str, token_terpasang: str) -> None:
     # Validasi bentuk permintaan jalan SEBELUM 503: job_id yang bukan uuid
     # dan input yang bukan objek ditolak 422 (permanen di sisi Node).
     salah: dict[str, Any] = {"job_id": "bukan-uuid", "input": {}}
-    assert (
-        client.post(
-            jalur, json=salah, headers={"Authorization": f"Bearer {token_terpasang}"}
-        ).status_code
-        == 422
+    hasil = client.post(
+        jalur, json=salah, headers={"Authorization": f"Bearer {token_terpasang}"}
     )
+    assert hasil.status_code == 422
+    assert hasil.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_body_melebihi_batas_413() -> None:
+    # Content-Length dibaca dari header — 413 keluar TANPA membaca body,
+    # sebelum auth maupun parse JSON (temuan audit AI-01).
+    hasil = client.post(
+        "/v1/cv",
+        content=b"x",
+        headers={"Content-Length": str(11 * 1024 * 1024)},
+    )
+    assert hasil.status_code == 413
+    assert hasil.json()["error"]["code"] == "PAYLOAD_TOO_LARGE"

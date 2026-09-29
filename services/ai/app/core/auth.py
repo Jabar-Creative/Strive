@@ -31,10 +31,15 @@ def butuh_token_core(request: Request) -> None:
     token = get_settings().AI_SERVICE_TOKEN
     skema, _, nilai = request.headers.get("authorization", "").partition(" ")
 
+    # Dibandingkan sebagai BYTES, bukan str: secrets.compare_digest untuk
+    # str menolak non-ASCII (TypeError → 500), dan header yang dikirim
+    # klien bisa memuat byte UTF-8 apa pun — Starlette mendekodenya
+    # latin-1. Temuan audit AI-01: "Bearer café" pernah menjawab 500,
+    # lengkap dengan traceback di log, untuk penyerang tanpa kredensial.
     sah = (
         token != ""
         and skema.lower() == "bearer"
-        and secrets.compare_digest(nilai.strip(), token)
+        and secrets.compare_digest(nilai.strip().encode("utf-8"), token.encode("utf-8"))
     )
     if not sah:
         raise GalatLayanan(401, "UNAUTHENTICATED", "Token layanan tidak sah atau tidak ada")
