@@ -29,6 +29,12 @@ import path from 'node:path';
 
 import pg from 'pg';
 
+import { muatEnv } from '../../scripts/env-berkas.mjs';
+
+// `.env` dimuat lebih dulu supaya petunjuk di galat di bawah benar-benar
+// menolong. Shell menang atas berkas — lihat scripts/env-berkas.mjs.
+muatEnv();
+
 const CARD_KINDS = new Set(['multiple_choice', 'swipe_binary', 'order_steps', 'reveal']);
 // Kedalaman v0.1 (docs/PRD.md §14): hanya dua tipe ini yang dirender UI.
 // order_steps/reveal tetap boleh diimpor (ada di enum DB) tapi diberi

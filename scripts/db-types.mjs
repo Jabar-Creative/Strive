@@ -14,6 +14,12 @@ import { fileURLToPath } from 'node:url';
 
 import { resolveBin } from './resolve-bin.mjs';
 
+import { muatEnv } from './env-berkas.mjs';
+
+// `.env` dimuat lebih dulu supaya petunjuk di galat di bawah benar-benar
+// menolong. Shell menang atas berkas — lihat scripts/env-berkas.mjs.
+muatEnv();
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.join(root, 'apps', 'api', 'src', 'infra', 'kysely', 'database.d.ts');
 

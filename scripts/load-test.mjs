@@ -37,6 +37,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
 
+import { muatEnv } from './env-berkas.mjs';
+
+// `.env` dimuat lebih dulu supaya petunjuk di galat di bawah benar-benar
+// menolong. Shell menang atas berkas — lihat scripts/env-berkas.mjs.
+muatEnv();
+
 const URL_DEV = 'postgres://strive:strive_dev_only@localhost:55432/strive';
 const DB_URL = process.env.DATABASE_URL ?? URL_DEV;
 const API = process.env.API_URL ?? 'http://localhost:3001';
