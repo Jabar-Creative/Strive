@@ -154,6 +154,11 @@ export function createApiClient(config: ApiClientConfig) {
     const res = await fetch(`${config.baseUrl}/api/v1${path}`, {
       method: opts.method ?? 'GET',
       credentials: 'include',
+      // Semua respons API adalah fakta yang bisa berubah (progres, saldo);
+      // HTTP cache tidak boleh pernah menjawab untuk kita. Audit L-05
+      // menemukan komentar ini menjanjikan no-store sejak L-04 tanpa
+      // kodenya ada — AC "akurat setelah refresh" bergantung padanya.
+      cache: 'no-store',
       headers,
       body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
       signal: opts.signal,
@@ -184,7 +189,9 @@ export function createApiClient(config: ApiClientConfig) {
   return {
     /** GET /lessons/:id/cards — student & mentor (PRD §2.4). */
     getLessonCards(lessonId: string, opts?: Pick<RequestOptions, 'signal'>) {
-      return request<LessonCardsResponse>(`/lessons/${lessonId}/cards`, { signal: opts?.signal });
+      return request<LessonCardsResponse>(`/lessons/${encodeURIComponent(lessonId)}/cards`, {
+        signal: opts?.signal,
+      });
     },
 
     /**

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ApiError,
@@ -37,22 +37,46 @@ export function TrackList() {
 
   const [fase, setFase] = useState<Fase>('memuat');
   const [galat, setGalat] = useState<ApiError | null>(null);
+  const [galatDetail, setGalatDetail] = useState<string | null>(null);
   const [tracks, setTracks] = useState<TrackSummaryResponse[]>([]);
   const [terpilih, setTerpilih] = useState<TrackDetailResponse | null>(null);
   const [memuatDetail, setMemuatDetail] = useState(false);
+  // Ref, bukan state: penjaga fetch dan id detail-terbuka tidak perlu
+  // merender ulang apa pun.
+  const sedangMuatRef = useRef(false);
+  const terbukaRef = useRef<string | null>(null);
+  terbukaRef.current = terpilih?.id ?? null;
 
   const muat = useCallback(
     (sinyal?: AbortSignal) => {
+      // Dedup audit L-05: visibilitychange dan focus dua-duanya menyala saat
+      // kembali ke tab — tanpa penjaga ini satu tindakan pengguna memicu
+      // dua GET, dan alt-tab cepat bisa menyentuh rate limit 120/menit.
+      if (sedangMuatRef.current) return;
+      sedangMuatRef.current = true;
       api
         .listTracks({ signal: sinyal })
         .then((data) => {
           setTracks(data);
           setFase('siap');
+          // Temuan audit L-05: detail yang sedang terbuka harus ikut
+          // diperbarui — kalau tidak, progres kartu naik sementara lesson
+          // di panel terbuka masih bergaris tipis belum selesai.
+          const buka = terbukaRef.current;
+          if (buka) {
+            api
+              .getTrack(buka)
+              .then((detail) => setTerpilih((lama) => (lama?.id === buka ? detail : lama)))
+              .catch(() => undefined); // detail lama tetap tampil; ringkasan sudah memberi sinyal hidup
+          }
         })
         .catch((e: unknown) => {
           if (e instanceof DOMException && e.name === 'AbortError') return;
           setGalat(e instanceof ApiError ? e : galatJaringan());
           setFase('gagal');
+        })
+        .finally(() => {
+          sedangMuatRef.current = false;
         });
     },
     [api],
@@ -86,14 +110,21 @@ export function TrackList() {
         setTerpilih(null); // ketuk ulang = tutup
         return;
       }
+      setGalatDetail(null);
       setMemuatDetail(true);
+      // Galat detail TIDAK ditelan (temuan audit L-05): tampilkan kodenya,
+      // jangan biarkan "Memuat modul…" sekadar hilang tanpa cerita.
       api
         .getTrack(trackId)
         .then((detail) => {
           setTerpilih(detail);
           setMemuatDetail(false);
         })
-        .catch(() => setMemuatDetail(false));
+        .catch((e: unknown) => {
+          setTerpilih(null);
+          setMemuatDetail(false);
+          setGalatDetail(e instanceof ApiError ? e.code : 'NETWORK_ERROR');
+        });
     },
     [api, terpilih],
   );
@@ -150,6 +181,11 @@ export function TrackList() {
 
             {terpilih?.id === t.id ? <DetailTrack detail={terpilih} /> : null}
             {memuatDetail ? <p className="px-1 pt-2 text-sm text-ink-500">Memuat modul…</p> : null}
+            {galatDetail ? (
+              <p className="px-1 pt-2 font-mono text-xs text-ink-500">
+                modul gagal dimuat · code: {galatDetail}
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>
