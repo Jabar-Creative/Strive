@@ -93,7 +93,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `L-03` | POST /attempts: attempt + streak + koin + outbox … | A | W3 | 2 | `done` | #116 | 2026-09-22 | Enam tulisan satu transaksi (LE-6). AC rollback diuji dengan `CoinLedgerService` yang meledak TEPAT setelah insert ledger — nol baris di attempt, ledger, outbox, quest, poin squad, dan streak tidak maju. TIGA jalan masuk dibedakan: baru (6 tulisan), kunci idempotensi SAMA (nol tulisan, `rewarded: true` — request ulang jaringan bukan latihan), kunci BEDA di lesson & hari sama (nol tulisan, `rewarded: false`, LE-4). Kedua penjaga diverifikasi merah. `attempt_date` dari `streaks.timezone` — sumber yang SAMA dengan StreakService, supaya LE-4 tidak bocor di hari keduanya berselisih. Bonus milestone streak (§6.1) SENGAJA tidak ditulis: tidak dimiliki item mana pun, isu #115. |
 | `S-01` | StreakService timezone-aware + kredit freeze | A | W3 | 1,5 | `done` | #23 | 2026-09-16 | Ter-merge lewat #23. DoD: staging dikecualikan (isu #29), reviewer tidak berlaku untuk PR Dev A (isu #34). |
 | `S-02` | GET /hub agregat: streak, quest, peringkat, saldo… | A | W3 | 1 | `done` | #51 | 2026-09-17 | Lima bagian dalam satu request, dijalankan bersamaan lewat Promise.all. Seluruh tanggal dihitung di SQL. AC p95<250ms diuji dengan menyemai 1.000 attempt sungguhan. Tipe respons masih lokal: /hub TIDAK ADA di packages/contracts. |
-| `AI-01` | FastAPI skeleton + auth service-to-service + conf… | B | W3 | 1 | `todo` | — | — | — |
+| `AI-01` | FastAPI skeleton + auth service-to-service + conf… | B | W3 | 1 | `done` | `d506022` | 2026-09-29 | AC terbukti live (uvicorn + curl): tanpa token → 401 bentuk §10.1, token salah → 401, token benar → 503 skeleton, /health tetap publik. Token kosong gagal-tertutup; compare_digest konstan-waktu. 4 router /v1/* persis JALUR_AI sisi Node (isu #132), 503 bukan 4xx supaya ai_jobs diulang bukan dikubur. 29 pytest hijau (17 baru). |
 | `C-03` | UI dompet: saldo, riwayat, penjelasan tiap jenis … | B | W3 | 1 | `done` | #178 | 2026-09-29 | **AC TERBUKTI di staging, browser sungguhan, 360px.** Dompet menampilkan saldo **28** dengan riwayat yang bercerita: dua entri `Kartu lesson selesai`, masing-masing `+14` dengan saldo berjalan 14 lalu 28, waktu lokal, dan kalimat alasannya — diketuk memunculkan penjelasan jenis entri. AC berbunyi "pengguna bisa menjawab sendiri kenapa saldo saya berubah", dan layar itu menjawabnya tanpa istilah teknis. Kemal SENGAJA tidak mengklaim verifikasi browser (MCP devtools tidak ada di sesinya) dan meninggalkan kotaknya terbuka — pelajaran `L-04` diterapkan tanpa diminta. Review Dev A memverifikasi sendiri: klaim "settle tidak menulis entri ledger" BENAR (menulis `audit_log`), server menolak `limit` di luar 1–50 dengan 400, nol `dangerouslySetInnerHTML`. Desain yang dicatat: saldo TIDAK PERNAH dihitung ulang di klien (aturan keras 2), cursor diperlakukan buram, respons ledger yang datang TERLAMBAT ditolak diam-diam, guard klik ganda ada di mesin bukan cuma tombol, dan `Record<CoinEntryType, …>` membuat jenis entri baru yang lupa dipetakan GAGAL di typecheck. Empat catatan non-penahan diserahkan ke Dev B: `50` dan `20` ditulis harfiah di web sementara konstantanya hidup di `apps/api` (kelas yang sama dengan "32 tabel di tiga tempat"), `formatWaktu` memaku `Asia/Jakarta` padahal `users.timezone` per pengguna, dan `arah` untuk `adjust` di kamus tidak pernah terpakai. |
 | `L-05` | Layar daftar track & progres | B | W3 | 1 | `todo` | — | — | — |
 | `S-03` | UI Hub + streak chip 4 status + quest harian | B | W3 | 1,5 | `todo` | — | — | — |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 52 | 50,5 |
+| `done` | 53 | 51,5 |
 | `review` | 1 | 1,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 3,5 |
-| `todo` | 23 | 23,0 |
+| `todo` | 22 | 22,0 |
 
 ---
 ## Ringkasan per epik
@@ -189,12 +189,12 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E14` | Strive Store | 2,0 | 2 | 1/2 · **50%** | — |
 | `E7` | Klinik Plagiarisme | 5,0 | 4 | 2/4 · **50%** | 1 |
 | `E11` | Peer Review & Mentor | 4,0 | 4 | 2/4 · **50%** | — |
-| `E8` | ATS CV Builder | 6,5 | 7 | 1/7 · **15%** | — |
+| `E8` | ATS CV Builder | 6,5 | 7 | 2/7 · **31%** | — |
 | `E12` | International Mastery Track | 4,0 | 4 | 1/4 · **12%** | — |
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **52/80 · 64%** | **4** |
+| | **Total** | **78,5** | **80** | **53/80 · 66%** | **4** |
 
 ---
 
