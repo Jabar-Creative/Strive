@@ -208,3 +208,69 @@ describe('createApiClient — getWalletLedger (C-03)', () => {
     expect((err as ApiError).status).toBe(400);
   });
 });
+
+describe('createApiClient — endpoint track (L-05)', () => {
+  it('GET /api/v1/tracks tanpa query, ber-kredensial, progres server terparse', async () => {
+    const fetchMock = mockFetch(200, [
+      {
+        id: 't-1',
+        slug: 'content-writing',
+        title: 'Content Writing Dasar',
+        description: 'Fondasi menulis konten.',
+        category: 'Content',
+        sortOrder: 1,
+        progress: { completedLessons: 2, totalLessons: 6, percent: 33 },
+      },
+    ]);
+    const client = createApiClient({ baseUrl: BASE });
+    const hasil = await client.listTracks();
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${BASE}/api/v1/tracks`);
+    expect(init.method).toBe('GET');
+    expect(init.credentials).toBe('include');
+    expect(hasil[0]?.progress.percent).toBe(33);
+  });
+
+  it('GET /api/v1/tracks/:id — progres per modul dan completed diteruskan apa adanya', async () => {
+    const fetchMock = mockFetch(200, {
+      id: 't-1',
+      slug: 'content-writing',
+      title: 'Content Writing Dasar',
+      description: null,
+      category: 'Content',
+      sortOrder: 1,
+      modules: [
+        {
+          id: 'm-1',
+          title: 'Riset & Ide',
+          sortOrder: 1,
+          lessons: [
+            {
+              id: 'l-1',
+              title: 'Menemukan Sudut Pandang',
+              estSeconds: 150,
+              basePoints: 10,
+              baseCoins: 20,
+              sortOrder: 1,
+              cardCount: 5,
+              completed: true,
+            },
+          ],
+          progress: { completedLessons: 1, totalLessons: 1, percent: 100 },
+        },
+      ],
+      progress: { completedLessons: 2, totalLessons: 6, percent: 33 },
+    });
+    const client = createApiClient({ baseUrl: BASE });
+    const hasil = await client.getTrack('t-1');
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${BASE}/api/v1/tracks/t-1`);
+    expect(init.method).toBe('GET');
+    // Progres per modul dan lesson.completed adalah fakta server (LE-9) —
+    // inilah angka yang layar pakai, bukan hitungan ulang client.
+    expect(hasil.modules[0]?.progress.percent).toBe(100);
+    expect(hasil.modules[0]?.lessons[0]?.completed).toBe(true);
+  });
+});
