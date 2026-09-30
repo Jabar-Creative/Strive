@@ -79,7 +79,7 @@ Terhadap deployment yang sedang melayani (`c8dd108`). Perintah dan keluarannya d
 | V5 | Header keamanan API dan web | **LULUS** — keempatnya ada di kedua sisi, plus HSTS. `Referrer-Policy` berbeda antar sisi (`no-referrer` di API, `strict-origin-when-cross-origin` di web) dan itu memang disengaja |
 | V6 | 401 bentuk §10.1, termasuk 404 | **LULUS** — rute tak dikenal → `{"error":{"code":"NOT_FOUND",…}}` 404; rute terlindung → `{"error":{"code":"UNAUTHENTICATED",…}}` 401. Keduanya `error` sebagai OBJEK ber-`code`, bukan string bawaan Nest |
 | V7 | Rate limit 429, termasuk `X-Forwarded-For` acak | **LULUS** — dijalankan 27 Sep setelah #152 hidup. Tepat 10 lolos, ke-11 → 429. Lalu, masih di jendela yang sama: `X-Forwarded-For` **acak tiap request** → tetap 429 (5×), dan rantai palsu dengan klien di kiri → tetap 429 (3×). Badan galat `{"code":"RATE_LIMITED","details":{"limit":10,"window_seconds":60,"retry_after":42}}`. Pemalsuan header tidak memberi ember baru |
-| V8 | AI tanpa token → 401 | **TIDAK BERLAKU, bukan gagal.** Satu-satunya endpoint adalah `/health`, dan probe kesiapan memang tidak boleh butuh token. Yang sebenarnya perlu diperiksa saat router `AI-01` mendarat: apakah `AI_SERVICE_TOKEN` ditegakkan. Sekarang belum ada yang menegakkannya (#132, #162) |
+| V8 | AI tanpa token → 401 | **LULUS** — 30 Sep, setelah `AI-01` (#183) mendarat. `POST /v1/cv` tanpa token → **401** `UNAUTHENTICATED` bentuk §10.1; token asal → 401 dengan pesan **identik** (tidak jadi alat enumerasi); `/health` tetap publik 200; `/docs` dan `/openapi.json` → **404**. **Satu batas yang jujur:** auth layanan AI GAGAL TERTUTUP, jadi `AI_SERVICE_TOKEN` yang KOSONG di sisi ai menghasilkan 401 yang tidak bisa dibedakan dari penegakan yang benar. Baris ini membuktikan rute bisnis menolak pemanggil tanpa kredensial — **bukan** bahwa token api dan ai bernilai sama. Itu isu #184 |
 | V9 | Webhook pembayaran tanda tangan asal ditolak | **LULUS, TAPI HAMPA.** 401 `INVALID_SIGNATURE` untuk tanda tangan asal maupun `order_id` bukan-UUID. Dengan `MIDTRANS_SERVER_KEY` kosong, **semua** ditolak — jadi ini membuktikan gagal-tertutup, bukan bahwa perhitungan tanda tangannya benar. Yang membuktikan itu test integrasi `P-03` |
 | V10 | Daftar, masuk, refresh, masih masuk | **LULUS di Chrome.** Registrasi lewat halaman web sungguhan → mendarat di `/hub` dengan sesi aktif → muat ulang penuh → **masih masuk**. Cookie `__Secure-better-auth.session_token; HttpOnly; Secure; SameSite=None` — keputusan opsi A (#149) bekerja. **Safari/iOS belum diuji** dan tetap risiko ITP |
 | V11 | Satu lesson, koin, ledger, rekonsiliasi nol baris | **LULUS** — 28 Sep, setelah job semai (#168) dijalankan. `/hub` mengembalikan lesson sungguhan; `POST /attempts` menjawab `rewarded: true`, `score: 0` (tebakan salah, **dinilai server**), `points: 5`, `coins: 8`, streak dibuat, quest naik. Kirim ulang dengan Idempotency-Key SAMA → saldo tetap 8 dan ledger tetap **satu** entri `earn_lesson` +8 ber-`ref_type: attempt`. `users.coin_balance` = `SUM(coin_ledger)` |
@@ -118,6 +118,14 @@ GET /wallet             → balance 8, satu entri earn_lesson +8 ref_type:attemp
 **Satu hal yang tidak bisa kubereskan, dan itu temuannya sendiri:** akun uji tidak bisa di-sign-out. `POST /auth/sign-out` dengan Bearer menjawab 200 tanpa mencabut sesi (#154), dan aku tidak menyimpan cookie bertanda tangannya. Sesi itu hidup 30 hari. Akunnya throwaway `@strive.test` tanpa hak apa pun, tapi ketidakmampuan mencabut sesi sendiri adalah gejala yang pantas dicatat di sini, bukan di catatan kaki.
 
 **Yang menahan `F-05` sekarang tinggal V13** — rollback diukur dengan stopwatch, dan itu butuh dashboard/CLI Railway.
+
+### Susulan 30 September — V8 lulus, dan satu bahaya lahir bersamanya
+
+`AI-01` (#183) mendarat, jadi layanan AI berhenti hanya punya `/health`. V8 yang selama ini *"tidak berlaku"* sekarang bisa dijawab, dan jawabannya lulus.
+
+Yang ikut lahir: sejak hari ini layanan AI **menegakkan** `AI_SERVICE_TOKEN`, dan sisi Node memperlakukan seluruh 4xx sebagai **permanen** (`ai-service.client.ts:109` → `ai-dispatch.service.ts:119`). Artinya token yang tidak cocok antara service `api` dan `ai` akan **mengubur setiap `ai_jobs` pada percobaan pertama**, dan memperbaiki env-nya tidak menghidupkan kembali satu pun — tidak ada penyapu (#131). Permukaan kegagalan ini **tidak ada kemarin**. Isu #184.
+
+Jalan menuju `F-05` `done` sekarang tinggal **V13**.
 
 ### Dua hal yang ditemukan JUSTRU karena V dijalankan
 
