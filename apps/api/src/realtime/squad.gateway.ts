@@ -11,7 +11,7 @@ import type { Kysely } from 'kysely';
 import type { Server, Socket } from 'socket.io';
 
 import { appOrigins } from '../common/app-origin';
-import { resolveSessionToken, type UserRole } from '../common/guards';
+import { resolveSessionToken, tokenSesiDari, type UserRole } from '../common/guards';
 import { DATABASE, type DB } from '../infra/kysely';
 import { SquadReadService } from '../modules/squad';
 import { squadRoom } from './realtime.emitter';
@@ -307,20 +307,41 @@ function adaJatah(socket: Socket): boolean {
 }
 
 /**
- * Token dari `handshake.auth.token` (cara Socket.IO) atau header
- * `Authorization: Bearer` (paritas dengan REST).
+ * Token dari `handshake.auth.token` (cara Socket.IO), lalu dari header
+ * handshake lewat `tokenSesiDari()` — `Authorization: Bearer` ATAU cookie
+ * sesi, aturan yang SAMA dengan REST (keputusan #154 opsi b).
+ *
+ * ── Kenapa cookie harus ikut, dan kenapa baru sekarang ──
+ *
+ * `RT-02` akan menyambungkan klien WS dari browser, dan di sana tidak ada
+ * token untuk ditaruh di `handshake.auth`: sesinya cookie `httpOnly`, yang
+ * memang TIDAK bisa dibaca JavaScript. Itu seluruh alasan opsi (b) dipilih.
+ * Socket.IO sendiri mengirim cookie domain API pada handshake, persis seperti
+ * `fetch` dengan `credentials: 'include'` — jadi bahannya selalu ada; yang
+ * belum ada cuma gateway yang membacanya (isu #179).
+ *
+ * ── Satu tempat keputusan, bukan dua ──
+ *
+ * Penguraian Bearer yang dulu ditulis ulang di sini sekarang dihapus:
+ * `tokenSesiDari()` yang memutuskan, sama seperti `SessionGuard`. Dua salinan
+ * logika "token ini dari mana" akan menyimpang, dan yang menyimpang duluan
+ * biasanya bagian yang paling jarang dibaca — persis alasan yang sudah
+ * tertulis di `resolveSessionToken`.
+ *
+ * Ia juga membawa serta penjagaan CSRF-nya: cookie hanya dipercaya kalau
+ * `Origin` handshake tidak asing. CORS Socket.IO sudah menyaring origin untuk
+ * BROWSER, tapi klien non-browser bisa mengirim `Origin` apa pun, dan lapis
+ * ini tidak bergantung pada konfigurasi adapter mana pun.
  *
  * Tidak dari query string: URL tercatat di log akses proxy, dan token sesi di
  * sana adalah kunci akun yang tersimpan di tempat yang dibaca banyak orang.
  */
 function tokenDari(socket: Socket): string {
   const dariAuth = (socket.handshake.auth as { token?: unknown } | undefined)?.token;
-  if (typeof dariAuth === 'string') return dariAuth.trim();
+  // Kosong = TIDAK diberikan, bukan "diberikan tapi kosong" — sama dengan
+  // `envTeks` dan `appOrigins`. Klien yang mengirim `auth: { token: '' }`
+  // jatuh ke cookie, bukan ditolak dengan alasan yang membingungkan.
+  if (typeof dariAuth === 'string' && dariAuth.trim().length > 0) return dariAuth.trim();
 
-  const header = socket.handshake.headers['authorization'];
-  const nilai = Array.isArray(header) ? header[0] : header;
-  if (typeof nilai === 'string' && nilai.startsWith('Bearer ')) {
-    return nilai.slice('Bearer '.length).trim();
-  }
-  return '';
+  return tokenSesiDari(socket.handshake.headers);
 }
