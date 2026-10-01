@@ -8,6 +8,7 @@ export * from './health';
 export * from './auth';
 export * from './learning';
 export * from './streak';
+export * from './hub';
 export * from './squad';
 export * from './league';
 export * from './wallet';

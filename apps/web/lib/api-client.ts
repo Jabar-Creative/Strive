@@ -18,11 +18,12 @@
 
 // Tipe dompet hidup di @strive/contracts (satu definisi untuk dua sisi);
 // diekspor ulang di sini supaya komponen cukup impor dari satu tempat.
-import type { WalletLedgerResponse, WalletResponse } from '@strive/contracts';
+import type { HubResponse, WalletLedgerResponse, WalletResponse } from '@strive/contracts';
 
 export type {
   CoinEntryType,
   CoinLedgerEntry,
+  HubResponse,
   WalletLedgerResponse,
   WalletResponse,
 } from '@strive/contracts';
@@ -107,6 +108,21 @@ export interface ProgressSummary {
   completedLessons: number;
   totalLessons: number;
   percent: number;
+}
+
+/** Profil sendiri dari GET /me (A-05) — bentuk serializer apps/api. */
+export interface MeResponse {
+  id: string;
+  email: string;
+  display_name: string;
+  avatar_url: string | null;
+  role: 'student' | 'mentor' | 'superadmin';
+  /** Zona waktu IANA — dasar "hari lokal" pengguna (aturan keras 5). */
+  timezone: string;
+  coin_balance: number;
+  email_verified: boolean;
+  status: string;
+  created_at: string;
 }
 
 /** Track versi ringkas dari GET /tracks (L-01). */
@@ -216,6 +232,20 @@ export function createApiClient(config: ApiClientConfig) {
     /** GET /wallet — saldo + 20 entri terakhir (C-03, PRD §10.3). */
     getWallet(opts?: Pick<RequestOptions, 'signal'>) {
       return request<WalletResponse>('/wallet', { signal: opts?.signal });
+    },
+
+    /** GET /hub — seluruh layar Hub dalam satu panggilan (S-02/S-03). */
+    getHub(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<HubResponse>('/hub', { signal: opts?.signal });
+    },
+
+    /**
+     * GET /me — profil sendiri (A-05). Dipakai Hub untuk ZONA WAKTU
+     * pengguna (dasar tanggal lokal di server, aturan keras 5) saat
+     * menampilkan hitungan sisa jam — bukan untuk menghitung status.
+     */
+    getMe(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<MeResponse>('/me', { signal: opts?.signal });
     },
 
     /**
