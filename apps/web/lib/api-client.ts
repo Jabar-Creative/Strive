@@ -102,6 +102,49 @@ export interface AttemptPayload {
   duration_ms: number;
 }
 
+/** Progres — dihitung SERVER dari lesson yang pernah diselesaikan (LE-9). */
+export interface ProgressSummary {
+  completedLessons: number;
+  totalLessons: number;
+  percent: number;
+}
+
+/** Track versi ringkas dari GET /tracks (L-01). */
+export interface TrackSummaryResponse {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  sortOrder: number;
+  progress: ProgressSummary;
+}
+
+export interface LessonSummaryResponse {
+  id: string;
+  title: string;
+  estSeconds: number;
+  basePoints: number;
+  baseCoins: number;
+  sortOrder: number;
+  cardCount: number;
+  /** Pernah diselesaikan pengguna ini, kapan pun (bukan "hari ini"). */
+  completed: boolean;
+}
+
+export interface ModuleDetailResponse {
+  id: string;
+  title: string;
+  sortOrder: number;
+  lessons: LessonSummaryResponse[];
+  progress: ProgressSummary;
+}
+
+export interface TrackDetailResponse extends Omit<TrackSummaryResponse, 'progress'> {
+  modules: ModuleDetailResponse[];
+  progress: ProgressSummary;
+}
+
 export function createApiClient(config: ApiClientConfig) {
   async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     const headers: Record<string, string> = {};
@@ -111,6 +154,11 @@ export function createApiClient(config: ApiClientConfig) {
     const res = await fetch(`${config.baseUrl}/api/v1${path}`, {
       method: opts.method ?? 'GET',
       credentials: 'include',
+      // Semua respons API adalah fakta yang bisa berubah (progres, saldo);
+      // HTTP cache tidak boleh pernah menjawab untuk kita. Audit L-05
+      // menemukan komentar ini menjanjikan no-store sejak L-04 tanpa
+      // kodenya ada — AC "akurat setelah refresh" bergantung padanya.
+      cache: 'no-store',
       headers,
       body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
       signal: opts.signal,
@@ -141,7 +189,9 @@ export function createApiClient(config: ApiClientConfig) {
   return {
     /** GET /lessons/:id/cards — student & mentor (PRD §2.4). */
     getLessonCards(lessonId: string, opts?: Pick<RequestOptions, 'signal'>) {
-      return request<LessonCardsResponse>(`/lessons/${lessonId}/cards`, { signal: opts?.signal });
+      return request<LessonCardsResponse>(`/lessons/${encodeURIComponent(lessonId)}/cards`, {
+        signal: opts?.signal,
+      });
     },
 
     /**
@@ -166,6 +216,22 @@ export function createApiClient(config: ApiClientConfig) {
     /** GET /wallet — saldo + 20 entri terakhir (C-03, PRD §10.3). */
     getWallet(opts?: Pick<RequestOptions, 'signal'>) {
       return request<WalletResponse>('/wallet', { signal: opts?.signal });
+    },
+
+    /**
+     * GET /tracks — daftar track terbit beserta progres (L-01, LE-9).
+     * Tanpa cache apa pun: progres adalah fakta yang berubah setiap kali
+     * pengguna menyelesaikan lesson, dan `request()` memakai no-store.
+     */
+    listTracks(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<TrackSummaryResponse[]>('/tracks', { signal: opts?.signal });
+    },
+
+    /** GET /tracks/:id — modul, lesson, dan progres per modul (L-01). */
+    getTrack(trackId: string, opts?: Pick<RequestOptions, 'signal'>) {
+      return request<TrackDetailResponse>(`/tracks/${encodeURIComponent(trackId)}`, {
+        signal: opts?.signal,
+      });
     },
 
     /**
