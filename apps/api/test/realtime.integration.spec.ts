@@ -533,6 +533,81 @@ describe('RT-01 — WS gateway + Redis pub/sub (dua instance nyata)', () => {
     expect(await s.emitWithAck('subscribe', { squad_id: SQUAD })).toEqual({ ok: true });
   });
 
+  // ── Isu #179: cookie sesi di handshake (keputusan #154 opsi b) ──────────
+
+  /** Bentuk cookie Better-Auth sungguhan: `<token>.<tanda-tangan>`. */
+  function cookieSesi(token: string): string {
+    return `__Secure-better-auth.session_token=${token}.tandaTanganApaPun%3D%3D`;
+  }
+
+  function sambungHeader(port: number, headers: Record<string, string>): Promise<ClientSocket> {
+    const s = io(`http://127.0.0.1:${port}`, {
+      path: WS_PATH,
+      transports: ['websocket'],
+      extraHeaders: headers,
+      reconnection: false,
+    });
+    klien.push(s);
+    return new Promise((resolve, reject) => {
+      s.once('connect', () => resolve(s));
+      s.once('connect_error', (e) => reject(e));
+      setTimeout(() => reject(new Error('timeout menyambung')), 5000);
+    });
+  }
+
+  it('COOKIE sesi di handshake diterima — inilah yang dipakai RT-02 dari browser', async () => {
+    if (!reachable) return;
+    // Klien WS di browser TIDAK punya token untuk ditaruh di `handshake.auth`:
+    // sesinya cookie httpOnly, yang memang tidak bisa dibaca JavaScript.
+    const token = await sesi(ANGGOTA);
+    const s = await sambungHeader(portA, {
+      Cookie: cookieSesi(token),
+      Origin: 'http://localhost:3000',
+    });
+    expect(await s.emitWithAck('subscribe', { squad_id: SQUAD })).toEqual({ ok: true });
+  });
+
+  it('cookie dari Origin ASING DITOLAK — harga opsi (b), dibayar juga di WS', async () => {
+    if (!reachable) return;
+    // Sesi SAH, cookie SAH, tapi handshake dipicu situs lain. Diperlakukan
+    // anonim, sama seperti REST. CORS Socket.IO menyaring origin untuk
+    // browser; lapis ini tidak bergantung pada konfigurasi adapter mana pun.
+    const token = await sesi(ANGGOTA);
+    const e = await sambungHeader(portA, {
+      Cookie: cookieSesi(token),
+      Origin: 'https://jahat.example',
+    }).catch((err: unknown) => err);
+    expect(e).toBeInstanceOf(Error);
+  });
+
+  it('cookie yang tokennya tidak ada di `sessions` tetap ditolak', async () => {
+    if (!reachable) return;
+    const e = await sambungHeader(portA, {
+      Cookie: cookieSesi(randomUUID()),
+      Origin: 'http://localhost:3000',
+    }).catch((err: unknown) => err);
+    expect(e).toBeInstanceOf(Error);
+  });
+
+  it('`auth.token` KOSONG jatuh ke cookie, bukan ditolak dengan alasan membingungkan', async () => {
+    if (!reachable) return;
+    const token = await sesi(ANGGOTA);
+    const s = io(`http://127.0.0.1:${portA}`, {
+      path: WS_PATH,
+      transports: ['websocket'],
+      auth: { token: '' },
+      extraHeaders: { Cookie: cookieSesi(token), Origin: 'http://localhost:3000' },
+      reconnection: false,
+    });
+    klien.push(s);
+    await new Promise<void>((resolve, reject) => {
+      s.once('connect', () => resolve());
+      s.once('connect_error', reject);
+      setTimeout(() => reject(new Error('timeout')), 5000);
+    });
+    expect(await s.emitWithAck('subscribe', { squad_id: SQUAD })).toEqual({ ok: true });
+  });
+
   it('subscribe SEGERA setelah connect berhasil — tidak ada race handshake', async () => {
     if (!reachable) return;
     // Versi pertama gateway memeriksa sesi di `handleConnection`, yang
