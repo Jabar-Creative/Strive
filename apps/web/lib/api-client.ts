@@ -110,21 +110,6 @@ export interface ProgressSummary {
   percent: number;
 }
 
-/** Profil sendiri dari GET /me (A-05) — bentuk serializer apps/api. */
-export interface MeResponse {
-  id: string;
-  email: string;
-  display_name: string;
-  avatar_url: string | null;
-  role: 'student' | 'mentor' | 'superadmin';
-  /** Zona waktu IANA — dasar "hari lokal" pengguna (aturan keras 5). */
-  timezone: string;
-  coin_balance: number;
-  email_verified: boolean;
-  status: string;
-  created_at: string;
-}
-
 /** Track versi ringkas dari GET /tracks (L-01). */
 export interface TrackSummaryResponse {
   id: string;
@@ -237,15 +222,6 @@ export function createApiClient(config: ApiClientConfig) {
     /** GET /hub — seluruh layar Hub dalam satu panggilan (S-02/S-03). */
     getHub(opts?: Pick<RequestOptions, 'signal'>) {
       return request<HubResponse>('/hub', { signal: opts?.signal });
-    },
-
-    /**
-     * GET /me — profil sendiri (A-05). Dipakai Hub untuk ZONA WAKTU
-     * pengguna (dasar tanggal lokal di server, aturan keras 5) saat
-     * menampilkan hitungan sisa jam — bukan untuk menghitung status.
-     */
-    getMe(opts?: Pick<RequestOptions, 'signal'>) {
-      return request<MeResponse>('/me', { signal: opts?.signal });
     },
 
     /**
