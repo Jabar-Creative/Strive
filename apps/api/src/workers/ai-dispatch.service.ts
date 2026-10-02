@@ -9,7 +9,12 @@ import { Worker, type Job } from 'bullmq';
 
 import { QUEUE, bullConnection } from '../infra/bullmq';
 import { AiJobsService } from '../modules/ai';
-import { AI_SERVICE_CLIENT, type AiServiceClient, permanen } from '../modules/ai/ai-service.client';
+import {
+  AI_SERVICE_CLIENT,
+  type AiServiceClient,
+  kodeGalat,
+  permanen,
+} from '../modules/ai/ai-service.client';
 
 interface DataJob {
   jobId?: unknown;
@@ -119,7 +124,7 @@ export class AiDispatchService implements OnApplicationBootstrap, OnApplicationS
       const habis = this.terakhir(job) || permanen(err);
 
       if (habis) {
-        await this.jobs.gagal(jobId, pesan);
+        await this.jobs.gagal(jobId, pesan, kodeGalat(err));
       } else {
         this.log.warn(`ai_job ${jobId} gagal percobaan ${job.attemptsStarted}: ${pesan}`);
       }
