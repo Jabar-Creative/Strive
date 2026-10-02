@@ -62,13 +62,21 @@ export function statusStreak(input: StatusStreakInput): StatusStreakHasil {
  * PROSES. Rumus ini hanya presentasi; kebenaran status tetap di server.
  */
 export function jamSisaHariLokal(kiniEpochMs: number, zonaWaktu: string): number {
-  const bagian = new Intl.DateTimeFormat('en-GB', {
-    timeZone: zonaWaktu,
-    hourCycle: 'h23',
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric',
-  }).formatToParts(new Date(kiniEpochMs));
+  let bagian: Intl.DateTimeFormatPart[];
+  try {
+    bagian = new Intl.DateTimeFormat('en-GB', {
+      timeZone: zonaWaktu,
+      hourCycle: 'h23',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+    }).formatToParts(new Date(kiniEpochMs));
+  } catch {
+    // Zona tak valid: satu-satunya jalurnya korupsi data (kedua jalur
+    // tulis server memvalidasi allowlist) — sembunyikan hitungan, jangan
+    // jatuhkan seluruh halaman Hub. Temuan audit susulan.
+    return -1;
+  }
 
   const ambil = (t: string): number => Number(bagian.find((p) => p.type === t)?.value ?? '0');
 

@@ -117,8 +117,10 @@ export function HubScreen() {
     atRiskToday: hub.streak.at_risk_today,
     freezeUsedToday: hub.streak.freeze_used_today,
   });
+  // -1 = zona waktu tak valid (korupsi data); hitungan disembunyikan,
+  // bukan menjatuhkan halaman.
   const sisaJam = jamSisaHariLokal(kini, hub.streak.timezone);
-  const menit = Math.floor(sisaJam * 60);
+  const menit = sisaJam >= 0 ? Math.floor(sisaJam * 60) : -1;
 
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-3 px-4 pb-8 pt-2" data-testid="hub">
@@ -145,7 +147,7 @@ export function HubScreen() {
           <p className="mt-1 text-sm text-ink-500">
             Hari ini aman lewat kredit beku — streak lanjut besok tanpa hitungan.
           </p>
-        ) : hub.streak.at_risk_today ? (
+        ) : hub.streak.at_risk_today && sisaJam >= 0 ? (
           <p className="mt-1 text-sm text-ink-500" data-testid="sisa-jam">
             Sisa {Math.floor(sisaJam)} jam {menit % 60 > 0 ? `${menit % 60} menit ` : ''}hari ini
             untuk menjaga streak-mu.

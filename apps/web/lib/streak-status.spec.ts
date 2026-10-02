@@ -86,3 +86,9 @@ describe('jamSisaHariLokal', () => {
     expect(jamSisaHariLokal(kini, 'Asia/Jakarta')).toBeCloseTo(4, 6);
   });
 });
+
+describe('jamSisaHariLokal — zona tak valid (audit susulan)', () => {
+  it('mengembalikan -1, bukan melempar RangeError yang menjatuhkan halaman', () => {
+    expect(jamSisaHariLokal(Date.UTC(2026, 9, 1), 'Zona/Tidak-Ada')).toBe(-1);
+  });
+});
