@@ -196,8 +196,8 @@ export function HubScreen() {
         >
           <p className="font-medium">{hub.squad.name}</p>
           <p className="mt-1 text-sm text-ink-500">
-            Peringkat {hub.squad.rank} dari {hub.squad.members} · {hub.squad.weekly_points} pekan
-            poin minggu ini
+            Peringkat {hub.squad.rank} dari {hub.squad.members} · {hub.squad.weekly_points} poin
+            minggu ini
           </p>
         </section>
       ) : null}
