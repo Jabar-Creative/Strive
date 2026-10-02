@@ -74,6 +74,18 @@ beforeEach(async () => {
     .execute();
 });
 
+/**
+ * Menyetel zona waktu seperti `PATCH /me` melakukannya: KEDUA baris, sekaligus.
+ *
+ * Ada sebagai fungsi supaya tidak ada test yang menyetel salah satu saja tanpa
+ * sengaja — persis kekeliruan yang membuat test tanggal lokal di bawah lulus
+ * terhadap implementasi yang membaca sumber yang salah.
+ */
+async function setZona(userId: string, zona: string): Promise<void> {
+  await db.updateTable('users').set({ timezone: zona }).where('id', '=', userId).execute();
+  await db.updateTable('streaks').set({ timezone: zona }).where('user_id', '=', userId).execute();
+}
+
 describe('HubService (database nyata)', () => {
   it('database siap dipakai', () => {
     expect(reachable, `DATABASE_URL tidak bisa dipakai (${url})`).toBe(true);
@@ -105,18 +117,18 @@ describe('HubService (database nyata)', () => {
   it('quest memakai tanggal LOKAL pengguna, bukan tanggal UTC', async () => {
     if (!reachable) return;
     // Pacific/Kiritimati (UTC+14) dan Pacific/Niue (UTC-11) berjarak 25 jam —
-    // pada sebagian besar jam UTC, tanggal lokal keduanya BERBEDA. Itu yang
-    // membuat test ini menangkap `::date` atas timestamptz UTC.
-    await db
-      .updateTable('users')
-      .set({ timezone: 'Pacific/Kiritimati' })
-      .where('id', '=', USER)
-      .execute();
-    await db
-      .updateTable('users')
-      .set({ timezone: 'Pacific/Niue' })
-      .where('id', '=', TEMAN)
-      .execute();
+    // lebih dari satu hari, jadi tanggal lokal keduanya SELALU berbeda, jam UTC
+    // berapa pun. Itu yang membuat test ini menangkap `::date` atas
+    // timestamptz UTC.
+    //
+    // KEDUA baris disetel, dan itu bukan kelebihan hati-hati: `users.timezone`
+    // dan `streaks.timezone` menyimpan satu fakta di dua tempat, dan
+    // `PATCH /me` menulis keduanya dalam SATU transaksi. Versi pertama test ini
+    // hanya menyetel `users` — dan karena itu ia LULUS hanya terhadap
+    // implementasi yang membaca sumber yang salah. Ia merah saat sumbernya
+    // dibetulkan, yang membuktikan apa yang sebenarnya dijaganya.
+    await setZona(USER, 'Pacific/Kiritimati');
+    await setZona(TEMAN, 'Pacific/Niue');
 
     const [a, b] = await Promise.all([hub.forUser(USER), hub.forUser(TEMAN)]);
     const harapan = await sql<{ a: string; b: string }>`
@@ -126,6 +138,94 @@ describe('HubService (database nyata)', () => {
 
     expect(a.quest.date).toBe(harapan.rows[0]!.a);
     expect(b.quest.date).toBe(harapan.rows[0]!.b);
+    // Zona yang menentukan tanggal itu ikut dikirim, supaya klien tidak
+    // memanggil /me hanya untuk merender hitungan sisa jam (S-03).
+    expect(a.streak.timezone).toBe('Pacific/Kiritimati');
+    expect(b.streak.timezone).toBe('Pacific/Niue');
+  });
+
+  it('quest_date dibaca dengan streaks.timezone — sumber yang SAMA dengan penulisnya', async () => {
+    if (!reachable) return;
+    // Kedua baris sengaja DISIMPANGKAN. Keadaan ini tidak bisa dicapai lewat
+    // API (PATCH /me menulis keduanya sekaligus), dan justru itu gunanya: ia
+    // satu-satunya cara memisahkan SUMBER mana yang dibaca. Selama keduanya
+    // sama, membaca yang salah tidak punya gejala apa pun.
+    await db
+      .updateTable('users')
+      .set({ timezone: 'Pacific/Niue' })
+      .where('id', '=', USER)
+      .execute();
+    await db
+      .updateTable('streaks')
+      .set({ timezone: 'Pacific/Kiritimati' })
+      .where('user_id', '=', USER)
+      .execute();
+
+    const t = await sql<{ kiritimati: string; niue: string }>`
+      SELECT to_char((now() AT TIME ZONE 'Pacific/Kiritimati')::date, 'YYYY-MM-DD') AS kiritimati,
+             to_char((now() AT TIME ZONE 'Pacific/Niue')::date, 'YYYY-MM-DD') AS niue
+    `.execute(db);
+    const { kiritimati, niue } = t.rows[0]!;
+    expect(kiritimati, '25 jam terpisah: tanggalnya tidak boleh sama').not.toBe(niue);
+
+    // Baris quest ditulis pada tanggal lokal KIRITIMATI — tanggal yang dipakai
+    // `attempts.service.ts`, satu-satunya penulis kolom ini, yang juga membaca
+    // `streaks.timezone`.
+    await db
+      .insertInto('daily_quests')
+      .values({ user_id: USER, quest_date: kiritimati, target_tasks: 3, done_tasks: 2 })
+      .execute();
+
+    const h = await hub.forUser(USER);
+    // Membaca `users.timezone` berarti mencari tanggal Niue — tanggal yang
+    // tidak pernah ditulis siapa pun. Barisnya tidak ditemukan, dan layar
+    // menampilkan 0/3 kepada orang yang sudah mengerjakan dua tugas, tanpa
+    // satu galat pun. Itu bentuk kegagalan yang paling lama tidak ketahuan.
+    // `done_tasks` lebih dulu: ia yang melaporkan KERUGIANNYA kalau merah,
+    // bukan selisih tanggal yang masih perlu ditafsirkan.
+    expect(h.quest.done_tasks, 'dua tugas selesai terbaca 0 = baris tidak ditemukan').toBe(2);
+    expect(h.quest.date).toBe(kiritimati);
+    expect(h.streak.timezone).toBe('Pacific/Kiritimati');
+  });
+
+  it('freeze_used_today: hanya hari lokal INI, bukan "pernah pakai freeze"', async () => {
+    if (!reachable) return;
+    expect((await hub.forUser(USER)).streak.freeze_used_today, 'belum pernah memakai freeze').toBe(
+      false,
+    );
+
+    // Tanggal diambil dari Postgres, zona dari baris `streaks` — sumber yang
+    // sama dengan yang dibaca service. `- 1` berada di TEKS SQL, bukan
+    // parameter bind, jadi ia `date - integer -> date` tanpa ambiguitas
+    // (jebakan `date - $1` di CLAUDE.md hanya berlaku untuk parameter).
+    const t = await sql<{ hari_ini: string; kemarin: string }>`
+      SELECT to_char((now() AT TIME ZONE s.timezone)::date, 'YYYY-MM-DD')     AS hari_ini,
+             to_char((now() AT TIME ZONE s.timezone)::date - 1, 'YYYY-MM-DD') AS kemarin
+      FROM streaks s WHERE s.user_id = ${USER}
+    `.execute(db);
+    const { hari_ini, kemarin } = t.rows[0]!;
+
+    // KEMARIN lebih dulu: tanpa assert ini, `freeze_used_date IS NOT NULL`
+    // sendirian akan lulus — dan setiap orang yang pernah memakai freeze akan
+    // terlihat beku selamanya.
+    await db
+      .updateTable('streaks')
+      .set({ freeze_used_date: kemarin })
+      .where('user_id', '=', USER)
+      .execute();
+    expect((await hub.forUser(USER)).streak.freeze_used_today).toBe(false);
+
+    await db
+      .updateTable('streaks')
+      .set({ freeze_used_date: hari_ini })
+      .where('user_id', '=', USER)
+      .execute();
+    const h = await hub.forUser(USER);
+    expect(h.streak.freeze_used_today).toBe(true);
+    // Hari yang dibekukan tetap "belum aktif" secara harfiah, jadi KEDUANYA
+    // true. Urutan presentasinya (frozen menang atas at_risk) keputusan klien;
+    // server melaporkan dua fakta, bukan satu kesimpulan.
+    expect(h.streak.at_risk_today).toBe(true);
   });
 
   it('saldo dan kartu berikutnya mencerminkan keadaan sungguhan', async () => {
