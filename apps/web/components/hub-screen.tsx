@@ -34,7 +34,6 @@ export function HubScreen() {
   const [fase, setFase] = useState<Fase>('memuat');
   const [galat, setGalat] = useState<ApiError | null>(null);
   const [hub, setHub] = useState<HubResponse | null>(null);
-  const [zonaWaktu, setZonaWaktu] = useState<string | null>(null);
   const sedangMuatRef = useRef(false);
 
   const muat = useCallback(
@@ -87,15 +86,11 @@ export function HubScreen() {
     };
   }, [muat]);
 
-  // Zona waktu pengguna untuk hitungan sisa jam: dari /me (A-05), bukan
-  // ditebak dari Intl lokasi mesin (pengguna berjalan-jalan; data loginnya
-  // yang menjadi acuan tanggal lokal di server).
-  useEffect(() => {
-    api
-      .getMe()
-      .then((me) => setZonaWaktu(me.timezone))
-      .catch(() => setZonaWaktu(null));
-  }, [api]);
+  // (Zona waktu untuk hitungan sisa jam kini datang dari /hub sendiri —
+  // sumber yang SAMA dengan status yang didampinginya, #196. getMe()
+  // dihapus: satu request lebih sedikit di layar paling sering dibuka,
+  // dan /me mengembalikan users.timezone yang merupakan baris BERBEDA
+  // dari streaks.timezone yang dipakai server menghitung status.)
 
   if (fase === 'memuat')
     return <Pesan judul="Memuat Hub…" teks="Sebentar, ringkasanmu sedang disiapkan." />;
@@ -120,9 +115,10 @@ export function HubScreen() {
   const st = statusStreak({
     currentStreak: hub.streak.current_streak,
     atRiskToday: hub.streak.at_risk_today,
+    freezeUsedToday: hub.streak.freeze_used_today,
   });
-  const sisaJam = zonaWaktu === null ? null : jamSisaHariLokal(kini, zonaWaktu);
-  const menit = Math.floor((sisaJam ?? 0) * 60);
+  const sisaJam = jamSisaHariLokal(kini, hub.streak.timezone);
+  const menit = Math.floor(sisaJam * 60);
 
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-3 px-4 pb-8 pt-2" data-testid="hub">
@@ -145,7 +141,11 @@ export function HubScreen() {
             Satu micro-task hari ini menyalakannya kembali — rekor terpanjangmu{' '}
             {hub.streak.longest_streak} hari tetap tersimpan.
           </p>
-        ) : hub.streak.at_risk_today && sisaJam !== null ? (
+        ) : st.status === 'frozen' ? (
+          <p className="mt-1 text-sm text-ink-500">
+            Hari ini aman lewat kredit beku — streak lanjut besok tanpa hitungan.
+          </p>
+        ) : hub.streak.at_risk_today ? (
           <p className="mt-1 text-sm text-ink-500" data-testid="sisa-jam">
             Sisa {Math.floor(sisaJam)} jam {menit % 60 > 0 ? `${menit % 60} menit ` : ''}hari ini
             untuk menjaga streak-mu.

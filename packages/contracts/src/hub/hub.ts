@@ -49,6 +49,20 @@ export const hubResponseSchema = z.object({
     last_activity_date: localDateSchema.nullable(),
     /** `true` kalau pengguna belum aktif di hari lokalnya sendiri. */
     at_risk_today: z.boolean(),
+    /**
+     * `true` kalau kredit beku MENYELAMATKAN hari lokal ini (SK-9).
+     * Presentasinya MENANG atas `at_risk_today`: harinya sudah aman, jadi
+     * layar tidak boleh menampilkan hitungan "sisa jam menjaga streak".
+     * Ditambahkan S-02 susulan (#193, menutup isu #192).
+     */
+    freeze_used_today: z.boolean(),
+    /**
+     * Zona waktu IANA yang MENENTUKAN seluruh tanggal di respons ini —
+     * sumber yang sama dengan perhitungan streak/quest di server. Klien
+     * memakainya untuk hitungan sisa jam, supaya hitungan dan status yang
+     * didampinginya tidak pernah berbeda sumber (#196).
+     */
+    timezone: z.string(),
   }),
   quest: hubQuestSchema,
   squad: hubSquadSchema.nullable(),

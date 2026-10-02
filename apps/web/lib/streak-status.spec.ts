@@ -15,22 +15,46 @@ import { jamSisaHariLokal, statusStreak } from './streak-status';
 
 describe('statusStreak', () => {
   it('streak 0 = broken, "mulai lagi"', () => {
-    expect(statusStreak({ currentStreak: 0, atRiskToday: false })).toEqual({
+    expect(statusStreak({ currentStreak: 0, atRiskToday: false, freezeUsedToday: false })).toEqual({
       status: 'broken',
       kop: 'Mulai lagi hari ini',
     });
   });
 
   it('belum aktif hari lokal = at_risk (dengan sisa jam), bukan active', () => {
-    expect(statusStreak({ currentStreak: 5, atRiskToday: true }).status).toBe('at_risk');
+    expect(
+      statusStreak({ currentStreak: 5, atRiskToday: true, freezeUsedToday: false }).status,
+    ).toBe('at_risk');
   });
 
   it('sudah aktif hari lokal = active', () => {
-    expect(statusStreak({ currentStreak: 5, atRiskToday: false }).status).toBe('active');
+    expect(
+      statusStreak({ currentStreak: 5, atRiskToday: false, freezeUsedToday: false }).status,
+    ).toBe('active');
   });
 
   it('streak 0 + belum aktif tetap broken — nol hari tidak "berisiko"', () => {
-    expect(statusStreak({ currentStreak: 0, atRiskToday: true }).status).toBe('broken');
+    expect(
+      statusStreak({ currentStreak: 0, atRiskToday: true, freezeUsedToday: false }).status,
+    ).toBe('broken');
+  });
+
+  it('freeze menyelamatkan hari ini = frozen, MENANG atas at_risk (#193)', () => {
+    // Keduanya true pada hari yang dibekukan; harinya sudah aman, jadi
+    // status bukan at_risk dan kopnya tidak mengancam.
+    const hasil = statusStreak({ currentStreak: 5, atRiskToday: true, freezeUsedToday: true });
+    expect(hasil.status).toBe('frozen');
+    expect(hasil.kop).toBe('Streak 5 hari dibekukan');
+  });
+
+  it('freeze hari ini + sudah aktif = tetap frozen (hari ini memang dibekukan)', () => {
+    // Sudah aktif lalu memakai freeze di hari yang sama: freeze tidak
+    // terpakai di kasus ini (SK-6 hanya sebelum tengah malam dan kalau
+    // belum aktik), tapi kalau server melaporkannya, frozen tetap yang
+    // paling jujur untuk hari berjalan.
+    expect(
+      statusStreak({ currentStreak: 5, atRiskToday: false, freezeUsedToday: true }).status,
+    ).toBe('frozen');
   });
 });
 
