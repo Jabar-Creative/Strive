@@ -138,17 +138,29 @@ export class AiJobsService {
       .execute();
   }
 
-  /** `failed` — hanya dipanggil saat percobaan TERAKHIR habis. */
-  async gagal(jobId: string, pesan: string): Promise<void> {
+  /**
+   * `failed` — hanya dipanggil saat percobaan TERAKHIR habis.
+   *
+   * `kode` disimpan APA ADANYA di `error_code` (migrasi 009, isu #190), termasuk
+   * kode di luar daftar TERTUTUP §10.2: ini kolom diagnosis, dan menyaringnya
+   * di sini akan membuang justru informasi yang dicari saat mendiagnosis.
+   * `undefined` kalau balasannya tidak berbentuk §10.1 — kegagalan jaringan
+   * tidak punya badan respons, dan kolom yang diisi tebakan lebih buruk
+   * daripada kolom kosong.
+   */
+  async gagal(jobId: string, pesan: string, kode?: string): Promise<void> {
     await this.db
       .updateTable('ai_jobs')
       .set({
         status: 'failed',
         error_message: pesan.slice(0, 1_000),
+        error_code: kode ?? null,
         completed_at: sql`now()`,
       })
       .where('id', '=', jobId)
       .execute();
-    this.log.warn(`ai_job ${jobId} berakhir gagal: ${pesan.slice(0, 200)}`);
+    this.log.warn(
+      `ai_job ${jobId} berakhir gagal${kode === undefined ? '' : ` [${kode}]`}: ${pesan.slice(0, 200)}`,
+    );
   }
 }
