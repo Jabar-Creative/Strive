@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { type Kysely, sql } from 'kysely';
 
 import { DATABASE, type DB } from '../../infra/kysely';
@@ -16,10 +16,32 @@ const NEXT_CARDS = 3;
  * lewat `Promise.all`, dan tidak satu pun bergantung pada hasil yang lain.
  *
  * Semua perhitungan tanggal terjadi DI DALAM SQL dengan
- * `(now() AT TIME ZONE users.timezone)::date` (CLAUDE.md aturan 5). Tidak ada
- * satu pun `Date` yang dibentuk di Node di berkas ini — kalau ada, "hari ini"
- * akan bergantung pada TZ proses, dan quest harian pengguna WIB akan berganti
- * pada jam yang salah.
+ * `(now() AT TIME ZONE streaks.timezone)::date` (CLAUDE.md aturan 5). Tidak
+ * ada satu pun `Date` yang dibentuk di Node di berkas ini — kalau ada, "hari
+ * ini" akan bergantung pada TZ proses, dan quest harian pengguna WIB akan
+ * berganti pada jam yang salah.
+ *
+ * ── Kenapa `streaks.timezone`, dan bukan `users.timezone` ──
+ *
+ * Keduanya menyimpan SATU fakta di DUA baris: trigger `users_registration_rows`
+ * menyalinnya saat registrasi, dan `PATCH /me` menulis keduanya dalam satu
+ * transaksi — tidak ada lagi yang menyinkronkannya. `ProfileService`
+ * menuliskan aturannya harfiah: **setiap** perhitungan streak, quest, dan
+ * kuota harian membaca `streaks.timezone`.
+ *
+ * Berkas ini pernah melanggarnya, dan letaknya persis di tempat yang paling
+ * sulit dilihat: `at_risk_today` memakai `s.timezone`, sementara pencarian
+ * `quest_date` memakai `u.timezone` — padahal **penulis** `quest_date`
+ * (`attempts.service.ts`) memakai `s.timezone`. Penulis dan pembaca satu
+ * kolom membaca dua sumber. Selama keduanya sama tidak ada gejala; begitu
+ * menyimpang, Hub menampilkan quest **0/3** kepada orang yang sudah
+ * menyelesaikan tugasnya, dan resetnya terjadi pada jam yang salah — tanpa
+ * satu galat pun. Ditemukan saat me-review `S-03` (#191), bukan oleh test:
+ * test yang ada justru MENGUNCI sumber yang salah karena ia hanya pernah
+ * menyetel `users.timezone`.
+ *
+ * `COALESCE(s.timezone, u.timezone)` dipakai supaya baris `streaks` yang
+ * hilang (registrasi tidak utuh) tidak mematikan seluruh layar.
  */
 @Injectable()
 export class HubService {
@@ -44,31 +66,47 @@ export class HubService {
       longest_streak: number;
       freeze_credits: number;
       last_activity_date: string | null;
+      timezone: string;
       at_risk_today: boolean;
+      freeze_used_today: boolean;
     }>`
-      SELECT s.current_streak, s.longest_streak, s.freeze_credits,
+      SELECT COALESCE(s.current_streak, 0) AS current_streak,
+             COALESCE(s.longest_streak, 0) AS longest_streak,
+             COALESCE(s.freeze_credits, 0) AS freeze_credits,
              to_char(s.last_activity_date, 'YYYY-MM-DD') AS last_activity_date,
+             -- Zona yang MENENTUKAN tanggal di seluruh respons ini, dikirim
+             -- apa adanya supaya klien tidak memanggil /me untuk menebaknya
+             -- (dan tidak memakai users.timezone, baris yang BERBEDA).
+             COALESCE(s.timezone, u.timezone) AS timezone,
              -- "Berisiko" = belum aktif di HARI LOKALNYA SENDIRI. Dibandingkan
              -- di Postgres; membandingkannya di Node akan salah untuk setiap
              -- pengguna yang zona waktunya berbeda dari server.
-             (s.last_activity_date IS DISTINCT FROM (now() AT TIME ZONE s.timezone)::date)
-               AS at_risk_today
-      FROM streaks s
-      WHERE s.user_id = ${userId}
+             (s.last_activity_date IS DISTINCT FROM
+                (now() AT TIME ZONE COALESCE(s.timezone, u.timezone))::date)
+               AS at_risk_today,
+             -- SK-9. Ejaan ini SAMA dengan localFacts di StreakService --
+             -- satu fakta, satu ekspresi; dua ejaan akan menyimpang.
+             (s.freeze_used_date IS NOT NULL
+                AND s.freeze_used_date =
+                      (now() AT TIME ZONE COALESCE(s.timezone, u.timezone))::date)
+               AS freeze_used_today
+      -- Berjangkar di users, bukan streaks: baris streaks yang hilang
+      -- (registrasi tidak utuh, AU-6 migrasi 005) ditangani COALESCE di atas
+      -- alih-alih objek nol yang dirakit di Node — jadi satu-satunya sebab
+      -- "nol baris" yang tersisa adalah PENGGUNA yang tidak ada.
+      FROM users u
+      LEFT JOIN streaks s ON s.user_id = u.id
+      WHERE u.id = ${userId}
     `.execute(this.db);
 
     const row = r.rows[0];
-    // Baris streaks dibuat trigger saat registrasi (AU-6, migrasi 005).
-    // Ketiadaannya berarti registrasi tidak utuh — Hub tidak menambalnya
-    // diam-diam, tapi juga tidak menggagalkan seluruh layar karena itu.
     if (!row) {
-      return {
-        current_streak: 0,
-        longest_streak: 0,
-        freeze_credits: 0,
-        last_activity_date: null,
-        at_risk_today: true,
-      };
+      // Sesi sah untuk pengguna yang tidak ada = barisnya terhapus di tengah
+      // sesi. Jawaban yang sama dengan `ProfileService.me()`: 404 jujur,
+      // bukan layar Hub berisi nol yang terlihat seperti akun baru.
+      throw new NotFoundException({
+        error: { code: 'NOT_FOUND', message: 'Pengguna tidak ditemukan', details: { userId } },
+      });
     }
     return {
       current_streak: row.current_streak,
@@ -76,6 +114,8 @@ export class HubService {
       freeze_credits: row.freeze_credits,
       last_activity_date: row.last_activity_date,
       at_risk_today: row.at_risk_today,
+      freeze_used_today: row.freeze_used_today,
+      timezone: row.timezone,
     };
   }
 
@@ -86,17 +126,23 @@ export class HubService {
       done_tasks: number;
       completed: boolean;
     }>`
-      SELECT to_char((now() AT TIME ZONE u.timezone)::date, 'YYYY-MM-DD') AS date,
+      SELECT to_char((now() AT TIME ZONE COALESCE(s.timezone, u.timezone))::date,
+                     'YYYY-MM-DD') AS date,
              COALESCE(q.target_tasks, 3)      AS target_tasks,
              COALESCE(q.done_tasks, 0)        AS done_tasks,
              (q.completed_at IS NOT NULL)     AS completed
       FROM users u
+      -- streaks, bukan users, karena PENULIS quest_date
+      -- (attempts.service.ts) memakai s.timezone. Pembaca dan penulis satu
+      -- kolom wajib satu sumber; kalau tidak, barisnya dicari pada tanggal
+      -- yang tidak pernah ditulis dan quest terbaca 0/3 tanpa galat.
+      LEFT JOIN streaks s ON s.user_id = u.id
       -- LEFT JOIN, bukan SELECT terpisah: quest hari ini belum tentu ada
       -- (barisnya dibuat saat micro-task pertama), dan Hub harus tetap
       -- menampilkan target 3/0 alih-alih kosong.
       LEFT JOIN daily_quests q
         ON q.user_id = u.id
-       AND q.quest_date = (now() AT TIME ZONE u.timezone)::date
+       AND q.quest_date = (now() AT TIME ZONE COALESCE(s.timezone, u.timezone))::date
       WHERE u.id = ${userId}
     `.execute(this.db);
 

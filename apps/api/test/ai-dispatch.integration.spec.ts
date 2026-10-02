@@ -8,6 +8,7 @@ import { createDatabase, type DB } from '../src/infra/kysely';
 import { AiJobsService } from '../src/modules/ai';
 import {
   GalatAiPermanen,
+  GalatAiSementara,
   type AiRunInput,
   type AiRunResult,
   type AiServiceClient,
@@ -274,6 +275,51 @@ describe('AI-06 — dispatcher ai_jobs (PostgreSQL + Redis nyata)', () => {
     // berjalan tapi tidak boleh memanggil layanan lagi — barisnya bukan lagi
     // `queued`/`running`.
     expect(klien.panggilan).toHaveLength(1);
+  }, 40_000);
+
+  // ── Kode galat: #190 dan #184 ──────────────────────────────────────────
+
+  it('#190: `code` layanan AI tersimpan di error_code, bukan cuma di dalam teks', async () => {
+    if (!reachable) return;
+    const klien = new KlienUji();
+    klien.lempar = () =>
+      new GalatAiPermanen(
+        'Layanan AI menolak job (400 DOCUMENT_TOO_LONG): Dokumen melebihi 20 halaman',
+        'DOCUMENT_TOO_LONG',
+      );
+    const id = await buatDanAntre();
+
+    await jalankanWorker(klien);
+
+    const r = await baris(id);
+    expect(r.status).toBe('failed');
+    // Kolomnya, bukan substring pesannya. Mencari kode lewat LIKE '%...%' akan
+    // salah pada hari pesannya diterjemahkan atau dipotong 1.000 karakter.
+    expect(r.error_code).toBe('DOCUMENT_TOO_LONG');
+  }, 40_000);
+
+  it('#184: 401 TIDAK dikubur di percobaan pertama — token salah dapat jatah penuh', async () => {
+    if (!reachable) return;
+    // Sebelum ini, SELURUH 4xx dihitung permanen. Akibatnya satu salah ketik
+    // `AI_SERVICE_TOKEN` di dashboard menandai setiap ai_job `failed` pada
+    // percobaan PERTAMA, dan membetulkan env-nya tidak menghidupkan satu pun
+    // kembali — tidak ada penyapu yang mengantrekannya ulang (isu #131).
+    const klien = new KlienUji();
+    klien.lempar = () =>
+      new GalatAiSementara(
+        'Layanan AI gagal (401 UNAUTHENTICATED): Token layanan tidak sah atau tidak ada',
+        'UNAUTHENTICATED',
+      );
+    const id = await buatDanAntre();
+
+    await jalankanWorker(klien);
+
+    // Jatah penuh, sama seperti 5xx — bukan satu. Kalau kredensialnya
+    // diperbaiki di dalam jendela itu, job-nya selamat sendiri.
+    expect(klien.panggilan).toHaveLength(OPSI_JOB_AI.attempts);
+    const r = await baris(id);
+    expect(r.status).toBe('failed');
+    expect(r.error_code).toBe('UNAUTHENTICATED');
   }, 40_000);
 
   // ── Idempotensi pengantaran ────────────────────────────────────────────

@@ -1,15 +1,17 @@
 /**
  * Bentuk respons `GET /hub`.
  *
- * **Seharusnya tinggal di `packages/contracts`**, tapi tidak ada di sana:
- * `F-08` berjudul "skema zod SELURUH endpoint MVP" dan `/hub` terlewat —
- * padahal PRD §10.3 menyebutnya "satu panggilan untuk seluruh layar Hub" dan
- * ia endpoint paling sering dipanggil di produk ini.
+ * Skemanya SUDAH ada di `packages/contracts` sejak `S-03` (#191, isu #52) —
+ * utang `F-08` yang dicatat di sini sebelumnya sudah ditutup Dev B.
  *
- * `packages/contracts` milik Dev B (CLAUDE.md §Kepemilikan file), jadi tipenya
- * didefinisikan di sini sementara dan **dipindahkan begitu Dev B menambahkan
- * skemanya**. Sampai itu terjadi, klien web tidak punya tipe untuk endpoint
- * ini — itu kerugian nyata, bukan formalitas, dan sudah dilaporkan sebagai isu.
+ * **Tipe ini tetap tinggal di sini, dan itu bukan duplikasi yang terlupakan.**
+ * `packages/contracts` milik Dev B (CLAUDE.md §Kepemilikan file), jadi dua
+ * field yang ditambahkan di bawah (`freeze_used_today`, `timezone`) belum ada
+ * di skema zod-nya — dan tidak boleh kutambahkan sendiri. Respons API yang
+ * membawa field lebih banyak daripada skemanya **tidak merusak apa pun**:
+ * `hubResponseSchema` bukan `.strict()`, dan klien web mengetik respons lewat
+ * assertion, bukan `parse()`. Yang hilang cuma TIPE-nya di sisi web, jadi
+ * cabang `frozen` menunggu satu PR kecil dari Dev B.
  */
 export interface HubQuest {
   /** Tanggal LOKAL pengguna, `YYYY-MM-DD`. */
@@ -42,6 +44,32 @@ export interface HubResponse {
     last_activity_date: string | null;
     /** `true` kalau pengguna belum aktif di hari lokalnya sendiri. */
     at_risk_today: boolean;
+    /**
+     * `true` kalau kredit beku MENYELAMATKAN hari lokal ini (SK-9).
+     *
+     * Boolean, bukan `freeze_used_date` mentah yang diminta isu #192: pola
+     * yang sama dengan `at_risk_today`, dan alasannya sama — perbandingan
+     * tanggal terjadi di Postgres dalam zona waktu pengguna (aturan keras 5),
+     * bukan di klien yang tidak punya tanggal lokal yang bisa dipercaya.
+     * Ekspresinya SATU ejaan dengan `localFacts` di `StreakService`.
+     *
+     * **Presentasi: ini menang atas `at_risk_today`.** Keduanya `true` pada
+     * hari yang dibekukan — pengguna memang belum aktif, jadi `at_risk_today`
+     * harfiahnya benar — tapi harinya sudah aman, jadi layar yang menampilkan
+     * "sisa N jam untuk menjaga streak-mu" di situ berbohong soal urgensi.
+     */
+    freeze_used_today: boolean;
+    /**
+     * Zona waktu IANA yang MENENTUKAN seluruh tanggal di respons ini.
+     *
+     * Diambil dari `streaks.timezone` — sumber yang dipakai setiap
+     * perhitungan streak, quest, dan kuota harian (lihat `ProfileService`).
+     * Ada di sini supaya klien tidak perlu memanggil `GET /me` hanya untuk
+     * merender hitungan sisa jam, dan — lebih penting — supaya hitungan itu
+     * memakai zona yang SAMA dengan status yang didampinginya. `/me`
+     * mengembalikan `users.timezone`, yang merupakan baris yang BERBEDA.
+     */
+    timezone: string;
   };
   quest: HubQuest;
   squad: HubSquad | null;

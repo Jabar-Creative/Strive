@@ -93,6 +93,10 @@ export interface AiJobs {
   completed_at: Timestamp | null;
   cost_usd: Numeric | null;
   created_at: Generated<Timestamp>;
+  /**
+   * Kode galat dari layanan AI (bentuk §10.1), apa adanya — isu #190. NULL = tidak ada kode (job sukses, atau kegagalan jaringan yang tidak punya badan respons). BUKAN daftar tertutup §10.2: ini kolom diagnosis, dan penyaringan ke kode kontrak terjadi saat disajikan ke klien.
+   */
+  error_code: string | null;
   error_message: string | null;
   id: Generated<string>;
   input: Json;
