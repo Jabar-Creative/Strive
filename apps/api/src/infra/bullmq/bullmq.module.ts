@@ -1,7 +1,7 @@
 import { Global, Module, type OnApplicationShutdown } from '@nestjs/common';
 import { Queue } from 'bullmq';
 
-import { AI_QUEUE, QUEUE, bullConnection } from './queues';
+import { AI_QUEUE, JADWAL_QUEUE, QUEUE, bullConnection } from './queues';
 
 /**
  * Antrean BullMQ — PRD §8.1, §8.3 aturan 5.
@@ -28,8 +28,12 @@ import { AI_QUEUE, QUEUE, bullConnection } from './queues';
       provide: AI_QUEUE,
       useFactory: () => daftarkanAntrean(new Queue(QUEUE.ai, { connection: bullConnection() })),
     },
+    {
+      provide: JADWAL_QUEUE,
+      useFactory: () => daftarkanAntrean(new Queue(QUEUE.jadwal, { connection: bullConnection() })),
+    },
   ],
-  exports: [AI_QUEUE],
+  exports: [AI_QUEUE, JADWAL_QUEUE],
 })
 export class BullmqModule implements OnApplicationShutdown {
   /**
