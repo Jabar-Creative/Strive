@@ -1,5 +1,5 @@
 {
-  "_catatan": "Pengecualian audit dependensi — R-03, PRD §16.1. Setiap baris WAJIB punya alasan yang menyebut KENAPA advisory-nya tidak bisa dicapai, bukan sekadar 'belum sempat'. `tinjau_ulang` yang lewat memerahkan CI sama seperti advisory baru: pengecualian harus punya biaya. Dijalankan oleh scripts/audit-deps.mjs.",
+  "_catatan": "Pengecualian audit dependensi \u2014 R-03, PRD \u00a716.1. Setiap baris WAJIB punya alasan yang menyebut KENAPA advisory-nya tidak bisa dicapai, bukan sekadar 'belum sempat'. `tinjau_ulang` yang lewat memerahkan CI sama seperti advisory baru: pengecualian harus punya biaya. Dijalankan oleh scripts/audit-deps.mjs.",
   "_dibuat": "2026-09-23",
   "dikecualikan": [
     {
@@ -19,7 +19,7 @@
       "judul": "Kysely has a MySQL SQL Injection via Insufficient Backslash Escaping in `sql.lit(string)` ",
       "tambal_ke": ">=0.28.14",
       "jalur": "runtime",
-      "alasan": "Query builder runtime, versi 0.27.6. Ketiga advisory-nya menyentuh fitur JSON path (`jsonPath`/`->>`) dan escaping MySQL. Repo ini memakai PostgreSQL, dan penyisiran R-03 tidak menemukan SATU PUN pemakaian JSON path di apps/api maupun packages — jadi tidak ada jalur kode yang bisa dicapai. Naik ke 0.28.x adalah isu #48 (kompatibilitas better-auth), sekarang dengan alasan tambahan.",
+      "alasan": "Query builder runtime, versi 0.27.6. Ketiga advisory-nya menyentuh fitur JSON path (`jsonPath`/`->>`) dan escaping MySQL. Repo ini memakai PostgreSQL, dan penyisiran R-03 tidak menemukan SATU PUN pemakaian JSON path di apps/api maupun packages \u2014 jadi tidak ada jalur kode yang bisa dicapai. Naik ke 0.28.x adalah isu #48 (kompatibilitas better-auth), sekarang dengan alasan tambahan.",
       "tinjau_ulang": "2026-10-21"
     },
     {
@@ -29,7 +29,7 @@
       "judul": "Kysely: JSON-path traversal injection via unsanitized path-leg metacharacters in `JSONPath",
       "tambal_ke": ">=0.28.17",
       "jalur": "runtime",
-      "alasan": "Query builder runtime, versi 0.27.6. Ketiga advisory-nya menyentuh fitur JSON path (`jsonPath`/`->>`) dan escaping MySQL. Repo ini memakai PostgreSQL, dan penyisiran R-03 tidak menemukan SATU PUN pemakaian JSON path di apps/api maupun packages — jadi tidak ada jalur kode yang bisa dicapai. Naik ke 0.28.x adalah isu #48 (kompatibilitas better-auth), sekarang dengan alasan tambahan.",
+      "alasan": "Query builder runtime, versi 0.27.6. Ketiga advisory-nya menyentuh fitur JSON path (`jsonPath`/`->>`) dan escaping MySQL. Repo ini memakai PostgreSQL, dan penyisiran R-03 tidak menemukan SATU PUN pemakaian JSON path di apps/api maupun packages \u2014 jadi tidak ada jalur kode yang bisa dicapai. Naik ke 0.28.x adalah isu #48 (kompatibilitas better-auth), sekarang dengan alasan tambahan.",
       "tinjau_ulang": "2026-10-21"
     },
     {
@@ -39,7 +39,7 @@
       "judul": "SQL Injection via unsanitized JSON path keys when ignoring/silencing compilation errors or",
       "tambal_ke": ">=0.28.12",
       "jalur": "runtime",
-      "alasan": "Query builder runtime, versi 0.27.6. Ketiga advisory-nya menyentuh fitur JSON path (`jsonPath`/`->>`) dan escaping MySQL. Repo ini memakai PostgreSQL, dan penyisiran R-03 tidak menemukan SATU PUN pemakaian JSON path di apps/api maupun packages — jadi tidak ada jalur kode yang bisa dicapai. Naik ke 0.28.x adalah isu #48 (kompatibilitas better-auth), sekarang dengan alasan tambahan.",
+      "alasan": "Query builder runtime, versi 0.27.6. Ketiga advisory-nya menyentuh fitur JSON path (`jsonPath`/`->>`) dan escaping MySQL. Repo ini memakai PostgreSQL, dan penyisiran R-03 tidak menemukan SATU PUN pemakaian JSON path di apps/api maupun packages \u2014 jadi tidak ada jalur kode yang bisa dicapai. Naik ke 0.28.x adalah isu #48 (kompatibilitas better-auth), sekarang dengan alasan tambahan.",
       "tinjau_ulang": "2026-10-21"
     },
     {
@@ -49,7 +49,7 @@
       "judul": "multer vulnerable to Denial of Service via oversized array index in field names",
       "tambal_ke": ">=2.3.0",
       "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian \u2014 tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
       "tinjau_ulang": "2026-10-21"
     },
     {
@@ -59,7 +59,7 @@
       "judul": "Multer Vulnerable to Denial of Service via Uncontrolled Recursion",
       "tambal_ke": ">=2.1.1",
       "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian \u2014 tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
       "tinjau_ulang": "2026-10-21"
     },
     {
@@ -69,7 +69,7 @@
       "judul": "Multer vulnerable to Denial of Service via deeply nested field names",
       "tambal_ke": ">=2.2.0",
       "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian \u2014 tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
       "tinjau_ulang": "2026-10-21"
     },
     {
@@ -79,7 +79,7 @@
       "judul": "Multer vulnerable to Denial of Service via resource exhaustion",
       "tambal_ke": ">=2.1.0",
       "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian \u2014 tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
       "tinjau_ulang": "2026-10-21"
     },
     {
@@ -89,7 +89,7 @@
       "judul": "multer vulnerable to Denial of Service via crafted multipart field names",
       "tambal_ke": ">=2.3.0",
       "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian \u2014 tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
       "tinjau_ulang": "2026-10-21"
     },
     {
@@ -99,7 +99,7 @@
       "judul": "Multer vulnerable to Denial of Service via incomplete cleanup",
       "tambal_ke": ">=2.1.0",
       "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
+      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian \u2014 tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat.",
       "tinjau_ulang": "2026-10-21"
     },
     {
@@ -161,6 +161,16 @@
       "jalur": "dev/build",
       "alasan": "Hanya dev/test. Kerentanannya pada UI server Vitest, yang tidak pernah dijalankan di CI maupun produksi.",
       "tinjau_ulang": "2026-12-23"
+    },
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "paket": "braces",
+      "severity": "high",
+      "judul": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
+      "tambal_ke": "<0.0.0 (TIDAK ADA versi perbaikan)",
+      "jalur": "dev/build",
+      "alasan": "Tidak ada versi perbaikan \u2014 advisory-nya sendiri menuliskan `<0.0.0`, jadi override pnpm mustahil (berbeda dengan brace-expansion #185, yang bisa ditambal). `pnpm why braces --prod` NOL: ia hanya ditarik devDependencies \u2014 eslint-config-next (lewat fast-glob), kysely-codegen, dan lint-staged, ketiganya lewat micromatch 4.0.8. Jadi ia tidak pernah ikut ke image produksi; infra/Dockerfile.api hanya membawa dependensi runtime. Dan serangannya menuntut POLA glob bersarang dalam, bukan masukan pengguna: pola di repo ini datang dari berkas konfigurasi kita sendiri dan argumen CLI, bukan dari request. Dicabut begitu micromatch merilis braces yang ditambal.",
+      "tinjau_ulang": "2026-11-05"
     }
   ]
 }
