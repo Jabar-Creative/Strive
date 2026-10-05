@@ -17,6 +17,7 @@ import { LeagueRollupService } from './league-rollup.service';
 import { OutboxWorkerService } from './outbox.service';
 import { ReconcileBalanceService } from './reconcile-balance.service';
 import { PartitionService } from './partition.service';
+import { PenjadwalService } from './penjadwal.service';
 import { StreakWarningService } from './streak-warning.service';
 
 /**
@@ -44,10 +45,18 @@ import { StreakWarningService } from './streak-warning.service';
  *
  * Semua konsumen outbox WAJIB idempoten — pengantaran at-least-once
  * (docs/PRD.md §8.3 aturan 3).
- * `ReconcileBalanceService` (C-04) sengaja TIDAK dijadwalkan di sini.
- * Penjadwalnya adalah bagian dari deploy, dan staging ditunda (isu #29).
- * Sampai itu ada, job-nya dipanggil manual atau dari test — yang penting
- * logikanya sudah berdiri dan terbukti, bukan menunggu penjadwal.
+ *
+ * ── Ketujuhnya SEKARANG dijadwalkan (isu #203) ──
+ *
+ * Catatan di sini dulu berbunyi bahwa `ReconcileBalanceService` "sengaja TIDAK
+ * dijadwalkan" karena penjadwalnya bagian dari deploy dan staging ditunda.
+ * Alasannya masuk akal saat ditulis dan berhenti benar begitu staging hidup —
+ * tapi kalimatnya tidak ikut berubah, dan selama tiga minggu ia membuat
+ * ketiadaan penjadwal terbaca sebagai keputusan alih-alih sebagai utang.
+ *
+ * Yang sebenarnya terjadi: TUJUH job berdiri lengkap dan teruji, dan nol di
+ * antaranya pernah dipanggil di produksi. `PenjadwalService` menutupnya; baca
+ * berkas itu untuk daftar irama dan alasan masing-masing.
  */
 @Module({
   // `KyselyModule` dan `RedisModule` WAJIB diimpor di sini meski keduanya
@@ -87,6 +96,7 @@ import { StreakWarningService } from './streak-warning.service';
     LeagueRollupService,
     OutboxWorkerService,
     AiDispatchService,
+    PenjadwalService,
     MetricsService,
   ],
   exports: [
@@ -101,6 +111,7 @@ import { StreakWarningService } from './streak-warning.service';
 })
 export class WorkerModule {}
 export * from './reconcile-balance.service';
+export * from './penjadwal.service';
 export * from './streak-warning.service';
 export * from './partition.service';
 export * from './league-rollup.service';
