@@ -10,12 +10,22 @@ import Redis from 'ioredis';
  */
 export const QUEUE = {
   ai: 'ai',
+  /**
+   * Job BERKALA — isu #203. Satu antrean untuk semuanya, dengan nama job
+   * sebagai pembeda, bukan satu antrean per job: yang dijadwalkan tujuh hal
+   * dan tidak satu pun berat, jadi tujuh `Worker` hanya menambah tujuh
+   * koneksi Redis yang menggantung di `BRPOPLPUSH`.
+   */
+  jadwal: 'jadwal',
 } as const;
 
 export type QueueName = (typeof QUEUE)[keyof typeof QUEUE];
 
 /** Token injeksi untuk `Queue` antrean AI. */
 export const AI_QUEUE = Symbol('AI_QUEUE');
+
+/** Token injeksi untuk `Queue` antrean job berkala (isu #203). */
+export const JADWAL_QUEUE = Symbol('JADWAL_QUEUE');
 
 /**
  * Koneksi Redis untuk BullMQ — SENGAJA bukan `createRedis()`.
