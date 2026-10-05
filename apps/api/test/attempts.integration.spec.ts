@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createDatabase, type DB } from '../src/infra/kysely';
 import { AttemptsService, GradingService } from '../src/modules/learning';
 import { StreakService } from '../src/modules/streak';
-import { CoinLedgerService, IdempotencyKeyTakenError } from '../src/modules/wallet';
+import { CoinLedgerService } from '../src/modules/wallet';
 import type { LedgerEntry, Trx, WriteParams } from '../src/modules/wallet';
 
 /**
@@ -615,48 +615,39 @@ describe('L-03 — POST /attempts (database nyata)', () => {
     expect(saldoLain, 'saldo orang lain khas, bukan kebetulan sama').toBe(7_797);
 
     // AKU memakai kunci yang SAMA untuk lesson yang BELUM pernah kukerjakan.
-    const galat = await attempts
-      .submit({
-        userId: AKU,
-        lessonId: LESSON,
-        answers: semuaBenar(),
-        durationMs: 20_000,
-        idempotencyKey: KUNCI,
-      })
-      .then(
-        (r) => r,
-        (e: unknown) => e,
-      );
+    const r = await attempts.submit({
+      userId: AKU,
+      lessonId: LESSON,
+      answers: semuaBenar(),
+      durationMs: 20_000,
+      idempotencyKey: KUNCI,
+    });
 
-    // Yang dijaga: NOL milik orang lain yang ikut keluar, dan request ini
-    // TIDAK boleh berhasil secara diam-diam.
-    //
-    // Sebelum perbaikan, `submit` memulangkan `{ rewarded: true, balance: 7797,
+    // Sebelum #143, `submit` memulangkan `{ rewarded: true, balance: 7797,
     // attempt_id: '' }` — saldo orang lain apa adanya, pengakuan berhadiah,
     // dan nol baris yang membuktikannya. Itu bukan sekadar bocor: `write()`
     // berhenti di entri orang lain, jadi koinku tidak pernah ditulis.
-    expect(galat).toBeInstanceOf(IdempotencyKeyTakenError);
-    expect((galat as IdempotencyKeyTakenError).getStatus()).toBe(400);
-    const badan = (galat as IdempotencyKeyTakenError).getResponse() as {
-      error: { code: string; details: Record<string, unknown> };
-    };
-    expect(badan.error.code, 'daftar §10.2 TERTUTUP — bukan kode baru').toBe('VALIDATION_ERROR');
-    // Nol identitas pemilik kunci yang ikut keluar: cuma nama field-nya.
-    expect(JSON.stringify(badan)).not.toContain(LAIN);
-    expect(JSON.stringify(badan)).not.toContain('7797');
-
-    // Dan transaksinya utuh: nol efek untukku, saldo orang lain tak tersentuh.
-    expect(await saldo(), 'nol koin ditulis untukku').toBe(0);
+    //
+    // Sejak migrasi 010 (#200) kuncinya ber-ruang-nama per pengguna, jadi
+    // kunci orang lain sekadar kunci yang BERBEDA: request ini berhasil
+    // seperti biasa, dengan angkaku sendiri.
+    expect(r.rewarded).toBe(true);
+    expect(r.balance, 'saldoku, bukan saldo orang lain').toBe(20);
+    expect(r.attempt_id, 'attempt sungguhan, bukan string kosong').not.toBe('');
     expect(await saldoDari(LAIN), 'saldo orang lain tidak bergeser').toBe(7_797);
-    expect(
-      await db
-        .selectFrom('lesson_attempts')
-        .select('id')
-        .where('user_id', '=', AKU)
-        .executeTakeFirst(),
-      'nol attempt tertinggal',
-    ).toBeUndefined();
     await assertSaldoKonsisten();
+
+    // Dan kunci yang sama dari AKU tetap idempoten untukku sendiri — ruang
+    // nama per pengguna tidak boleh melonggarkan lapis yang memang dijaganya.
+    const ulang = await attempts.submit({
+      userId: AKU,
+      lessonId: LESSON,
+      answers: semuaBenar(),
+      durationMs: 20_000,
+      idempotencyKey: KUNCI,
+    });
+    expect(ulang.balance).toBe(20);
+    expect(await hitung('coin_ledger'), 'satu entri milikku + satu milik LAIN + adjust').toBe(3);
   });
 });
 
