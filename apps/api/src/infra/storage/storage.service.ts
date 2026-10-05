@@ -135,3 +135,26 @@ export function createS3FromEnv(): S3Client {
 export function bucketDocuments(): string {
   return envTeks('S3_BUCKET_DOCUMENTS') ?? 'strive-documents';
 }
+
+/**
+ * Bucket aset store — privat, dilayani lewat signed URL (`ST-02`, 15 menit).
+ *
+ * Isu #159: `S3_BUCKET_ASSETS` tercantum di `.env.example` dan PRD §12.6 sejak
+ * awal, dan **nol kode membacanya** — variabel yang terbaca seperti
+ * konfigurasi yang bekerja. CLAUDE.md menuliskan aturannya: variabel yang
+ * ditulis di PRD atau `.env.example` adalah JANJI; buat ia benar, atau hapus
+ * baris itu. Menghapusnya salah karena PRD §12.6 mewajibkan bucketnya ada dan
+ * `ST-02` akan memakainya.
+ *
+ * Privat seperti dua bucket lainnya. Aset store bukan rahasia, tapi bucket
+ * publik berarti setiap URL yang pernah dibagikan hidup selamanya — dan
+ * `ST-02` menjanjikan kedaluwarsa 15 menit, yang hanya bisa ditegakkan signed
+ * URL di atas bucket privat.
+ *
+ * Penjaganya `storage-bucket-env.spec.ts`: setiap `S3_BUCKET_*` di
+ * `.env.example` WAJIB dibaca kode. Tanpa penjaga itu, bucket ketiga yang
+ * ditambahkan besok mengulang isu ini.
+ */
+export function bucketAssets(): string {
+  return envTeks('S3_BUCKET_ASSETS') ?? 'strive-assets';
+}
