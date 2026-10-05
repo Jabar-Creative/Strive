@@ -3,7 +3,6 @@
 export * from './wallet.module';
 export * from './coin-ledger.service';
 export * from './coin-ledger.types';
-export * from './idempotency-key-taken.error';
 export * from './insufficient-coins.error';
 export * from './wallet.service';
 export * from './wallet.controller';
