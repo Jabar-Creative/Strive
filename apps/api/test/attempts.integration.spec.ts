@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createDatabase, type DB } from '../src/infra/kysely';
 import { AttemptsService, GradingService } from '../src/modules/learning';
 import { StreakService } from '../src/modules/streak';
-import { CoinLedgerService } from '../src/modules/wallet';
+import { CoinLedgerService, IdempotencyKeyTakenError } from '../src/modules/wallet';
 import type { LedgerEntry, Trx, WriteParams } from '../src/modules/wallet';
 
 /**
@@ -31,6 +31,7 @@ const SQUAD = '00000000-0000-4000-8000-0000000103c1';
 
 let db: Kysely<DB>;
 let attempts: AttemptsService;
+const coins = new CoinLedgerService();
 let reachable = false;
 let kartu: string[] = [];
 
@@ -582,4 +583,98 @@ describe('L-03 — POST /attempts (database nyata)', () => {
     expect(r.rewarded).toBe(true);
     expect(await saldo()).toBe(20);
   });
+
+  it('#143: kunci idempotensi ORANG LAIN tidak membocorkan apa pun miliknya', async () => {
+    if (!reachable) return;
+    // Jalan 2 (LE-8) mencari `coin_ledger` dengan `idempotency_key` SAJA.
+    // Kunci itu dikirim KLIEN, dan tabelnya bersifat lintas-pengguna — jadi
+    // kunci milik orang lain mencocokkan baris orang lain.
+    const LAIN = '00000000-0000-4000-8000-0000000103a2';
+    await db
+      .insertInto('users')
+      .values({ id: LAIN, email: 'l03-lain@uji.test', display_name: 'Lain' })
+      .execute();
+
+    // Saldonya dibuat KHAS lebih dulu, dan itu bukan hiasan: tanpa ini
+    // keduanya berakhir di 20 (base_coins kedua lesson sama, skor 100), jadi
+    // `not.toBe` tidak bisa membedakan "bocor" dari "benar" — test yang merah
+    // untuk alasan yang tidak bisa dibuktikan.
+    await db
+      .transaction()
+      .execute((trx) => coins.write(trx, { userId: LAIN, entryType: 'adjust', amount: 7_777 }));
+
+    const KUNCI = 'kunci-yang-dipakai-orang-lain';
+    await attempts.submit({
+      userId: LAIN,
+      lessonId: LESSON2,
+      answers: [{ card_id: (await kartuLesson2())!, answer: 'a', ms: 3000 }],
+      durationMs: 3000,
+      idempotencyKey: KUNCI,
+    });
+    const saldoLain = await saldoDari(LAIN);
+    expect(saldoLain, 'saldo orang lain khas, bukan kebetulan sama').toBe(7_797);
+
+    // AKU memakai kunci yang SAMA untuk lesson yang BELUM pernah kukerjakan.
+    const galat = await attempts
+      .submit({
+        userId: AKU,
+        lessonId: LESSON,
+        answers: semuaBenar(),
+        durationMs: 20_000,
+        idempotencyKey: KUNCI,
+      })
+      .then(
+        (r) => r,
+        (e: unknown) => e,
+      );
+
+    // Yang dijaga: NOL milik orang lain yang ikut keluar, dan request ini
+    // TIDAK boleh berhasil secara diam-diam.
+    //
+    // Sebelum perbaikan, `submit` memulangkan `{ rewarded: true, balance: 7797,
+    // attempt_id: '' }` — saldo orang lain apa adanya, pengakuan berhadiah,
+    // dan nol baris yang membuktikannya. Itu bukan sekadar bocor: `write()`
+    // berhenti di entri orang lain, jadi koinku tidak pernah ditulis.
+    expect(galat).toBeInstanceOf(IdempotencyKeyTakenError);
+    expect((galat as IdempotencyKeyTakenError).getStatus()).toBe(400);
+    const badan = (galat as IdempotencyKeyTakenError).getResponse() as {
+      error: { code: string; details: Record<string, unknown> };
+    };
+    expect(badan.error.code, 'daftar §10.2 TERTUTUP — bukan kode baru').toBe('VALIDATION_ERROR');
+    // Nol identitas pemilik kunci yang ikut keluar: cuma nama field-nya.
+    expect(JSON.stringify(badan)).not.toContain(LAIN);
+    expect(JSON.stringify(badan)).not.toContain('7797');
+
+    // Dan transaksinya utuh: nol efek untukku, saldo orang lain tak tersentuh.
+    expect(await saldo(), 'nol koin ditulis untukku').toBe(0);
+    expect(await saldoDari(LAIN), 'saldo orang lain tidak bergeser').toBe(7_797);
+    expect(
+      await db
+        .selectFrom('lesson_attempts')
+        .select('id')
+        .where('user_id', '=', AKU)
+        .executeTakeFirst(),
+      'nol attempt tertinggal',
+    ).toBeUndefined();
+    await assertSaldoKonsisten();
+  });
 });
+
+/** Kartu satu-satunya milik LESSON2, dibuat di `beforeEach`. */
+async function kartuLesson2(): Promise<string | undefined> {
+  const r = await db
+    .selectFrom('lesson_cards')
+    .select('id')
+    .where('lesson_id', '=', LESSON2)
+    .executeTakeFirst();
+  return r?.id;
+}
+
+async function saldoDari(userId: string): Promise<number> {
+  const r = await db
+    .selectFrom('users')
+    .select('coin_balance')
+    .where('id', '=', userId)
+    .executeTakeFirst();
+  return r?.coin_balance ?? 0;
+}

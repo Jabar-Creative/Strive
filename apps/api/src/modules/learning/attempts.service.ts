@@ -149,9 +149,18 @@ export class AttemptsService {
       const coins = hitungKoin(lesson.base_coins, nilai.score);
 
       // ── Jalan 2: kunci idempotensi yang sama (LE-8) ────────────────────
+      //
+      // `user_id` WAJIB ikut disaring, dan itu bukan kerapian (isu #143).
+      // `idempotency_key` dikirim KLIEN dan `coin_ledger` lintas-pengguna,
+      // jadi tanpa filter ini kunci milik orang lain mencocokkan BARIS orang
+      // lain: `balance_after`-nya — isi dompetnya — keluar sebagai `balance`
+      // di responsku, dan `attempt_id` jadi string kosong karena attempt yang
+      // dicari memang tidak ada. Jadi bukan cuma bocor, responsnya juga
+      // mengaku berhadiah tanpa satu baris pun yang membuktikannya.
       const ulangan = await trx
         .selectFrom('coin_ledger')
         .select(['id', 'balance_after', 'amount'])
+        .where('user_id', '=', userId)
         .where('idempotency_key', '=', idempotencyKey)
         .executeTakeFirst();
 

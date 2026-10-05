@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { sql } from 'kysely';
 
+import { IdempotencyKeyTakenError } from './idempotency-key-taken.error';
 import { InsufficientCoinsError } from './insufficient-coins.error';
 import type {
   DriftRow,
@@ -353,7 +354,29 @@ export class CoinLedgerService {
 
   // ── internal ────────────────────────────────────────────────────────────
 
-  /** Mencari entri yang sudah ada lewat salah satu dari dua kunci idempotensi. */
+  /**
+   * Mencari entri yang sudah ada lewat salah satu dari dua kunci idempotensi.
+   *
+   * ── `user_id` ikut disaring, dan itu bukan kerapian (isu #143) ──
+   *
+   * `idempotency_key` dikirim KLIEN dan `coin_ledger` lintas-pengguna. Tanpa
+   * filter ini, kunci milik orang lain mencocokkan BARIS orang lain — dan
+   * karena `write()` mengembalikan entri lama apa adanya lalu berhenti,
+   * akibatnya bukan sekadar `balance_after` orang lain yang bocor:
+   * **penulisannya dilewati sama sekali.** Pemanggil diberi tahu operasinya
+   * berhasil, tidak ada baris yang ditulis, dan saldonya tidak bergerak.
+   *
+   * Untuk `earn_*` itu berarti pengguna bekerja lalu tidak dibayar. Untuk
+   * `spend_*` itu berarti pengguna menerima barangnya tanpa membayar. Aturan
+   * keras 3 membuat SELURUH perpindahan koin lewat sini, jadi satu query ini
+   * adalah radius ledakannya — bukan cuma `LE-8` tempat isunya dilaporkan.
+   *
+   * Ini TIDAK menyentuh `idempotency_key UNIQUE` yang global: tabrakan kunci
+   * lintas-pengguna sekarang sampai ke INSERT dan ditolak index itu, keras
+   * dan terlihat, alih-alih berhasil secara diam-diam dengan angka orang
+   * lain. Apakah index-nya sendiri pantas jadi `(user_id, idempotency_key)`
+   * adalah keputusan skema — lihat isu susulannya, bukan diputuskan di sini.
+   */
   private async findExisting(trx: Trx, params: WriteParams): Promise<LedgerEntry | null> {
     if (params.idempotencyKey) {
       const byKey = await trx
@@ -361,7 +384,15 @@ export class CoinLedgerService {
         .selectAll()
         .where('idempotency_key', '=', params.idempotencyKey)
         .executeTakeFirst();
-      if (byKey) return this.toEntry(byKey);
+      if (byKey) {
+        // Kepemilikan diperiksa EKSPLISIT, bukan lewat `.where('user_id')` di
+        // query di atas. Keduanya menutup kebocorannya, tapi filter diam-diam
+        // membuat kunci milik orang lain terbaca "belum ada" lalu menabrak
+        // unique index GLOBAL di INSERT — 500 Postgres mentah tanpa petunjuk.
+        // Di sini keadaannya punya nama, dan jawabannya ber-`code`.
+        if (byKey.user_id !== params.userId) throw new IdempotencyKeyTakenError();
+        return this.toEntry(byKey);
+      }
     }
 
     if (params.refType && params.refId) {
