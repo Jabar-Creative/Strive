@@ -106,7 +106,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `AI-02` | Ekstraksi PDF/DOCX + penyusunan dari profil pengguna | B | W4 | 1 | `todo` | — | — | — |
 | `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `done` | #43 | 2026-09-17 | Ter-merge lewat #43. Review Dev A: guard JWT diganti guard sesi — A-01 menghapus JWT setelah item ini mulai. |
 | `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `done` | #42 | 2026-09-17 | Ter-merge lewat #42. Review Dev A: uang integer, append-only terbukti, advisory lock bernama. |
-| `Q-05` | UI squad + leaderboard (WS + fallback polling 30 … | B | W4 | 1,5 | `in_progress` | — | 2026-10-06 | — |
+| `Q-05` | UI squad + leaderboard (WS + fallback polling 30 … | B | W4 | 1,5 | `done` | #208 | 2026-10-06 | Dua AC dibuktikan di BROWSER sungguhan (stub REST+WS satu port dengan panel kendali), 10 bukti lulus termasuk 375px + console bersih: tanpa WS papan tetap terisi lewat polling (angka berubah pada tick 30 dtk tanpa reload); putus → chip "per 30 dtk" → pulih → "Langsung" → live update aktif lagi. Mesin `leaderboard-live` dengan soket terinjeksi: 10 test unit (timer palsu) + sabotase 2 penjaga memerah. Dua temuan VERIFIKASI (bukan dari dokumen): socket.io tidak reconnect saat server memutus ('io server disconnect' — persis yang gateway RT-01 lakukan saat verifikasi ulang izin; klien terjebak polling selamanya) dan penolakan middleware namespace tidak memicu backoff bawaan (engine terbuka → onclose tak pernah terpanggil; satu percobaan lalu diam). Keduanya ditutup kebijakan coba ulang 5 dtk. Audit: penjaga in-flight + trailing refetch dipasang untuk burst score.updated (rate limit 120/menit LINTAS RUTE — papan bisa membuat POST /attempts pengguna yang sama kena 429). `me` Q-06 tidak memuat user_id → penyorotan baris sendiri TIDAK dibuat: poin seri membuatnya bisa salah. |
 | `Q-06` | API squad: GET /squads/me + GET /squads/:id/leaderboard | A | W4 | 0,5 | `done` | — | 2026-09-20 | Kepemilikan dicek SERVICE, bukan guard — AC-nya soal keanggotaan dan RolesGuard tidak tahu apa-apa soal itu. Dibuktikan menggigit: cabut penjaganya, 3 test merah termasuk AC intinya. Dua bug KODEKU ditangkap test: (1) `RANK() OVER (ORDER BY poin, user_id)` tidak pernah seri — tiebreaker di dalam OVER mengubahnya jadi ROW_NUMBER, dan komentarku mengklaim sebaliknya; (2) handler Nest yang mengembalikan `null` mengirim body KOSONG, `.json()` melempar di peramban juga — dibungkus `{ squad }`. Peringkat jalur Redis dihitung ulang dengan semantik seri supaya kedua rute tidak menampilkan angka berbeda di layar yang sama. Membuka `Q-05` untuk Dev B. |
 | `P-02` | POST /payments/checkout — Midtrans Snap, QRIS | A | W5 | 1 | `blocked` | — | 2026-09-17 | Kode selesai & ter-merge, TAPI setengah AC tidak bisa dibuktikan: 'token Snap dan redirect_url yang VALID' menuntut panggilan Midtrans sungguhan, dan MIDTRANS_SERVER_KEY kosong. Idempotensi & PA-5 & PA-10 terbukti. Menunggu kredensial vendor — sama seperti F-05 menunggu akun cloud. |
 | `P-03` | Webhook: verifikasi signature, idempotensi, entri… | A | W5 | 1,5 | `done` | #122 | 2026-09-23 | Dikerjakan MENDAHULUI status `blocked` P-02: yang terblokir di sana hanya separuh AC-nya ("token Snap valid" butuh akun vendor), sedangkan seluruh AC P-03 bisa dibuktikan lokal — tanda tangannya kita hitung sendiri. Kunci server KOSONG menolak semuanya: seluruh bahan tanda tangan ada di badan request, jadi tanpa penjagaan itu siapa pun bisa menghitung tanda tangan yang sah. Dibuktikan merah. `gross_amount` dipakai apa adanya — Midtrans mengirim "55000.00", dan mengangkakannya menghasilkan "55000" yang membuat tanda tangan BENAR pun gagal. `expire` yang tiba setelah `settlement` tidak menurunkan order lunas (urutan notifikasi tidak dijamin). Dua komentar saya dibantah sabotasenya sendiri dan dikoreksi: test penahan kunci TIDAK menjaga `.forUpdate()` (UPDATE di ujung transaksi mengambil kunci yang sama — jebakan baru di CLAUDE.md), dan yang memegang idempotensi kiriman BERURUTAN adalah unique index ledger, bukan cek `paid`; lapis `FOR UPDATE`+`paid` memegang kasus bersamaan, bedanya di bentuk kegagalan bukan saldo. Webhook palsu sengaja tidak menyisakan baris `payments` (FK NOT NULL, dan `order_id` yang belum terverifikasi tidak layak dipakai menulis) — jejaknya di `audit_log`. PA-9 (order pending > 24 jam) tidak dimiliki item mana pun: isu #121. |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 55 | 54,0 |
+| `done` | 56 | 55,5 |
 | `review` | 1 | 1,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 3,5 |
-| `todo` | 20 | 19,5 |
+| `todo` | 19 | 18,0 |
 
 ---
 ## Ringkasan per epik
@@ -182,7 +182,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E4` | Coin & Wallet | 4,0 | 4 | 4/4 · **100%** | — |
 | `E2` | Learning Engine | 7,5 | 5 | 5/5 · **100%** | — |
 | `E3` | Career Streak | 5,5 | 5 | 5/5 · **100%** | — |
-| `E5` | Squad & Liga | 6,0 | 6 | 5/6 · **75%** | — |
+| `E5` | Squad & Liga | 6,0 | 6 | 6/6 · **100%** | — |
 | `E15` | Realtime | 2,0 | 2 | 1/2 · **75%** | — |
 | `E16` | Notifikasi | 1,5 | 2 | 1/2 · **67%** | — |
 | `E6` | Payment | 3,5 | 4 | 2/4 · **57%** | 1 |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **55/80 · 69%** | **4** |
+| | **Total** | **78,5** | **80** | **56/80 · 71%** | **4** |
 
 ---
 
