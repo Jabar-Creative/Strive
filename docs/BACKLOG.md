@@ -103,7 +103,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `Q-03` | Outbox worker: poll, FOR UPDATE SKIP LOCKED, ZINCRBY, retry, dead-letter | A | W4 | 1 | `done` | #117 | 2026-09-22 | ZINCRBY SENGAJA diganti ZADD nilai MUTLAK dari Postgres: `bump()` versi Q-02 menghitung poin DUA KALI setelah Redis kosong (L-03 menaikkan `weekly_points` di transaksi yang sama dengan event, jadi rebuild sudah memuatnya), dan tidak idempoten terhadap pengantaran at-least-once (PRD §8.3). Test Q-02 lulus karena tidak pernah memodelkan urutan L-03. Test SKIP LOCKED versi pertama HIJAU untuk FOR UPDATE tanpa SKIP LOCKED — worker kedua tetap maju, hanya berurutan; sekarang kemajuannya diukur SELAGI worker pertama memegang kunci, dan kedua varian terbukti merah. Payload L-03 membawa squad & musim SAAT event ditulis. Topik tanpa konsumen (RT-01) tidak diambil supaya tidak menyumbat batch. |
 | `S-04` | Scheduler peringatan streak + notifikasi in-app &… | A | W4 | 1 | `done` | #55 | 2026-09-17 | Job jalan tiap jam, memilih pengguna yang SAAT ITU pukul 20.00 di zonanya sendiri — perbandingan jam di dalam SQL. Idempoten per hari lokal. IS DISTINCT FROM, bukan <>: pengguna yang belum pernah aktif justru yang paling butuh diingatkan. |
 | `S-05` | POST /streak/freeze/purchase — beli kredit freeze | A | W4 | 0,5 | `done` | #95 | 2026-09-21 | Bulan dihitung Postgres dari `streaks.timezone`, bukan UTC. Entri ledger SENGAJA tanpa ref: `coin_ledger_ref_uniq` akan membatasi pembelian jadi sekali seumur hidup. Konkurensi diverifikasi merah — yang bocor bukan kreditnya, tapi debit ganda 400 koin untuk 1 kredit. |
-| `AI-02` | Ekstraksi PDF/DOCX + penyusunan dari profil pengguna | B | W4 | 1 | `todo` | — | — | — |
+| `AI-02` | Ekstraksi PDF/DOCX + penyusunan dari profil pengguna | B | W4 | 1 | `done` | #206 | 2026-10-06 | Router `/v1/cv` sengaja TETAP 503: kontrak hasil job `AiRunResult` milik AI-03 — pipeline murni atas bytes, tanpa kode tanpa pemanggil (prinsip #197). Dua kolom dibaca utuh via deteksi GUTTER (celah >40pt pada ≥3 baris di posisi sama), bukan `extract_text` polos yang mencampur per baris visual; tajuk lebar penuh tetap di atas. PDF terenkripsi terdeteksi dari rantai `__cause__` — pdfplumber membungkus semua galat pdfminer jadi `PdfminerException` kosong. Dibuktikan merah (3 test); fixture realistis menangkap bug yang lolos fixture sintetis: baris satu-kata di kanan celah ("KETERAMPILAN") terdorong ke tajuk dan merusak urutan kolom kiri. Audit: cap 200 halaman SEBELUM iterasi + anggaran 15.000 kata DI DALAM loop (kalau tidak, layout analysis dibayar penuh sebelum ditolak), pin `starlette`+`pdfminer.six` (komentar rentang lama salah faktual), `scope["path"]` ganti `url.path` (BadHost). Bom dekompresi FlateDecode = isu tersendiri, wajib sebelum AI-03 mengekspos. |
 | `N-01` | Tabel notifications + API + pengiriman email (Res… | B | W4 | 1 | `done` | #43 | 2026-09-17 | Ter-merge lewat #43. Review Dev A: guard JWT diganti guard sesi — A-01 menghapus JWT setelah item ini mulai. |
 | `P-01` | pricing_config berversi + 3 paket koin | B | W4 | 0,5 | `done` | #42 | 2026-09-17 | Ter-merge lewat #42. Review Dev A: uang integer, append-only terbukti, advisory lock bernama. |
 | `Q-05` | UI squad + leaderboard (WS + fallback polling 30 … | B | W4 | 1,5 | `todo` | — | — | — |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 55 | 54,0 |
+| `done` | 56 | 55,0 |
 | `review` | 1 | 1,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 3,5 |
-| `todo` | 20 | 19,5 |
+| `todo` | 19 | 18,5 |
 
 ---
 ## Ringkasan per epik
@@ -189,12 +189,12 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E14` | Strive Store | 2,0 | 2 | 1/2 · **50%** | — |
 | `E7` | Klinik Plagiarisme | 5,0 | 4 | 2/4 · **50%** | 1 |
 | `E11` | Peer Review & Mentor | 4,0 | 4 | 2/4 · **50%** | — |
-| `E8` | ATS CV Builder | 6,5 | 7 | 2/7 · **31%** | — |
+| `E8` | ATS CV Builder | 6,5 | 7 | 3/7 · **46%** | — |
 | `E12` | International Mastery Track | 4,0 | 4 | 1/4 · **12%** | — |
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **55/80 · 69%** | **4** |
+| | **Total** | **78,5** | **80** | **56/80 · 70%** | **4** |
 
 ---
 
