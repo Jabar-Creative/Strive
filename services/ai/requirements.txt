@@ -1,10 +1,32 @@
 # Runtime — docs/PRD.md §8.4
-fastapi==0.115.6
+# fastapi 0.115.6 → 0.115.14 (AI-02): patch terakhir garis 0.115. Rentang
+# starlette MELEBAR <0.42 → <0.47.0 (terpasang 0.46.2) — penjaga perilaku
+# tetap pin starlette di bawah. Audit AI-02 menandai CVE-2026-48710
+# (BadHost) pada starlette ≤1.0.0; naik ke baris starlette ≥1.0.1 menuntut
+# fastapi ≥0.128, keputusan garis dependensi terpisah.
+fastapi==0.115.14
+# Pin transitif inti keamanan secara eksplisit (audit AI-02): fastapi hanya
+# membatasi <0.47.0, tanpa pin bawah rilis lama bisa lolos resolusi.
+starlette==0.46.2
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 pydantic-settings==2.7.0
 redis==5.2.1
 
+# Runtime — ekstraksi dokumen (AI-02, PRD §13.2 tahap 3)
+# pdfplumber: PDF + posisi kata (deteksi dua kolom, PRD E8 kasus tepi).
+# python-docx: DOCX — paragraf dan tabel.
+pdfplumber==0.11.10
+# Pin transitif utama secara EKSPLISIT (audit AI-02): tanpa pin, rilis baru
+# pdfminer.six bisa masuk tanpa review; sejarahnya ada CVE-2025-64512
+# (pickle di CMapDB, fix 20251107) — versi terpasang ini PASCA-perbaikan.
+pdfminer.six==20260107
+python-docx==1.2.0
+
 # Test
 pytest==8.3.4
 httpx==0.28.1
+# Fixture test dibuat, bukan direkam: reportlab menulis PDF (satu kolom,
+# dua kolom, tanpa teks), pypdf mengenkripsinya.
+reportlab==4.4.10
+pypdf==6.19.0
