@@ -146,6 +146,35 @@ export interface TrackDetailResponse extends Omit<TrackSummaryResponse, 'progres
   progress: ProgressSummary;
 }
 
+/** Baris papan squad — `SquadMemberView` Q-06, snake_case bentuk server. */
+export interface SquadMember {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  weekly_points: number;
+  rank: number;
+}
+
+/** Squad milik pemanggil dari GET /squads/me — `MySquad` Q-06. */
+export interface SquadInfo {
+  squad_id: string;
+  name: string;
+  tier: string;
+  season: { id: string; code: string; ends_at: string };
+  members: SquadMember[];
+  /** Posisi si pemanggil — UI tidak perlu mencarinya di daftar. */
+  me: { rank: number; weekly_points: number };
+}
+
+/**
+ * Dibungkus `{ squad }` oleh server, TIDAK `null` telanjang — handler Nest
+ * yang mengembalikan null mengirim body kosong dan `.json()` melempar
+ * (catatan Q-06 di papan).
+ */
+export interface SquadMeResponse {
+  squad: SquadInfo | null;
+}
+
 export function createApiClient(config: ApiClientConfig) {
   async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     const headers: Record<string, string> = {};
@@ -222,6 +251,25 @@ export function createApiClient(config: ApiClientConfig) {
     /** GET /hub — seluruh layar Hub dalam satu panggilan (S-02/S-03). */
     getHub(opts?: Pick<RequestOptions, 'signal'>) {
       return request<HubResponse>('/hub', { signal: opts?.signal });
+    },
+
+    /** GET /squads/me — squad milik pemanggil, atau `{ squad: null }` (Q-06). */
+    getSquadMe(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<SquadMeResponse>('/squads/me', { signal: opts?.signal });
+    },
+
+    /**
+     * GET /squads/:id/leaderboard — papan dari ZSET Redis (Q-06). Dipanggil
+     * ulang oleh mesin Q-05 tiap `score.updated` / tiap 30 dtk saat WS
+     * mati; server menjawab `Cache-Control: private, max-age=30`, tapi
+     * `request()` memakai no-store atas keputusan repo — polling Q-05
+     * memang menembak Redis tiap kali, bukan cache HTTP.
+     */
+    getSquadLeaderboard(squadId: string, opts?: Pick<RequestOptions, 'signal'>) {
+      return request<SquadMember[]>(
+        `/squads/${encodeURIComponent(squadId)}/leaderboard`,
+        { signal: opts?.signal },
+      );
     },
 
     /**
