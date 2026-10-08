@@ -25,6 +25,15 @@ import {
   type WalletState,
 } from '@/lib/wallet-screen';
 
+// Zona waktu PENGGUNA untuk jam riwayat koin (isu #182): dari perambannya
+// sendiri — sumber yang benar untuk transaksi milik pengguna, tanpa request
+// tambahan. Tak dikenal/kosong → `formatWaktu` jatuh ke default mesin
+// (Asia/Jakarta).
+const zonaPeramban = (() => {
+  const z = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return typeof z === 'string' && z.length > 0 ? z : undefined;
+})();
+
 /**
  * Layar dompet — C-03 (Dev B), PRD §7 E4 + §10.3.
  *
@@ -281,7 +290,7 @@ function BarisEntri({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-body font-medium">{meta.label}</span>
           <span className="block truncate text-xs text-ink-500">
-            {deskripsiBaris(entri)} · {formatWaktu(entri.created_at)}
+            {deskripsiBaris(entri)} · {formatWaktu(entri.created_at, zonaPeramban)}
           </span>
         </span>
         <span className="flex shrink-0 flex-col items-end gap-0.5">

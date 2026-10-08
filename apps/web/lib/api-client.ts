@@ -18,6 +18,9 @@
 
 // Tipe dompet hidup di @strive/contracts (satu definisi untuk dua sisi);
 // diekspor ulang di sini supaya komponen cukup impor dari satu tempat.
+// Batas limit juga dari sana — isu #182: angka harfiah di web diam-diam
+// menjepit lebih ketat daripada API tanpa satu pun yang merah.
+import { WALLET_LEDGER_LIMIT_MAX } from '@strive/contracts';
 import type { HubResponse, WalletLedgerResponse, WalletResponse } from '@strive/contracts';
 
 export type {
@@ -253,7 +256,10 @@ export function createApiClient(config: ApiClientConfig) {
       const qs = new URLSearchParams();
       if (params.cursor) qs.set('cursor', params.cursor);
       if (params.limit !== undefined) {
-        qs.set('limit', String(Math.min(50, Math.max(1, Math.round(params.limit)))));
+        qs.set(
+          'limit',
+          String(Math.min(WALLET_LEDGER_LIMIT_MAX, Math.max(1, Math.round(params.limit)))),
+        );
       }
       const query = qs.toString() === '' ? '' : `?${qs.toString()}`;
       return request<WalletLedgerResponse>(`/wallet/ledger${query}`, { signal: opts?.signal });

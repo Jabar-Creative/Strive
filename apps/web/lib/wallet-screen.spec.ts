@@ -1,4 +1,8 @@
-import { coinEntryTypeSchema, type CoinLedgerEntry } from '@strive/contracts';
+import {
+  coinEntryTypeSchema,
+  WALLET_LEDGER_LIMIT_DEFAULT,
+  type CoinLedgerEntry,
+} from '@strive/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -170,9 +174,43 @@ describe('muat lagi: guard klik ganda dan galat', () => {
 });
 
 describe('formatWaktu', () => {
-  it('ISO tetap menghasilkan string deterministik zona Asia/Jakarta', () => {
+  it('tanpa zona: default Asia/Jakarta, deterministik lintas mesin', () => {
     // Ekspektasi literal dari run pertama (28 Sep 2026 14.02 WIB) — bukan
     // dihitung ulang di test, supaya perubahan format Intl terdeteksi.
     expect(formatWaktu('2026-09-28T07:02:00Z')).toBe('28 Sep 2026, 14.02');
+  });
+
+  it('zona parameter dihormati — pengguna Makassar melihat WITA (isu #182)', () => {
+    // 07:02 UTC = 14.02 WIB = 15.02 WITA. Jam transaksi milik pengguna;
+    // dia yang berhak melihat jam kotanya sendiri.
+    expect(formatWaktu('2026-09-28T07:02:00Z', 'Asia/Makassar')).toBe('28 Sep 2026, 15.02');
+    expect(formatWaktu('2026-09-28T07:02:00Z', 'Asia/Jakarta')).toBe('28 Sep 2026, 14.02');
+  });
+
+  it('zona peramban tak valid jatuh ke default, bukan menjatuhkan layar', () => {
+    // "Etc/Unknown" nyata dari sebagian konfigurasi Chromium saat zona OS
+    // tak terpetakan (temuan audit #182). RangeError di tengah render akan
+    // menggugurkan seluruh riwayat koin.
+    expect(formatWaktu('2026-09-28T07:02:00Z', 'Etc/Unknown')).toBe('28 Sep 2026, 14.02');
+    expect(formatWaktu('2026-09-28T07:02:00Z', 'Zona/Tidak-Ada')).toBe('28 Sep 2026, 14.02');
+  });
+});
+
+describe('tampilTombolLengkap terikat KONTRAK (isu #182)', () => {
+  it('muncul tepat saat entri sepanjang WALLET_LEDGER_LIMIT_DEFAULT', () => {
+    // Bukan angka harfiah: kalau contracts kelak menaikkan batas, tombol
+    // ikut — dulu `=== 20` tertulis sendiri dan bisa menyimpang diam-diam.
+    const penuh = walletTiba({
+      balance: 0,
+      recent_entries: recent(WALLET_LEDGER_LIMIT_DEFAULT),
+    });
+    expect(penuh.entri).toHaveLength(WALLET_LEDGER_LIMIT_DEFAULT);
+    expect(tampilTombolLengkap(penuh)).toBe(true);
+
+    const kurangSatu = walletTiba({
+      balance: 0,
+      recent_entries: recent(WALLET_LEDGER_LIMIT_DEFAULT - 1),
+    });
+    expect(tampilTombolLengkap(kurangSatu)).toBe(false);
   });
 });
