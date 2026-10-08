@@ -112,7 +112,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `P-03` | Webhook: verifikasi signature, idempotensi, entri… | A | W5 | 1,5 | `done` | #122 | 2026-09-23 | Dikerjakan MENDAHULUI status `blocked` P-02: yang terblokir di sana hanya separuh AC-nya ("token Snap valid" butuh akun vendor), sedangkan seluruh AC P-03 bisa dibuktikan lokal — tanda tangannya kita hitung sendiri. Kunci server KOSONG menolak semuanya: seluruh bahan tanda tangan ada di badan request, jadi tanpa penjagaan itu siapa pun bisa menghitung tanda tangan yang sah. Dibuktikan merah. `gross_amount` dipakai apa adanya — Midtrans mengirim "55000.00", dan mengangkakannya menghasilkan "55000" yang membuat tanda tangan BENAR pun gagal. `expire` yang tiba setelah `settlement` tidak menurunkan order lunas (urutan notifikasi tidak dijamin). Dua komentar saya dibantah sabotasenya sendiri dan dikoreksi: test penahan kunci TIDAK menjaga `.forUpdate()` (UPDATE di ujung transaksi mengambil kunci yang sama — jebakan baru di CLAUDE.md), dan yang memegang idempotensi kiriman BERURUTAN adalah unique index ledger, bukan cek `paid`; lapis `FOR UPDATE`+`paid` memegang kasus bersamaan, bedanya di bentuk kegagalan bukan saldo. Webhook palsu sengaja tidak menyisakan baris `payments` (FK NOT NULL, dan `order_id` yang belum terverifikasi tidak layak dipakai menulis) — jejaknya di `audit_log`. PA-9 (order pending > 24 jam) tidak dimiliki item mana pun: isu #121. |
 | `PR-01` | Alokasi 2 reviewer lintas squad, identitas disemb… | A | W5 | 1 | `done` | #58 | 2026-09-17 | PR-2 ditegakkan BENTUK DATA: ReviewQueueItem tidak punya author_id, jadi tidak ada tempat untuk lupa membuangnya. Diuji dengan memeriksa SELURUH isi respons, bukan satu field. PR-1 dijaga di antrean DAN di jalur tulis. |
 | `RT-01` | WS gateway + Redis pub/sub adapter, kanal squad:{id} | A | W5 | 1,5 | `done` | #118 | 2026-09-23 | Dibuktikan dengan DUA aplikasi Nest sungguhan di dua port: klien tersambung ke instance B, event dikirim dari instance A. Satu instance tidak bisa membuktikan apa pun — `server.to()` selalu sampai ke klien di proses yang sama, dengan atau tanpa adapter. Autentikasi handshake dipindah dari `handleConnection` ke middleware `server.use`: `handleConnection` asinkron dan Socket.IO sudah mengirim `connect` sebelum ia selesai, jadi klien yang langsung subscribe ditolak "belum terverifikasi" bergantung kecepatan Postgres. `resolveSessionToken` + `SquadReadService.canRead` diekstrak sebagai sumber tunggal REST dan WS, bukan disalin. `@socket.io/redis-emitter` MEMBUANG Promise dari `publish`; dengan `enableOfflineQueue: false` penolakannya menjadi `unhandledRejection` yang mematikan seluruh worker — `.catch()` saja malah mengubah crash jadi event hilang tanpa suara saat boot, jadi penerbitan dirantai pada kesiapan pertama. Ketiga penjaga dibuktikan merah. `ws:presence:{squad_id}` di PRD §9.4 sengaja TIDAK dibangun (isu #119). |
-| `AI-03` | Penyusunan LLM -> JSON terstruktur, prompt berver… | B | W5 | 1,5 | `in_progress` | — | 2026-10-08 | — |
+| `AI-03` | Penyusunan LLM -> JSON terstruktur, prompt berver… | B | W5 | 1,5 | `done` | #210 | 2026-10-08 | PR bertumpuk di atas #206 (prasyarat AI-02 belum ter-merge). "LLM menulis, kode menilai" bukan slogan: `validasi_keterlacakan` memeriksa tiap pengalaman/gelar/skill/angka keluaran terhadap token sumber dan MENGHAPUS yang tak tertelusur + temuan ber-severity (CV-4) — 5 dokumen kontrol §13.4.4: 3 setia utuh (termasuk fresh-graduate kosong = AC-CV-2), 2 berdusta (CTO Netflix, PhD Stanford, 900 juta baris) semuanya terhapus dengan yang jujur tetap hidup; bukti nyata dari PDF dua kolul reportlab → ekstraksi AI-02 → penyusunan. Cache SHA-256 AI-01 diperiksa SEBELUM LLM (AC "tidak menagih dua kali"; parameter target_role+bahasa masuk kunci, CV-5) dan yang DISIMPAN adalah hasil SUDAH divalidasi — cache hit tidak melompati penjaga. JSON rusak: toleran blok ```json di percobaan pertama (hemat satu panggilan), retry sekali dengan instruksi perbaikan, lalu 422 `LLM_OUTPUT_INVALID` (kode baru di luar §10.2 — dibaringkan di #197). Kalimat larangan halusinasi di system prompt VERBATIM dari PRD §13.4.3, diuji. Sabotase 2 penjaga memerahkan 5 test. Angka ≥3 digit saja ditelusur: "06" dari normalisasi 2021-06 jangan membunuh konten jujur yang sumbernya menulis "Juni 2021". |
 | `N-02` | UI lonceng notifikasi + banner peringatan streak | B | W5 | 0,5 | `todo` | — | — | — |
 | `P-04` | UI top-up: pilih paket, bayar, status, kembali ke… | B | W5 | 0,5 | `todo` | — | — | — |
 | `Q-04` | Job rollup mingguan + promosi/degradasi 20% | A | W5 | 1 | `done` | #112 | 2026-09-22 | Dipindah dari Dev B (22 Sep). Idempotensi SQ-9 ditegakkan `UPDATE … WHERE closed_at IS NULL RETURNING`, bukan periksa-dulu-lalu-tutup — diverifikasi merah, 3 test. Bug yang ditangkap TEST SENDIRI: versi pertama membaca squad per tier DI DALAM loop yang juga menulis tier, jadi squad yang baru naik dari bronze ikut terbaca lagi di silver dan naik DUA KALI dalam satu panggilan. Poin dibaca dari Postgres, bukan ZSET (SQ-4: Redis melayani, Postgres memiliki). Menemukan isu #111: SQ-8 bertentangan dengan §5 Q4 — squad dibentuk ulang tiap minggu, jadi promosi tidak berpengaruh pada apa pun. |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 56 | 55,0 |
+| `done` | 57 | 56,5 |
 | `review` | 1 | 1,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 3,5 |
-| `todo` | 19 | 18,5 |
+| `todo` | 18 | 17,0 |
 
 ---
 ## Ringkasan per epik
@@ -189,12 +189,12 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E14` | Strive Store | 2,0 | 2 | 1/2 · **50%** | — |
 | `E7` | Klinik Plagiarisme | 5,0 | 4 | 2/4 · **50%** | 1 |
 | `E11` | Peer Review & Mentor | 4,0 | 4 | 2/4 · **50%** | — |
-| `E8` | ATS CV Builder | 6,5 | 7 | 3/7 · **46%** | — |
+| `E8` | ATS CV Builder | 6,5 | 7 | 4/7 · **69%** | — |
 | `E12` | International Mastery Track | 4,0 | 4 | 1/4 · **12%** | — |
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **56/80 · 70%** | **4** |
+| | **Total** | **78,5** | **80** | **57/80 · 72%** | **4** |
 
 ---
 
