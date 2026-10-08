@@ -2,6 +2,9 @@ import {
   WALLET_LEDGER_LIMIT_DEFAULT as DEFAULT_KONTRAK,
   WALLET_LEDGER_LIMIT_MAX as MAX_KONTRAK,
 } from '@strive/contracts';
+// Impor eksplisit: tsconfig.test.json tidak meng-global-kan runner test
+// (kebalaiannya tertangkap CI PR #209 — typecheck api memeriksa spec juga).
+import { describe, expect, it } from 'vitest';
 
 import { LEDGER_LIMIT_DEFAULT, LEDGER_LIMIT_MAX } from './wallet.service';
 
