@@ -19,6 +19,8 @@ import type {
   WalletLedgerResponse,
   WalletResponse,
 } from '@strive/contracts';
+// Nilai, bukan tipe — web boleh; API tidak (ERR_UNSUPPORTED_DIR_IMPORT).
+import { WALLET_LEDGER_LIMIT_DEFAULT } from '@strive/contracts';
 
 export type WalletFase = 'memuat' | 'gagal' | 'siap' | 'kosong';
 
@@ -128,11 +130,12 @@ export function cobaLagi(): WalletState {
 
 /**
  * Tombol "Muat riwayat lengkap" hanya saat jendela recent_entries PENUH
- * (tepat 20) dan ledger belum pernah dimuat. 20 = mungkin ada lagi; kurang
- * dari 20 = pasti habis (kontrak walletResponseSchema membatasi max 20).
+ * dan ledger belum pernah dimuat. Penuh = mungkin ada lagi; kurang dari
+ * itu = pasti habis. Batasnya dari KONTRAK (isu #182): kalau suatu hari
+ * `.max()` di contracts berubah, tombol ini ikut — bukan hilang diam-diam.
  */
 export function tampilTombolLengkap(state: WalletState): boolean {
-  return state.entri.length === 20 && !state.sudahMuatLedger;
+  return state.entri.length === WALLET_LEDGER_LIMIT_DEFAULT && !state.sudahMuatLedger;
 }
 
 /** Setelah ledger pertama, "Muat lagi" hanya selama ada halaman berikutnya. */
@@ -213,6 +216,10 @@ const JENIS_META: Record<CoinEntryType, MetaEntri> = {
   adjust: {
     label: 'Koreksi saldo',
     alasan: 'Perbaikan dari sistem, bukan karena kesalahanmu.',
+    // Nilai `arah` di sini TIDAK PERNAH dipakai untuk adjust: `arahTampil`
+    // selalu menimpanya dari tanda `amount` karena koreksi bisa dua arah
+    // (isu #182). Tetap diisi demi kelengkapan `Record` — jenis entri baru
+    // yang lupa dipetakan harus GAGAL di typecheck.
     arah: 'keluar',
   },
 };
@@ -232,18 +239,42 @@ export function arahTampil(entry: CoinLedgerEntry): 'masuk' | 'keluar' | 'tahan'
 }
 
 /**
- * Tanggal-jam tampilan. Zona waktu EKSPLISIT Asia/Jakarta supaya test
- * deterministik lintas mesin; produk ini B2C Indonesia (CLAUDE.md) dan
- * `created_at` datang sebagai ISO UTC dari server.
+ * Tanggal-jam tampilan. Zona waktu PARAMETER dengan default Asia/Jakarta
+ * (isu #182): transaksi ini milik pengguna, dan pengguna di Asia/Makassar
+ * berhak melihat jam Makassar untuk hal yang ia lakukan sendiri. Default
+ * tetap eksplisit supaya test deterministik lintas mesin.
+ *
+ * Formatter DI-CACHE per zona: `Intl.DateTimeFormat` mahal dibangun, dan
+ * riwayat koin memformat puluhan baris dengan zona yang sama.
  */
-const FORMAT_WAKTU = new Intl.DateTimeFormat('id-ID', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-  timeZone: 'Asia/Jakarta',
-});
+const ZONA_DEFAULT = 'Asia/Jakarta';
+const cacheFormatWaktu = new Map<string, Intl.DateTimeFormat>();
 
-export function formatWaktu(iso: string): string {
-  return FORMAT_WAKTU.format(new Date(iso));
+function formatWaktuZona(zona: string): Intl.DateTimeFormat {
+  let f = cacheFormatWaktu.get(zona);
+  if (!f) {
+    try {
+      f = new Intl.DateTimeFormat('id-ID', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: zona,
+      });
+    } catch {
+      // Zona peramban tak valid (mis. "Etc/Unknown" dari Chromium yang gagal
+      // memetakan zona OS) tidak boleh menjatuhkan layar dompet — jatuh ke
+      // default mesin. Hasil fallback tetap DI-CACHE dengan kunci zona buruk
+      // supaya tidak mencoba konstruksi ulang tiap baris riwayat.
+      // (Temuan audit #182; kelas yang sama dengan pengerasan zona di
+      // streak-status.)
+      f = cacheFormatWaktu.get(ZONA_DEFAULT) ?? formatWaktuZona(ZONA_DEFAULT);
+    }
+    cacheFormatWaktu.set(zona, f);
+  }
+  return f;
+}
+
+export function formatWaktu(iso: string, zona: string = ZONA_DEFAULT): string {
+  return formatWaktuZona(zona).format(new Date(iso));
 }
 
 /** Angka ribuan gaya Indonesia — "8.450", bukan "8,450". */
