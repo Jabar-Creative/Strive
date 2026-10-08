@@ -203,6 +203,17 @@ def validasi_keterlacakan(sumber: str, cv: StructuredCV) -> tuple[StructuredCV, 
             TemuanKeterlacakan(severity="warning", pesan="Nama dihapus: tidak ada di sumber.")
         )
 
+    # Headline ikut ditelusur seperti nama (temuan audit AI-03): tanpa ini,
+    # satu-satunya teks bebas yang lolos tanpa pemeriksaan — injeksi di CV
+    # bisa menempatkan apa pun di baris paling atas hasil.
+    headline = cv.headline if (cv.headline and _semua_ada(_token(cv.headline), tok_sumber)) else None
+    if cv.headline and headline is None:
+        temuan.append(
+            TemuanKeterlacakan(
+                severity="warning", pesan="Headline dihapus: tidak ada di sumber."
+            )
+        )
+
     ringkasan = cv.ringkasan
     if ringkasan and not _angka_ada(ringkasan, tok_sumber):
         ringkasan = None
@@ -215,7 +226,7 @@ def validasi_keterlacakan(sumber: str, cv: StructuredCV) -> tuple[StructuredCV, 
 
     bersih = StructuredCV(
         nama=nama,
-        headline=cv.headline,
+        headline=headline,
         ringkasan=ringkasan,
         kontak=kontak,
         pengalaman=pengalaman,
@@ -279,7 +290,16 @@ async def susun_cv(
                 permintaan + tambahan,
                 TEMPERATURE_PENYUSUNAN,
             )
-            pemakaian = pakai
+            # Token percobaan GAGAL tetap dibayar vendor — diakumulasi, bukan
+            # ditimpa (temuan audit AI-03: akuntansi biaya harus utuh).
+            if pemakaian is None:
+                pemakaian = pakai
+            else:
+                pemakaian = PemakaianLlm(
+                    model=pakai.model,
+                    input_tokens=pemakaian.input_tokens + pakai.input_tokens,
+                    output_tokens=pemakaian.output_tokens + pakai.output_tokens,
+                )
             cv = StructuredCV.model_validate(muat_json(teks))
             galat_terakhir = None
             break

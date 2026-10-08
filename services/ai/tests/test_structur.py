@@ -170,6 +170,25 @@ def test_kontrol_5_skill_dan_angka_karangan_dihapus() -> None:
     assert len(hasil.cv.pengalaman) == 1
 
 
+def test_headline_karangan_dihapus() -> None:
+    """Headline ikut ditelusur (temuan audit AI-03): tanpa ini, satu-satunya
+    teks bebas yang lolos tanpa pemeriksaan — tempat terbaik untuk injeksi."""
+    hasil = asyncio.run(
+        susun_cv(SUMBER_BUDI, LlmPalsu([cv_json(headline="Chief Technology Officer")]))
+    )
+    assert hasil.cv.headline is None
+    assert any("Headline" in t.pesan for t in hasil.temuan)
+
+
+def test_token_percobaan_gagal_tetap_tercatat() -> None:
+    """Percobaan JSON gagal tetap dibayar vendor — akuntansi utuh."""
+    llm = LlmPalsu(["bukan json", cv_json()])
+    hasil = asyncio.run(susun_cv(SUMBER_BUDI, llm))
+    assert hasil.pemakaian is not None
+    assert hasil.pemakaian.input_tokens == 200  # 2 panggilan × 100
+
+
+
 # ── AC 1: cache ──────────────────────────────────────────────────────────
 
 

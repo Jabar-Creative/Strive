@@ -28,6 +28,11 @@ from app.core.errors import GalatLayanan
 
 TEMPERATURE_PENYUSUNAN = 0.2
 TIMEOUT_DETIK = 60.0
+# Knop biaya terakhir (temuan audit AI-03): tanpa batas keluaran, satu CV
+# padat atau instruksi tersembunyi "keluarkan JSON sangat panjang" hanya
+# ditahan default model (16 ribu token) × 2 percobaan. 4096 cukup untuk
+# StructuredCV dari sumber 15 ribu kata (batas hulu AI-02).
+MAKS_TOKEN_KELUARAN = 4096
 
 
 class PemakaianLlm(BaseModel):
@@ -90,6 +95,7 @@ class KlienOpenAI:
                     json={
                         "model": self._model,
                         "temperature": temperature,
+                        "max_completion_tokens": MAKS_TOKEN_KELUARAN,
                         "response_format": {"type": "json_object"},
                         "messages": [
                             {"role": "system", "content": system},
@@ -112,8 +118,10 @@ class KlienOpenAI:
                 f"LLM menolak permintaan (HTTP {respons.status_code})",
             )
 
-        isi = respons.json()
         try:
+            # Body non-JSON dari vendor (200 tapi rusak) juga harus jatuh ke
+            # 502 §10.1, bukan ValueError 500 (temuan audit AI-03).
+            isi = respons.json()
             teks = isi["choices"][0]["message"]["content"] or ""
             pakai = isi.get("usage") or {}
             pemakaian = PemakaianLlm(
