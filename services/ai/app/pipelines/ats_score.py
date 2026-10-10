@@ -80,8 +80,12 @@ def nilai_ats(cv: StructuredCV) -> HasilSkor:
         temuan.append(TemuanAts(aturan=aturan, severity=severity, penalti=penalti, pesan=pesan))
 
     # 1. Email tidak ada / tidak valid — −20, error.
+    # Guard panjang DULU (temuan audit AI-04): POLA_EMAIL backtracks
+    # kuadratik atas string berpola titik — 16KB terukur 1,5 detik CPU.
+    # RFC 5321 membatasi email 254 karakter; lebih dari itu memang tidak
+    # sah, vonisnya sama tanpa regex menyentuhnya.
     email = cv.kontak.email
-    if not email or not POLA_EMAIL.match(email):
+    if not email or len(email) > 254 or not POLA_EMAIL.match(email):
         hukum("email", "error", 20, "Email tidak ada atau tidak valid; parser ATS mencarinya untuk kontak.")
 
     # 2. Nomor telepon tidak ada — −5, warning.

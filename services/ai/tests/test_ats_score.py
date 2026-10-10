@@ -75,6 +75,16 @@ def test_email_hilang_atau_tidak_valid() -> None:
     assert penalti(nilai_ats(cv), "email") == 0
 
 
+def test_email_melebihi_254_karakter_ditolak_tanpa_regex() -> None:
+    """Guard panjang (temuan audit AI-04): POLA_EMAIL backtracks kuadratik
+    atas string berpola titik — email 300 karakter berpola itu harus
+    dihukum INSTAN, bukan lewat regex (vonisnya sama: tidak sah)."""
+    cv = cv_sehat()
+    cv.kontak = KontakCv(email="x@" + "a." * 150, telepon="0812")  # 303 karakter
+    hasil = nilai_ats(cv)
+    assert penalti(hasil, "email") == 20
+
+
 def test_telepon_hilang() -> None:
     cv = cv_sehat()
     cv.kontak = KontakCv(email="a@b.c", telepon=None)
