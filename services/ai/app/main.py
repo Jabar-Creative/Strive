@@ -52,7 +52,11 @@ app.add_exception_handler(StarletteHTTPException, penangan_http)
 
 @app.middleware("http")
 async def batasi_body(request: Request, call_next):
-    if request.url.path.startswith("/v1/"):
+    # `scope["path"]` = path ASGI mentah. `request.url.path` dipulihkan dari
+    # Host header (rentan manipulasi — CVE-2026-48710 BadHost di starlette,
+    # temuan audit AI-02): host cacat bisa membuatnya tidak berawalan /v1/
+    # dan melewati gerbang ini.
+    if request.scope["path"].startswith("/v1/"):
         panjang = request.headers.get("content-length")
         if panjang is not None and panjang.isdigit() and int(panjang) > BATAS_BODY:
             return Response(
