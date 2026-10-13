@@ -9,6 +9,8 @@ fastapi==0.115.14
 # membatasi <0.47.0, tanpa pin bawah rilis lama bisa lolos resolusi.
 starlette==0.46.2
 uvicorn[standard]==0.34.0
+# Runtime — klien LLM via REST (AI-03); tadinya salah label di seksi Test.
+httpx==0.28.1
 pydantic==2.10.4
 pydantic-settings==2.7.0
 redis==5.2.1
@@ -25,7 +27,6 @@ python-docx==1.2.0
 
 # Test
 pytest==8.3.4
-httpx==0.28.1
 # Fixture test dibuat, bukan direkam: reportlab menulis PDF (satu kolom,
 # dua kolom, tanpa teks), pypdf mengenkripsinya.
 reportlab==4.4.10
