@@ -102,7 +102,8 @@ strive-academy/
 │        │  ├─ career/ mastery/       (proxy tipis ke AI service)
 │        │  └─ mentor/ admin/ notification/
 │        ├─ realtime/          ws gateway + redis pub/sub adapter
-│        └─ workers/           outbox · scan · ai-dispatch · notify
+│        └─ workers/           penjadwal (yang MENYALAKAN sisanya — #203)
+│                              outbox · scan · ai-dispatch · notify
 │                              league-rollup · reconcile-balance · reaper
 ├─ services/ai/                Python 3.12 · FastAPI
 │  └─ app/
@@ -123,6 +124,8 @@ strive-academy/
 │  │                           007 = contract auth (buang password_hash,
 │  │                                 email_verified_at, refresh_tokens)
 │  │                           008 = squads.season_id NOT NULL
+│  │                           009 = ai_jobs.error_code (#190)
+│  │                           010 = idempotensi coin_ledger PER PENGGUNA (#200)
 │  └─ seeds/                   seed-dev.mjs (F-13) · seed-content.mjs (F-11)
 │                              + content/ contoh
 ├─ scripts/                    perkakas lintas-OS, Node murni, nol dependensi
@@ -175,7 +178,19 @@ cd services/ai && ./.venv/bin/python -m pytest        # macOS / Linux
 cd services/ai && ./.venv/Scripts/python -m pytest    # Windows
 ```
 
-Sebelum membuka PR: `pnpm lint && pnpm typecheck && pnpm test && pnpm build` harus hijau.
+Sebelum membuka PR:
+
+```bash
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && node scripts/audit-deps.mjs
+```
+
+> **`audit-deps.mjs` ADA di baris itu sejak 5 Okt, dan dulu tidak.** Job CI
+> bernama `lint · typecheck · test · build` menjalankan **lima** langkah, bukan
+> empat — langkah kelimanya `audit:kebijakan`. Jadi gerbang lokal bisa `EXIT=0`
+> sementara job CI dengan nama IDENTIK merah, dan itu benar-benar terjadi: dua
+> PR (#199, #201) ketahuan setelah di-push, bukan sebelum. Nama yang sama untuk
+> dua isi yang berbeda adalah jenis kekeliruan yang tidak akan pernah terlihat
+> dari salah satu sisinya.
 
 > **`.env` WAJIB, dan baris di atas dulu menulis sebaliknya.** Klaim lama
 > *"opsional: stack jalan tanpa .env, semua punya default"* salah di dua
@@ -288,10 +303,18 @@ rt.toSquad(squadId, 'score.updated', payload);
 
 ### Idempotensi
 
-Setiap `POST` yang mengubah saldo atau memberi hadiah wajib `Idempotency-Key`. Dua lapis perlindungan:
+Setiap `POST` yang mengubah saldo atau memberi hadiah wajib `Idempotency-Key`. Dua lapis perlindungan, **keduanya PER PENGGUNA sejak migrasi 010** (isu #200):
 
-1. `coin_ledger.idempotency_key UNIQUE`
-2. Partial unique index `(ref_type, ref_id, entry_type)`
+1. `coin_ledger_user_idem_uniq` — `(user_id, idempotency_key)`
+2. `coin_ledger_ref_uniq` — `(user_id, ref_type, ref_id, entry_type) WHERE ref_id IS NOT NULL`
+
+> **Keduanya dulu GLOBAL, dan itu bukan detail sejarah.** `idempotency_key`
+> dikirim KLIEN, jadi ruang nama global berarti kunci satu pengguna bisa
+> mencocokkan baris pengguna lain — lihat baris `findExisting` di tabel jebakan.
+> Dan `(ref_type, ref_id, entry_type)` tanpa `user_id` akan **menolak pembayaran
+> reviewer KEDUA**: `PR-1` mengalokasikan dua reviewer per attempt, dan `PR-6`
+> menjanjikan `earn_review` "tepat sekali" untuk masing-masing. Diputuskan
+> sebelum `PR-02` menyentuh koin, saat nol baris perlu di-backfill.
 
 ### Serializer membuang kunci jawaban
 
@@ -417,6 +440,7 @@ Setelan ini **tidak terlihat dari isi repo**, jadi ditulis di sini. Terakhir diu
 | `dismiss_stale_reviews` | **false** | Diubah dari `true`. Approval **tidak lagi gugur** saat ada push baru |
 | `strict` status checks | **true** | Branch wajib mutakhir terhadap `main` sebelum merge |
 | Status check wajib | **3** | `lint · typecheck · test · build` · `ai service · test` · `migrasi kering` |
+| `image runtime` | **belum wajib** | Disetujui jadi wajib (keputusan Dev A, 5 Okt) dan **belum dipasang** — ia setelan GitHub, bukan isi repo. Ia penjaga jebakan "hijau tapi rusak" KELIMA dan lulus di setiap PR; sampai dipasang, yang menahannya hanya kebiasaan |
 | Force push & penghapusan `main` | **dilarang** | — |
 | `required_conversation_resolution` | **true** | Komentar review wajib diselesaikan |
 
@@ -487,14 +511,31 @@ Vercel → smoke. Berkasnya `.github/workflows/deploy-staging.yml`,
 **Yang mati di staging, dan sebabnya** — supaya tidak dikira bug baru:
 tidak ada email (`RESEND_API_KEY` kosong, jadi reset password mustahil dan
 `email_verified` tidak pernah `true`); tidak ada kunci LLM; scan dan top-up
-mati karena kredensial vendor kosong, **bukan** karena feature flag; papan
-peringatan tidak bergerak karena tidak ada penjadwal (#131); dan `/mentor`
-serta `/admin` memulangkan siapa pun ke `/login` karena seam Bearer↔cookie.
+mati karena kredensial vendor kosong, **bukan** karena feature flag; dan
+`/mentor` serta `/admin` memulangkan siapa pun ke `/login` karena **dua
+domain** (#176 — seam Bearer↔cookie sendiri sudah selesai lewat #154 opsi b).
+
+**Baris "papan peringatan tidak bergerak karena tidak ada penjadwal" DICABUT
+5 Okt** — bukan karena gejalanya hilang, melainkan karena sebabnya ditutup
+(#203). Sampai hari itu `bootstrapWorker()` hanya membangun konteks aplikasi
+lalu mencatat "Worker pool hidup": **tujuh** job berkala berdiri lengkap,
+teruji, dan ditandai `done` di papan tanpa satu pun pernah dipanggil di
+produksi. `PenjadwalService` sekarang menyalakan ketujuhnya.
 
 **Railway trial: kredit US$5, tanpa metode bayar.** Perkiraan pemakaian
 ±US$6–7/bulan, jadi seluruh service Railway akan **berhenti sekitar 20–25 hari
 sejak 25 Sep** tanpa peringatan tagihan — web di Vercel tetap hidup tapi tanpa
 backend. Ini tenggat kalender, bukan risiko.
+
+> **Diukur 13 Okt (hari ke-18): masih HIDUP.** `api`, `ai`, dan web ketiganya
+> menjawab 200, dan `/health/ready` melaporkan `database: ok, redis: ok`. Yang
+> TIDAK bisa dijawab dari terminal: apakah metode bayarnya sudah dipasang, atau
+> kreditnya sekadar lebih awet daripada perkiraan. Jadi perkiraan 20–25 hari
+> jangan dibaca sebagai sudah terlewati — dibaca sebagai **belum terbukti**.
+>
+> Dan jangan menjadikan "staging menjawab 200 hari ini" alasan menunda **V13**:
+> rollback terukur butuh akses Railway, jadi ia jadi mustahil dibuktikan tepat
+> pada hari kreditnya habis.
 
 ---
 
@@ -604,6 +645,9 @@ memakan waktu nyata. Jangan diulang.
 | Backtick di dalam komentar SQL, di dalam `` sql`…` `` | Template literal berakhir di backtick itu. swc melapor **`Syntax Error`** yang menunjuk ke baris **puluhan baris di bawahnya** (`` `.execute(this.db) ``), dan berkas spec yang mengimpornya gagal DIMUAT — yang terbaca sebagai "2 test files failed" dengan **nol test gagal**, bukan sebagai kesalahan tulis. Terjadi saat menulis komentar SQL yang merujuk nama tabel dengan gaya markdown (`` -- Berjangkar di `users` ``) | Di dalam `` sql`…` ``, nama tabel dan berkas ditulis **tanpa** backtick. Dan "test file gagal dimuat" bukan "test gagal": periksa apakah suite-nya benar-benar MENJALANKAN sesuatu sebelum membaca hasilnya sebagai bukti |
 | Test multi-nilai yang satu-satunya penjaga, bersama saudara satu-nilai yang terlihat sama kuat | AC `S-03` ("sisa N jam benar di zona waktu pengguna, bukan UTC") punya empat test sisa-jam. Tiga memakai `Asia/Jakarta`; satu memakai Jayapura/UTC/Los Angeles pada satu instan yang sama. Sabotase ke `new Date().getHours()` (zona PROSES) memerahkan **4 dari 4** di `TZ=UTC` — tapi di `TZ=Asia/Jakarta`, mesin yang dipakai kedua dev, implementasi yang salah itu **LULUS 7 dari 8**. Jadi tiga test itu ornamental di mesin tim, dan satu test memikul seluruh AC | Sabotase dijalankan di `TZ` yang **menguntungkan** implementasi salah, bukan cuma `TZ=UTC`. Test yang lulus terhadap sabotase bukan bukti; ia hanya belum pernah ditanya. Dan sebelum "menyederhanakan" test multi-nilai jadi satu nilai, periksa dulu apakah ia satu-satunya yang merah |
 | Komentar di satu sisi jahitan yang menjanjikan perilaku sisi LAIN | `services/ai/app/core/errors.py` menulis bahwa bentuk §10.1 dipakai "supaya sisi Node **mencabang pada `code`**". Sisi Node tidak pernah mem-parse badannya: ia membaca `res.status` lalu menjejalkan 300 karakter pertama ke dalam string pesan, dan `ai_jobs` cuma punya `error_message text`. Jadi satu-satunya cara mengetahui galat apa yang terjadi adalah mem-parsing teks — hal yang dilarang eksplisit beberapa baris di atas file ini. Janji itu akan tetap terbaca benar **selamanya**, karena yang membacanya hanya orang yang sedang berada di sisi yang menulisnya (isu #190) | Komentar hanya boleh menjanjikan perilaku berkas tempat ia tinggal. Perilaku sisi lain adalah hal yang di-**test**, bukan di-komentar — dan kalau jahitannya dimiliki dua orang, test-nya milik jahitan itu, bukan milik salah satu sisi |
+| Satu query lintas-pengguna di CHOKEPOINT, dan isunya melaporkan tempat yang salah | Isu #143 melaporkan `attempts.service.ts` dan menyebut dampaknya *"info leak saldo, severity Low"*. Keduanya benar untuk tempat yang dilaporkan, dan keduanya menutupi sumbernya: `CoinLedgerService.findExisting()` — query yang SAMA tanpa filter `user_id`, di dalam service yang dilewati SELURUH perpindahan koin (aturan keras 3). Jadi radius ledakannya bukan `POST /attempts` melainkan store, scan, payment, dan pembelian kredit freeze. Dan akibatnya bukan bocor saja: `write()` memulangkan entri lama lalu BERHENTI, jadi nol baris ditulis dan saldonya tidak bergerak sementara responsnya melapor berhasil — diukur di test, `{ rewarded: true, balance: 7797, attempt_id: '' }` dengan 7797 milik orang lain. Untuk `earn_*` itu bekerja tanpa dibayar; untuk `spend_*` itu barang tanpa bayar. Dua lubang, masing-masing menahan sendiri: cabut salah satu dan test tetap merah | Kalau sebuah tabel lintas-pengguna dicari dengan kunci yang DIKIRIM KLIEN, `user_id` bukan kerapian. Dan saat sebuah isu menunjuk satu baris, cari dulu apakah baris itu satu-satunya pemakai pola tersebut — isu ditulis dari tempat ia ditemukan, bukan dari tempat ia berasal. Keduanya sekarang dijaga index per-pengguna (migrasi 010, #200), jadi ia aman dari jalur mana pun, bukan cuma dari jalur kode |
+| Gerbang lokal dan job CI yang NAMANYA SAMA tapi isinya berbeda | CLAUDE.md menyuruh menjalankan `lint && typecheck && test && build` sebelum membuka PR. Job CI bernama `lint · typecheck · test · build` menjalankan **lima** langkah — yang kelima `audit:kebijakan`. Jadi gerbang lokal `EXIT=0` sementara job CI bernama identik MERAH, dan itu terjadi pada dua PR sekaligus (#199, #201): ketahuan setelah di-push, bukan sebelum. Penyebab merahnya pun bukan kode PR-nya — advisory `braces` terbit di antara CI terakhir yang hijau dan hari itu, **tanpa satu commit pun**. Kejadian KEDUA dari kelas itu setelah `brace-expansion` (#185), dari keluarga paket yang sama | Baris gerbang di CLAUDE.md sekarang memuat `node scripts/audit-deps.mjs`. Dan saat sebuah job CI merah sementara gerbang lokal hijau, pertanyaan pertamanya bukan "apa yang kurusak" melainkan **"apakah keduanya menjalankan hal yang sama"**. Untuk advisory tanpa versi perbaikan (`tambal_ke: <0.0.0`), override pnpm mustahil — yang benar pengecualian tertulis dengan `tinjau_ulang`, dan `pnpm why <paket> --prod` yang membuktikan ia tidak ikut ke image produksi |
+| Tujuh job berkala yang berdiri sempurna dan tidak pernah DIJADWALKAN | Jebakan #4 (`AiDispatchService.start()` tidak dipanggil siapa pun) ditutup #138 — dan penjaga yang ditulis untuknya, `worker-boot.integration.spec.ts`, hanya menutup antrean `ai`. Enam worker sisanya **plus** `ScanService.releaseStale()` tetap nol pemicu selama tiga minggu: `bootstrapWorker()` hanya membangun konteks aplikasi lalu mencatat "Worker pool hidup". Akibatnya bukan "satu fitur belum jalan" — `outbox` yang tidak terkuras membuat **aturan keras 6 jadi hiasan** (poin squad tidak sampai ke ZSET, `score.updated` tidak terbit, notifikasi tidak terkirim), `reaper` yang tidak jalan membuat **jaring aturan keras 4 tidak ada**, dan `partition` yang tidak jalan punya TANGGAL (2027-03-01). Yang membuatnya bertahan: catatan modul `workers/index.ts` berbunyi `ReconcileBalanceService` "**sengaja** TIDAK dijadwalkan" karena staging ditunda — alasan yang benar saat ditulis, berhenti benar saat staging hidup, dan kalimatnya tidak ikut berubah. Selama tiga minggu ketiadaan penjadwal terbaca sebagai keputusan alih-alih utang | Setiap `runOnce()` butuh satu test yang membuktikan **BOOT** memanggilnya — bukan test yang memanggilnya sendiri. Test pertamaku melakukan yang kedua, dan itu persis kekeliruan yang membuat `AI-06` lulus sementara antreannya tidak punya konsumen. Dan komentar yang menjelaskan KENAPA sesuatu belum dikerjakan wajib menyebut **kondisi yang membatalkannya** ("sampai staging hidup"), kalau tidak ia jadi pembenaran permanen |
 
 ---
 
@@ -618,6 +662,7 @@ Jangan bangun ulang; baca dulu.
 | Test integrasi | `pnpm --filter @strive/api test:integration` | Berjalan terhadap **PostgreSQL sungguhan** lewat `vitest.integration.config.mts`, `fileParallelism: false`. Dipanggil job CI `migrasi kering`, BUKAN job `node` — job itu tidak punya database |
 | Pembungkus dev | `scripts/dev-{web,api,ai}.mjs` | Lintas-OS, `spawn` tanpa `shell: true`, port divalidasi angka |
 | Impor konten | `db/seeds/seed-content.mjs` | `F-11`. Idempoten — batasnya saat lesson sudah dikerjakan orang ada di `db/seeds/README.md`, baca sebelum mengimpor ulang |
+| **Penjadwal job berkala** | `apps/api/src/workers/penjadwal.service.ts` | **#203.** BullMQ Job Scheduler, didaftarkan `onApplicationBootstrap` — SATU tempat untuk ketujuh irama, dan tiap entri `JADWAL` wajib punya `alasan` (test meng-assert panjangnya, karena angka tanpa alasan akan disetel ulang orang berikutnya dengan alasan yang juga tidak tertulis). `Record<IdJadwal, …>` membuat job baru tanpa handler **memerahkan `tsc`**. Jadwal basi dibuang tiap boot: `upsert` idempoten tidak menghapus entri yang namanya sudah berubah, dan entri itu tetap berjalan sebagai job hantu |
 | Job partisi | `apps/api/src/workers/partition.service.ts` | `F-12`. Idempoten. Lihat poin 3 di bawah — job bulanan yang gagal saat dijalankan dua kali membuat orang ragu menjalankannya ulang setelah insiden |
 | View admin + role read-only | `db/migrations/006_admin_views.sql` | `SA-01`. `admin_transactions` merangkai order→user→payment→ledger dalam satu baris; `admin_audit` membawa email pelaku. Role `strive_readonly` **tidak bisa menulis apa pun** dan **tidak bisa membaca tabel mentah** |
 
