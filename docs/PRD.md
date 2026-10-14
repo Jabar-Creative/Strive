@@ -1541,7 +1541,13 @@ Seluruhnya **turunan**. Boleh dihapus kapan saja.
 | `quest:{user_id}:{date}` | HASH | progres quest harian | 48 jam | Hitung dari attempts hari itu |
 | `scan:sha:{hash}:{provider}` | STRING | `scan_id` yang bisa dipakai ulang | 30 hari | Index `scan_dedup_idx` jadi cadangan |
 | `ai:cache:{sha256}` | STRING | hasil LLM ter-cache | 7 hari | Panggil LLM lagi |
-| `rl:{user_id}:{route}` | STRING | penghitung rate limit | 60 detik | Rate limit longgar sesaat |
+| `rl:{identitas}:{ember}` | STRING | penghitung rate limit | 60 detik | Rate limit longgar sesaat |
+
+> **Bentuk kunci ini DIKOREKSI 14 Okt (isu #126).** Ia dulu tertulis `rl:{user_id}:{route}`, dan dimensi `{route}` itu bertentangan dengan §7 dan §10.1 yang dua-duanya menuliskan batas **global per pengguna** — satu ember per rute berarti batas efektifnya 120 dikali jumlah rute (59 rute dijanjikan §10.3, jadi ~7.000 req/menit). Itu bukan selisih kecil; itu selisih antara ada dan tidak ada.
+>
+> `R-03` mengimplementasikan pembacaan yang lebih KETAT — dua dari tiga tempat menuliskannya, dan pembatas yang lebih longgar daripada yang dikira orang lebih berbahaya daripada yang lebih ketat. Dokumen yang dikoreksi, bukan kodenya.
+>
+> `ember` ∈ `{all, auth}`: `auth` memisahkan `/auth/*` (10/menit, brute force login) dari sisanya (120/menit). `identitas` berprefiks `u:<user_id>` atau `ip:<alamat>` — request yang belum terautentikasi (`/auth/sign-in`, justru yang paling butuh batas) belum punya `user_id`, dan dua ruang nama tanpa prefiks bisa saling menyamar.
 | `quota:ai:{user_id}:{date}` | STRING | penghitung kuota AI harian | 26 jam | Kuota longgar sehari |
 | `ws:presence:{squad_id}` | SET | anggota yang sedang online | 5 menit | Indikator presence kosong |
 | `bull:{queue}:*` | BullMQ | outbox · scan · ai · notify | — | Outbox mengirim ulang |
@@ -1593,6 +1599,13 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 | `ROLE_CHANGE_FORBIDDEN` | 403 | Perubahan peran ditolak oleh aturannya sendiri, bukan oleh peran pemanggil. `details: {reason}` — `self` (mengubah peran sendiri) atau `last_superadmin` (menyisakan nol superadmin) |
 | `CARD_NOT_IN_LESSON` | 422 | Jawaban menunjuk kartu yang bukan milik lesson itu. `details: {card_ids}` — dibedakan dari jawaban yang salah, yang bukan galat sama sekali |
 | `INTERNAL_ERROR` | 500 | Kegagalan tak terduga di server. `details` SELALU kosong |
+| `VALIDATION_ERROR` | 400 | Badan permintaan tidak memenuhi bentuk atau rentang yang diharapkan. `details` memuat `field` |
+| `INVALID_SIGNATURE` | 400 | Tanda tangan webhook tidak sah (§12.1 Midtrans, §12.2 Copyleaks). `details` SELALU kosong — isi badannya tidak boleh dipantulkan ke pengirim yang tidak terverifikasi |
+| `PROVIDER_UNAVAILABLE` | 503 | Vendor eksternal tidak bisa dihubungi, menjawab 5xx, atau **belum dikonfigurasi**. Dipakai juga oleh gateway WebSocket (`RT-01`) saat verifikasi sesi gagal sementara — supaya klien jatuh ke polling alih-alih melempar pengguna ke `/login` |
+| `PRICING_NOT_CONFIGURED` | 409 | Belum ada `pricing_config` aktif. Bukan 404: harga memang ada konsepnya, yang tidak ada barisnya |
+| `INVALID_PRICING_PAYLOAD` | 400 | Payload harga baru tidak memenuhi bentuk §6. `details` memuat `field` |
+| `PRICING_VERSION_CONFLICT` | 409 | Harga sudah diubah orang lain sejak payload ini dibaca — penulisan ditolak alih-alih menimpa |
+| `LLM_OUTPUT_INVALID` | 422 | Model tidak menghasilkan JSON yang sah setelah satu percobaan ulang (§12.3). **Bukan** `VALIDATION_ERROR`, yang berarti "yang KAMU kirim salah bentuk"; dan **bukan** `PROVIDER_UNAVAILABLE`, karena vendornya menjawab tepat waktu — yang rusak isinya |
 
 > **Daftar ini TERTUTUP.** Kode yang tidak ada di sini tidak boleh dikirim API, karena
 > `packages/contracts` diturunkan dari tabel ini dan klien diminta bercabang pada `code`,
@@ -1625,10 +1638,25 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 > internal memuat nama tabel, potongan query, dan sesekali nilai parameter. Yang
 > menelusuri memakai `request_id` di header respons, bukan isi badannya.
 >
-> **Enam kode lain masih melanggar daftar ini** dan menunggu keputusan di
-> [isu #92](https://github.com/Jabar-Creative/Strive/issues/92) — keenamnya sudah terlanjur
-> dipakai, jadi keputusannya retroaktif: menerima atau mengganti pemakaiannya. Yang di atas
-> tidak menunggu apa pun karena belum dipakai.
+> **Tujuh kode ditambahkan 14 Okt** (keputusan Dev A, isu #92 dan #214), dan alasan
+> penambahannya pantas tertulis karena ia mengoreksi catatan "tertutup" di atas, bukan
+> melanggarnya.
+>
+> Enam yang pertama sudah terlanjur dipakai di kode sebelum ada di sini — urutan terbalik
+> yang sama dengan empat kode 15 Sep. Tapi yang salah bukan pemakaiannya: **daftar ini
+> ditutup sebelum sistem yang benar-benar dibangun selesai**, dan ia bahkan tidak punya satu
+> pun kode validasi umum, tidak punya kode untuk tanda tangan webhook yang gagal (padahal
+> §12.1 dan §12.2 dua-duanya mewajibkan verifikasi), dan tidak punya kode untuk vendor yang
+> mati (padahal §12 mendaftar lima vendor). Daftar tertutup yang tidak pernah ditinjau
+> setelah ditutup berhenti jadi kontrak dan mulai jadi hambatan.
+>
+> `LLM_OUTPUT_INVALID` yang ketujuh **belum** dipakai: Dev B mengangkatnya di #197 sebelum
+> menulis kodenya, lalu membaringkannya. Itu urutan yang benar, dan ia yang pertama masuk
+> daftar ini dengan cara itu sejak `ROLE_CHANGE_FORBIDDEN`.
+>
+> **Daftar ini tetap TERTUTUP.** Penjaganya `apps/api/src/common/error-codes.spec.ts`, yang
+> membaca tabel di atas langsung dari berkas ini — jadi kode baru di kode tanpa baris di sini
+> memerahkan CI, dan daftar karantinanya sekarang **kosong**.
 
 
 ### 10.3 Endpoint
@@ -2119,7 +2147,7 @@ Setiap warna aksen dipatok ke **satu makna** dan tidak boleh dipinjam. Ini atura
 - [ ] ⏸ TLS 1.3, HSTS aktif — *kodenya siap (HSTS dikirim saat `x-forwarded-proto: https`); menunggu `F-05`*
 - [x] Password Argon2id, tidak pernah di log
 - [ ] ➖ JWT ditandatangani dengan secret ≥ 32 byte dari env — *tidak berlaku: tidak ada JWT, sesi berbasis tabel `sessions` (`A-01`)*
-- [ ] ➖ Refresh token disimpan sebagai **hash**, bukan plaintext — *tidak berlaku: `refresh_tokens` dibuang migrasi 007. Soal `sessions.token` plaintext: isu #124*
+- [x] ➖ Refresh token disimpan sebagai **hash**, bukan plaintext — *tidak berlaku: `refresh_tokens` dibuang migrasi 007. Dan `sessions.token` **DITERIMA plaintext**, keputusan Dev A 14 Okt (isu #124): kolomnya milik Better-Auth — ia yang menulis dan membacanya, dan `SessionGuard` mencocokkannya lewat `where('token','=',…)`. Meng-hash berarti menimpa adapter database Better-Auth, yaitu persis kategori "jangan tulis logika auth sendiri", dan membuat setiap kenaikan versi berisiko — demi model ancaman yang penyerangnya SUDAH memegang kredensial database. Yang menguranginya sudah ada: role `strive_readonly` (Retool, migrasi 006) tidak bisa membaca tabel mentah, termasuk `sessions`. `auth_accounts.access_token`/`refresh_token`/`id_token` juga plaintext dan relevan hanya kalau login sosial diaktifkan — keputusannya ikut di sini*
 - [ ] ➖ Deteksi token reuse aktif dan mencabut rantai sesi — *tidak berlaku, sama seperti di atas*
 - [x] Rate limit 120 req/menit per pengguna, lebih ketat untuk `/auth/*` (10/menit) — *`RateLimitInterceptor`. **Dicentang 23 Sep atas pembatas yang ternyata bisa dilewati satu header** (`X-Forwarded-For` dipercaya tanpa syarat); ditutup 24 Sep di #138 dengan `TRUST_PROXY_HOPS`. WS mendapat jatahnya sendiri di #142. Bentuk kunci §9.4 masih bertentangan, isu #126*
 - [x] Webhook memverifikasi signature **sebelum** memproses apa pun
@@ -2399,6 +2427,9 @@ Ditulis eksplisit agar tidak diam-diam masuk kembali.
 | Web Push browser | Ditunda ke pasca-rilis (§7 E16) |
 | Ekspor CV ke DOCX | Ditunda ke pasca-rilis (§7 E8) |
 | Kalibrasi bobot reviewer otomatis | Ditunda ke pasca-rilis (§7 E11) |
+| **Presence squad** (`ws:presence:{squad_id}`) | **Dipotong dari v0.1 — keputusan Dev A 14 Okt (isu #119).** Kunci Redis-nya terdaftar §9.4 dan tidak dimiliki item backlog mana pun. Kapasitas sudah 115% terisi, dan "siapa sedang online" tidak menyentuh satu pun dari dua mesin produk (retensi lewat streak/kartu, monetisasi lewat klinik/ATS) |
+| **Bonus milestone streak** (§6.1) dan **kredit freeze bulanan** (`SK-7`) | **Dipotong dari v0.1 — keputusan Dev A 14 Okt (isu #115).** Keduanya jalur hadiah yang tidak dimiliki item mana pun. `S-01` memberi satu kredit freeze saat registrasi dan `S-05` menjual tambahannya; pemberian bulanan otomatis adalah jalur ketiga yang butuh penjadwal, kuota, dan jejak ledger tersendiri |
+| **Promosi/degradasi squad** (`SQ-8`) | **Dipotong dari v0.1 — keputusan Dev A 14 Okt (isu #111).** Ia bertentangan dengan `Q4` (squad dibentuk ulang tiap minggu): squad yang dibubarkan tiap pekan tidak punya identitas yang bisa dipromosikan. Menyelesaikan pertentangannya berarti memilih salah satu, dan `Q4` yang sudah dibangun |
 | Simulasi wawancara adaptif multi-putaran | Ditunda ke pasca-rilis (§7 E12) |
 | Kartu tipe `order_steps` & `reveal` | Ada di skema, tidak di UI v1 |
 
