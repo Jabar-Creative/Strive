@@ -31,6 +31,16 @@ export interface BuatJobInput {
  * pelanggaran aturan itu tidak terlihat dari sisi pemanggil, dan worker yang
  * berjalan sebelum commit akan membaca baris yang belum ada.
  */
+/**
+ * Umur minimum sebuah baris `running` sebelum dianggap mengendap — isu #131.
+ *
+ * Angka yang SAMA dengan `STALE_HOLD_MINUTES` reaper hold, dan itu disengaja:
+ * dua penyapu dengan dua ambang berbeda membuat orang menebak yang mana
+ * berlaku. Jauh di atas eksekusi terpanjang yang sah (§12.3 timeout 60 detik
+ * × 3 percobaan + backoff ≈ 5 menit).
+ */
+export const AMBANG_MENGGANTUNG_MENIT = 30;
+
 @Injectable()
 export class AiJobsService {
   private readonly log = new Logger(AiJobsService.name);
@@ -105,6 +115,71 @@ export class AiJobsService {
         .returning(['id', 'kind', 'input'])
         .executeTakeFirst()) ?? null
     );
+  }
+
+  /**
+   * Menyapu `ai_jobs` yang mengendap `running` — isu #131.
+   *
+   * ── Kenapa mereka bisa mengendap ──
+   *
+   * `AI-06` menghitung percobaan ulang di **BullMQ**, bukan di kolom
+   * `ai_jobs.attempts` (keputusan Dev A, 23 Sep: dua sumber kebenaran untuk
+   * satu angka pasti menyimpang saat proses mati di tengah). Konsekuensinya:
+   * keadaan retry hidup di Redis, dan aturan keras 7 menyatakan Redis adalah
+   * turunan yang boleh hilang. Kalau ia hilang saat sebuah job menunggu
+   * jadwal percobaan berikutnya, job antreannya lenyap dan barisnya tertinggal
+   * `running` **selamanya** — tidak muncul di laporan gagal karena statusnya
+   * bukan `failed`, tidak muncul sebagai antre karena bukan `queued`.
+   *
+   * ── Ditandai `failed`, BUKAN diantrekan ulang ──
+   *
+   * Antre ulang otomatis terasa lebih membantu dan dua hal membuatnya salah
+   * di sini:
+   *
+   * 1. **Tabel ini tidak punya `started_at`.** Yang ada `created_at` dan
+   *    `completed_at`, jadi satu-satunya jam yang tersedia mengukur umur
+   *    BARIS, bukan umur eksekusinya. Job yang lama mengantre lalu baru mulai
+   *    berjalan tidak bisa dibedakan dari job yang mati di tengah.
+   * 2. Karena itu, antre ulang berarti ada kemungkinan menjalankan job yang
+   *    **sedang** berjalan — dan itu membayar LLM dua kali. `mulai()`
+   *    melindungi `done`/`failed`, bukan `running`.
+   *
+   * Ditandai `failed` menyelesaikan keluhan #131 apa adanya: yang dikeluhkan
+   * bukan "job tidak diulang" melainkan "job HILANG begitu saja". Baris
+   * `failed` terlihat, terhitung `SA-03`, dan **bisa diantrekan ulang** —
+   * jalur itu sudah ada dan sudah teruji.
+   *
+   * `AMBANG_MENGGANTUNG_MENIT = 30` dipilih jauh di atas eksekusi terpanjang
+   * yang sah (§12.3 timeout 60 detik × 3 percobaan + backoff ≈ 5 menit), jadi
+   * ketidaktepatan `created_at` tidak menyentuh job sehat. Angka yang sama
+   * dengan `STALE_HOLD_MINUTES` reaper hold, dan itu disengaja: dua penyapu
+   * dengan dua ambang berbeda akan membuat orang menebak yang mana berlaku.
+   */
+  async sapuMenggantung(): Promise<{ disapu: number }> {
+    const r = await this.db
+      .updateTable('ai_jobs')
+      .set({
+        status: 'failed',
+        error_code: 'PROVIDER_UNAVAILABLE',
+        error_message:
+          `Job mengendap 'running' lebih dari ${AMBANG_MENGGANTUNG_MENIT} menit dan disapu ` +
+          '(isu #131). Keadaan retry hidup di Redis dan kemungkinan hilang; ' +
+          'job ini bisa diantrekan ulang.',
+        completed_at: sql`now()`,
+      })
+      .where('status', '=', 'running')
+      .where(
+        'created_at',
+        '<',
+        sql<Date>`now() - ${sql.lit(AMBANG_MENGGANTUNG_MENIT)} * interval '1 minute'`,
+      )
+      .returning('id')
+      .execute();
+
+    if (r.length > 0) {
+      this.log.warn(`${r.length} ai_job mengendap disapu jadi failed (isu #131)`);
+    }
+    return { disapu: r.length };
   }
 
   /** `done` + seluruh bidang biaya (§12.3, `CV-8`). */
