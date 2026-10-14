@@ -39,6 +39,45 @@ export const RUBRIC_MAX_SCORE = 5;
 export const RUBRIC_MAX_CRITERIA = 10;
 
 /**
+ * Kriteria rubrik — TETAP, empat. PRD §7 E11 `PR-10`, keputusan Dev A 14 Okt
+ * (isu #73).
+ *
+ * ── Kenapa TETAP, bukan bebas ──
+ *
+ * Versi pertama menerima nama kriteria apa pun asal nilainya 0..5. Itu menutup
+ * lubang poin (`{"apa_saja": 999999}` mencetak 999.999 poin) dan meninggalkan
+ * lubang yang berbeda: **UI dan server tidak bisa dibuat sepakat.** `PR-03`
+ * (form rubrik, Dev B) harus menampilkan daftar kriteria, dan tanpa daftar
+ * resmi ia akan mengarangnya sendiri — lalu dua sisi menyimpang tanpa satu
+ * pun galat, karena server menerima nama apa pun.
+ *
+ * Dan `rubric_scores` adalah `jsonb` yang disimpan permanen. Nama kriteria
+ * yang bebas berarti data yang tidak bisa dianalisis belakangan: "berapa
+ * rata-rata skor sitasi musim ini" tidak bisa dijawab kalau separuh baris
+ * menulis `sitasi`, separuh `citation`, dan sisanya `kutipan`.
+ *
+ * ── Kenapa KEEMPAT ini ──
+ *
+ * Produk ini soal tulisan akademik — klinik plagiarisme dan ATS CV adalah dua
+ * mesin monetisasinya. `sitasi` yang membedakan rubrik ini dari rubrik generik,
+ * dan ia satu-satunya yang menyentuh hal yang juga diukur `K-02`.
+ *
+ * Total maksimum **20** (4 × 5). `PR-5` mengalikannya dengan
+ * `reviewer_weight`, yang CHECK-nya 0,50..1,50 — jadi plafon poin satu review
+ * **30**, dan itu angka yang bisa dihitung tangan saat memeriksa papan.
+ *
+ * `RUBRIC_MAX_CRITERIA = 10` DIPERTAHANKAN sebagai jaring kedua. Ia tidak
+ * berguna lagi untuk membatasi jumlah (daftar tetap sudah membatasinya ke
+ * empat), tapi ia tetap benar untuk apa yang memang dijaganya: badan request
+ * yang mengirim seratus kunci ditolak sebelum satu pun nama dibandingkan.
+ */
+export const RUBRIC_KRITERIA = ['kejelasan', 'ketepatan', 'kelengkapan', 'sitasi'] as const;
+export type RubricKriteria = (typeof RUBRIC_KRITERIA)[number];
+
+/** Total tertinggi yang bisa dicapai satu review — 4 × 5. */
+export const RUBRIC_TOTAL_MAX = RUBRIC_KRITERIA.length * RUBRIC_MAX_SCORE;
+
+/**
  * Satu item antrean review — **tanpa identitas penulis**.
  *
  * Bentuk ini yang menegakkan PR-2. Tidak ada `author_id`, tidak ada nama,
@@ -89,6 +128,32 @@ export function totalRubrik(scores: Record<string, number>): number {
         code: 'VALIDATION_ERROR',
         message: `Rubrik harus berisi 1..${RUBRIC_MAX_CRITERIA} kriteria`,
         details: { criteria: kunci.length, max: RUBRIC_MAX_CRITERIA },
+      },
+    });
+  }
+
+  // Nama kriteria diperiksa SEBELUM nilainya — isu #73. Daftar tetap, dan
+  // keduanya arah: nama asing ditolak, DAN keempatnya wajib ada. Rubrik
+  // separuh terisi akan menghasilkan total yang terlihat sah (mis. 10 dari
+  // dua kriteria) sementara reviewer lain mengirim empat — dan poinnya
+  // dibandingkan di papan yang sama.
+  const asing = kunci.filter((k) => !(RUBRIC_KRITERIA as readonly string[]).includes(k));
+  if (asing.length > 0) {
+    throw new BadRequestException({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: `Kriteria rubrik tidak dikenal: ${asing.join(', ')}`,
+        details: { unknown: asing, expected: [...RUBRIC_KRITERIA] },
+      },
+    });
+  }
+  const hilang = RUBRIC_KRITERIA.filter((k) => !(k in scores));
+  if (hilang.length > 0) {
+    throw new BadRequestException({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: `Kriteria rubrik belum lengkap: ${hilang.join(', ')}`,
+        details: { missing: [...hilang], expected: [...RUBRIC_KRITERIA] },
       },
     });
   }

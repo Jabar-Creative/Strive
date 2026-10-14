@@ -119,7 +119,13 @@ beforeEach(async () => {
   attemptId = a.id;
 });
 
-const nilai = { kejelasan: 4, ketepatan: 5 };
+// Keempat kriteria WAJIB sejak isu #73 (PR-10). Fixture ini dulu mengirim
+// dua, dan test-test di bawah tetap hijau karena server menerima nama apa pun
+// — jadi mereka menguji otorisasi (PR-1/PR-3) lewat badan yang sebenarnya
+// tidak sah. Dilengkapi supaya yang diuji tetap otorisasinya: tanpa ini,
+// validasi rubrik mendahului penjaga dan test-nya merah dengan
+// BadRequestException alih-alih ForbiddenException.
+const nilai = { kejelasan: 4, ketepatan: 5, kelengkapan: 3, sitasi: 2 };
 
 describe('ReviewService (database nyata)', () => {
   it('database siap dipakai', () => {

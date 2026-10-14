@@ -47,7 +47,10 @@ const LESSONS = Array.from({ length: 8 }, (_, i) =>
 );
 let attempts: string[] = [];
 
-const nilai = { kejelasan: 4, ketepatan: 5 }; // total 9
+// Keempat kriteria WAJIB sejak isu #73 (daftar tetap, PR-10). Totalnya
+// dijaga tetap 9 supaya seluruh assertion poin di bawah tidak ikut berubah —
+// 0 adalah nilai rubrik yang sah ("tidak terpenuhi"), bukan nilai kosong.
+const nilai = { kejelasan: 4, ketepatan: 5, kelengkapan: 0, sitasi: 0 }; // total 9
 
 beforeAll(async () => {
   db = createDatabase(url);

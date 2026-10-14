@@ -976,6 +976,14 @@ Isi lengkap ada di §15 (NFR), §16 (keamanan), §17 (observability), §18 (test
 
 **Kedalaman v0.1:** bobot reviewer **tetap 1,0**. Kalibrasi reputasi otomatis ditunda.
 
+> **Rubriknya ditetapkan 14 Okt (`PR-10`, isu #73), dan sebelumnya PRD tidak pernah menyebutnya sama sekali.** `PR-5` sudah menuliskan `poin = rubrik_total × reviewer_weight` sementara tidak ada satu baris pun yang menyebut kriterianya apa, berapa banyak, atau rentang nilainya — padahal `rubric_scores` datang **dari klien**. `POST /reviews/:id` dengan `{"apa_saja": 999999}` karena itu mencetak 999.999 poin, yaitu aturan keras 9 ("penilaian selalu di server") dilanggar lewat pintu depan.
+>
+> `PR-02` menutup lubangnya dengan batas yang **ditebak** (0..5, maksimal 10 kriteria) dan mengangkat pertanyaannya terpisah — urutan yang benar, karena tebakan di jalur poin pantas disetujui manusia.
+>
+> **Kriterianya TETAP, bukan bebas**, dan itu dua alasan: `PR-03` (form rubrik) harus menampilkan daftarnya, dan tanpa daftar resmi UI akan mengarangnya sendiri lalu menyimpang dari server tanpa satu pun galat; dan `rubric_scores` adalah `jsonb` permanen — nama bebas berarti "berapa rata-rata skor sitasi musim ini" tidak bisa dijawab kalau separuh baris menulis `sitasi` dan separuhnya `citation`.
+>
+> **Kenapa keempat ini:** produk ini soal tulisan akademik — klinik plagiarisme dan ATS CV adalah dua mesin monetisasinya. `sitasi` yang membedakan rubrik ini dari rubrik generik, dan ia satu-satunya yang menyentuh hal yang juga diukur `K-02`.
+
 > **Skor dari peer review bisa diakali.** Kalau skor squad naik dari penilaian sesama anggota, squad yang saling memberi nilai penuh akan menang. Tiga kontrol di bawah dirancang untuk itu dan **harus ada sebelum musim liga pertama**, bukan sesudah ada keluhan.
 
 #### Aturan bisnis
@@ -991,6 +999,7 @@ Isi lengkap ada di §15 (NFR), §16 (keamanan), §17 (observability), §18 (test
 | PR-7 | Mentor hanya melihat squad yang `mentor_id`-nya dirinya. |
 | PR-8 | `reviewer_weights` tetap ada di skema dan diisi 1,00 — supaya kalibrasi bisa diaktifkan tanpa migrasi. |
 | PR-9 | Mentor bisa menyesuaikan `reviewer_weight` manual lewat Retool (pengganti kalibrasi otomatis). |
+| PR-10 | **Rubrik TETAP, empat kriteria**: `kejelasan`, `ketepatan`, `kelengkapan`, `sitasi`. Nilai bilangan bulat **0..5** per kriteria; **keempatnya wajib ada**. Total maksimum **20**, dan `PR-5` mengalikannya dengan `reviewer_weight` (CHECK 0,50..1,50) — jadi plafon poin satu review **30**. |
 
 #### Acceptance criteria
 
