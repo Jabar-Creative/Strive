@@ -318,6 +318,66 @@ describe('P-03 — POST /webhooks/payment (database nyata)', () => {
     expect(await saldo()).toEqual({ cache: 0, ledger: 0 });
   });
 
+  // ── Isu #139: jumlah yang DIBAYAR wajib cocok ──────────────────────────
+
+  it('#139: tanda tangan SAH tapi gross_amount tidak cocok → nol koin, order tetap pending', async () => {
+    if (!reachable) return;
+    const id = await order(2200, 55000);
+
+    // Ditandatangani BENAR untuk 50.000 — jadi 401 bukan jawaban yang tepat:
+    // tanda tangannya sah, dan yang salah jumlahnya. Ini keadaan yang dulu
+    // dijawab dengan mengkreditkan 2200 koin PENUH tanpa satu pun jejak.
+    const r = await kirim(notif(id, 'settlement', '50000.00'));
+    expect(r.status, 'sah secara tanda tangan → 200, bukan 401').toBe(200);
+
+    expect(await saldo(), 'nol koin dikreditkan').toEqual({ cache: 0, ledger: 0 });
+
+    const o = await db
+      .selectFrom('orders')
+      .select(['status', 'paid_at'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+    // DIBIARKAN pending, bukan failed: mengulangnya tidak akan membuat
+    // angkanya cocok, dan yang dibutuhkan manusia membaca auditnya.
+    expect(o.status).toBe('pending');
+    expect(o.paid_at).toBeNull();
+
+    const audit = await db
+      .selectFrom('audit_log')
+      .selectAll()
+      .where('action', '=', 'payment.amount_mismatch')
+      .execute();
+    expect(audit, 'tercatat, bukan didiamkan').toHaveLength(1);
+    const isi = JSON.stringify(audit[0]);
+    // Kedua angka ikut, karena yang ditelusuri orang nanti adalah SELISIHNYA.
+    expect(isi).toContain('50000.00');
+    expect(isi).toContain('55000');
+
+    // Jejak webhook tetap ditulis: ia sah, dan `payments` adalah jejak webhook
+    // SAH — termasuk yang sah tapi tidak dikreditkan.
+    const jejak = await db.selectFrom('payments').selectAll().where('order_id', '=', id).execute();
+    expect(jejak).toHaveLength(1);
+    expect(jejak[0]!.signature_ok).toBe(true);
+  });
+
+  it('#139: jumlah yang COCOK tetap dikreditkan — penjaga arah sebaliknya', async () => {
+    if (!reachable) return;
+    // Tanpa test ini, pemeriksaan yang menolak SEGALANYA memuaskan test di
+    // atas dan mematikan seluruh jalur top-up.
+    const id = await order(2200, 55000);
+    expect((await kirim(notif(id, 'settlement', '55000.00'))).status).toBe(200);
+    expect(await saldo()).toEqual({ cache: 2200, ledger: 2200 });
+    expect(
+      (
+        await db
+          .selectFrom('orders')
+          .select('status')
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('paid');
+  });
+
   // ── AC-PA-3 ────────────────────────────────────────────────────────────
 
   it('AC-PA-3: tanpa webhook, saldo tidak bertambah sama sekali', async () => {

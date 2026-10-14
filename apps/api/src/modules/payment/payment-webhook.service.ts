@@ -11,7 +11,12 @@ export interface WebhookResult {
   credited: boolean;
   orderStatus: string | null;
   /** Kenapa tidak ada yang berubah, kalau memang begitu. */
-  alasan?: 'order_tidak_dikenal' | 'sudah_paid' | 'status_tidak_ditangani' | 'badan_tidak_sah';
+  alasan?:
+    | 'order_tidak_dikenal'
+    | 'sudah_paid'
+    | 'status_tidak_ditangani'
+    | 'badan_tidak_sah'
+    | 'jumlah_tidak_cocok';
 }
 
 /** Bidang notifikasi Midtrans yang dipakai. Sisanya tetap tersimpan utuh. */
@@ -143,7 +148,7 @@ export class PaymentWebhookService {
       const order = berbentukUuid(n.order_id)
         ? await trx
             .selectFrom('orders')
-            .select(['id', 'user_id', 'coins', 'status'])
+            .select(['id', 'user_id', 'coins', 'status', 'amount_idr'])
             .where('id', '=', n.order_id)
             .forUpdate()
             .executeTakeFirst()
@@ -182,6 +187,45 @@ export class PaymentWebhookService {
           // PA-7: sudah dibayar — 200 tanpa aksi. Bukan galat: Midtrans memang
           // mengirim ulang notifikasi yang sama.
           return { credited: false, orderStatus: 'paid', alasan: 'sudah_paid' as const };
+        }
+
+        // ── PA-5 diperluas: jumlah yang DIBAYAR wajib cocok (isu #139) ──
+        //
+        // Tanda tangan sudah mencakup `gross_amount` dan `order_id`, jadi ini
+        // BUKAN jalan mencuri koin — penyerang tidak bisa mengarang kombinasi
+        // baru. Yang ditutupnya keadaan lain: notifikasi SAH yang jumlahnya
+        // tidak cocok dengan order kita. Tiga sebab yang mungkin, dan ketiganya
+        // berarti sesuatu yang lebih besar sedang terjadi:
+        //
+        //   - order diubah setelah transaksi Snap dibuat (skrip perbaikan data);
+        //   - `MIDTRANS_SERVER_KEY` dipakai bersama lingkungan lain, jadi
+        //     notifikasi sandbox mendarat di produksi — tanda tangannya sah,
+        //     ordernya bukan milik kita;
+        //   - pembayaran sebagian, kalau metode selain QRIS diaktifkan.
+        //
+        // Sebelum ini ketiganya dijawab dengan mengkreditkan koin PENUH dan
+        // menandai order `paid`, tanpa satu pun jejak bahwa angkanya tidak
+        // cocok. Keputusan Dev A 5 Okt, opsi A: tolak kredit, catat, jawab 200.
+        //
+        // `gross_amount` selalu berbentuk desimal untuk IDR ("55000.00"), jadi
+        // dibulatkan sebelum dibandingkan — `Number('55000.00') === 55000`
+        // benar, tapi mengandalkan itu untuk format yang datang dari pihak luar
+        // adalah keyakinan yang tidak perlu diambil.
+        const dibayar = Math.round(Number(n.gross_amount));
+        if (!Number.isFinite(dibayar) || dibayar !== order.amount_idr) {
+          await this.catat('payment.amount_mismatch', order.id, {
+            transaction_status: n.transaction_status,
+            gross_amount: n.gross_amount,
+            amount_idr: order.amount_idr,
+          });
+          this.log.warn(
+            `Webhook pembayaran order ${order.id}: gross_amount ${n.gross_amount} ` +
+              `tidak cocok amount_idr ${order.amount_idr} — koin TIDAK dikreditkan (isu #139)`,
+          );
+          // 200, dan order DIBIARKAN `pending`: Midtrans mengulang notifikasi
+          // yang dijawab bukan-200 sampai menyerah, dan mengulangnya tidak akan
+          // membuat angkanya cocok. Yang dibutuhkan manusia membaca auditnya.
+          return { credited: false, orderStatus: order.status, alasan: 'jumlah_tidak_cocok' };
         }
 
         await this.coins.write(trx, {
