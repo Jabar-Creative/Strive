@@ -8,6 +8,7 @@ import {
 import { type Job, type Queue, Worker } from 'bullmq';
 
 import { JADWAL_QUEUE, QUEUE, bullConnection } from '../infra/bullmq';
+import { AiJobsService } from '../modules/ai';
 import { ScanService } from '../modules/scan';
 import { LeagueRollupService } from './league-rollup.service';
 import { MetricsService } from './metrics.service';
@@ -90,7 +91,8 @@ export type IdJadwal =
   | 'league-rollup'
   | 'metrics'
   | 'partition'
-  | 'reconcile-balance';
+  | 'reconcile-balance'
+  | 'ai-reaper';
 
 const DETIK = 1_000;
 const MENIT = 60 * DETIK;
@@ -152,6 +154,15 @@ export const JADWAL: readonly JobBerkala[] = [
       'hanya berguna kalau ada yang memeriksanya lebih sering daripada ambangnya.',
   },
   {
+    id: 'ai-reaper',
+    setiapMs: 5 * MENIT,
+    alasan:
+      'Menyapu ai_jobs yang mengendap `running` (isu #131). Lima menit sama ' +
+      'dengan reaper hold, dan ambangnya 30 menit — jadi irama ini hanya ' +
+      'menentukan seberapa cepat baris yang SUDAH mengendap jadi terlihat, ' +
+      'bukan apakah job sehat ikut tersapu.',
+  },
+  {
     id: 'reconcile-balance',
     setiapMs: 24 * JAM,
     alasan:
@@ -175,6 +186,7 @@ export class PenjadwalService implements OnApplicationBootstrap, OnApplicationSh
     private readonly metrics: MetricsService,
     private readonly partition: PartitionService,
     private readonly reconcile: ReconcileBalanceService,
+    private readonly aiJobs: AiJobsService,
   ) {}
 
   /**
@@ -189,6 +201,7 @@ export class PenjadwalService implements OnApplicationBootstrap, OnApplicationSh
       'streak-warning': () => this.streak.run(),
       'league-rollup': () => this.league.run(),
       metrics: () => this.metrics.runOnce(),
+      'ai-reaper': () => this.aiJobs.sapuMenggantung(),
       partition: () => this.partition.run(),
       'reconcile-balance': () => this.reconcile.run(),
     };

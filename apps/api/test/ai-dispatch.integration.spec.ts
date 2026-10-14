@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { OPSI_JOB_AI, QUEUE, bullConnection, createBullConnection } from '../src/infra/bullmq';
 import { createDatabase, type DB } from '../src/infra/kysely';
-import { AiJobsService } from '../src/modules/ai';
+import { AMBANG_MENGGANTUNG_MENIT, AiJobsService } from '../src/modules/ai';
 import {
   GalatAiPermanen,
   GalatAiSementara,
@@ -320,6 +320,63 @@ describe('AI-06 — dispatcher ai_jobs (PostgreSQL + Redis nyata)', () => {
     const r = await baris(id);
     expect(r.status).toBe('failed');
     expect(r.error_code).toBe('UNAUTHENTICATED');
+  }, 40_000);
+
+  // ── Penyapu job mengendap: isu #131 ────────────────────────────────────
+
+  it('#131: job `running` lebih tua dari ambang disapu jadi failed, bukan hilang', async () => {
+    if (!reachable) return;
+    const id = await buatDanAntre();
+    // Umur baris dipalsukan di POSTGRES, bukan dengan `Date` Node: ambangnya
+    // dibandingkan `now()` milik database, dan TZ proses tidak boleh ikut
+    // menentukan hasilnya.
+    await sql`
+      UPDATE ai_jobs SET status = 'running',
+        created_at = now() - ${sql.lit(AMBANG_MENGGANTUNG_MENIT + 5)} * interval '1 minute'
+      WHERE id = ${id}
+    `.execute(db);
+
+    const jobs = new AiJobsService(db, queue);
+    expect(await jobs.sapuMenggantung()).toEqual({ disapu: 1 });
+
+    const r = await baris(id);
+    expect(r.status).toBe('failed');
+    // Terlihat DAN terhitung: `SA-03` membaca tabel ini per kode.
+    expect(r.error_code).toBe('PROVIDER_UNAVAILABLE');
+    expect(r.error_message).toContain('#131');
+    expect(r.completed_at).not.toBeNull();
+  }, 40_000);
+
+  it('#131: job `running` yang MASIH MUDA tidak disentuh — ini penjaga arah sebaliknya', async () => {
+    if (!reachable) return;
+    // Tanpa test ini, ambang 0 menit pun lulus: penyapu yang menyapu segalanya
+    // memuaskan test pertama dan membunuh setiap job yang sedang berjalan.
+    const id = await buatDanAntre();
+    await sql`
+      UPDATE ai_jobs SET status = 'running',
+        created_at = now() - ${sql.lit(AMBANG_MENGGANTUNG_MENIT - 5)} * interval '1 minute'
+      WHERE id = ${id}
+    `.execute(db);
+
+    const jobs = new AiJobsService(db, queue);
+    expect(await jobs.sapuMenggantung()).toEqual({ disapu: 0 });
+    expect((await baris(id)).status).toBe('running');
+  }, 40_000);
+
+  it('#131: baris `queued` tua TIDAK disapu — yang mengendap hanya `running`', async () => {
+    if (!reachable) return;
+    // Job yang menunggu lama di antrean belum tentu hilang: worker yang mati
+    // lalu hidup lagi akan mengambilnya. Yang hilang adalah yang sudah DIMULAI
+    // lalu kehilangan keadaan retry-nya.
+    const id = await buatDanAntre();
+    await sql`
+      UPDATE ai_jobs SET created_at = now() - ${sql.lit(AMBANG_MENGGANTUNG_MENIT + 60)} * interval '1 minute'
+      WHERE id = ${id}
+    `.execute(db);
+
+    const jobs = new AiJobsService(db, queue);
+    expect(await jobs.sapuMenggantung()).toEqual({ disapu: 0 });
+    expect((await baris(id)).status).toBe('queued');
   }, 40_000);
 
   // ── Idempotensi pengantaran ────────────────────────────────────────────
