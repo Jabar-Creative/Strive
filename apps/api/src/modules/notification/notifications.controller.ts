@@ -49,7 +49,20 @@ function serialize(row: NotificationRow): Notification {
 @Controller('notifications')
 // PRD §2.4: notifikasi milik sendiri -> student & mentor.
 @UseGuards(SessionGuard, RolesGuard)
-@Roles('student', 'mentor')
+// Ketiga peran, bukan dua — keputusan Dev A 14 Okt (isu #75).
+//
+// PRD §10.3 menulis "semua" untuk kedua rute ini, dan kode menulis dua peran.
+// Tidak ada satu pun alasan tertulis untuk penyimpangannya, jadi yang
+// dikoreksi kodenya.
+//
+// Dan penyimpangannya punya akibat: superadmin adalah PENGGUNA juga —
+// `N-01` mengirim notifikasi lewat tabel `notifications` untuk siapa pun yang
+// punya baris, termasuk dia. Menolaknya di sini berarti notifikasi yang
+// ditujukan kepadanya tidak bisa dibaca siapa pun, termasuk olehnya.
+//
+// Ini TIDAK melanggar "superadmin tidak otomatis lolos rute student": ia lolos
+// karena §10.3 memang menyebutnya, bukan karena perannya lebih tinggi.
+@Roles('student', 'mentor', 'superadmin')
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 

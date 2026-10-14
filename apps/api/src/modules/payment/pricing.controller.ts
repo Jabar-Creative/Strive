@@ -1,5 +1,6 @@
-import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, UseGuards, ServiceUnavailableException } from '@nestjs/common';
 
+import { Roles, RolesGuard, SessionGuard } from '../../common/guards';
 import { PricingConfigService } from './pricing-config.service';
 import type { PricingConfigRow } from './pricing-config.service';
 
@@ -45,13 +46,23 @@ function toPublicResponse(row: PricingConfigRow): PricingResponse {
 /**
  * `GET /pricing` — docs/PRD.md §10.3 "Dompet & pembayaran".
  *
- * Peran: SEMUA (student, mentor, superadmin) — bukan `publik`. Guard JWT
- * belum ada di repo ini (barrel `common/guards` menunggu item A-02 Dev A),
- * jadi endpoint ini SEMENTARA tidak dijaga apa pun. Isinya sendiri tidak
- * sensitif (harga & paket, bukan data pengguna), tapi begitu JwtGuard ada,
- * pasang di sini supaya konsisten dengan §10.3 (yang menyebutnya "semua",
- * bukan "publik").
+ * Peran: SEMUA (student, mentor, superadmin) — bukan `publik`, dan sejak
+ * 14 Okt itu DITEGAKKAN (isu #75).
+ *
+ * Komentar lama di sini berbunyi "guard JWT belum ada di repo ini … begitu
+ * JwtGuard ada, pasang di sini". Guard-nya sudah ada sejak `A-02`, lalu JWT
+ * dibuang seluruhnya oleh `A-01` dan diganti `SessionGuard` — dan kalimat ini
+ * tidak ikut berubah. Jadi selama berminggu-minggu satu-satunya yang menjaga
+ * rute ini adalah janji yang syaratnya sudah lama terpenuhi.
+ *
+ * Isinya memang tidak sensitif (harga & paket, bukan data pengguna). Yang
+ * ditutupnya bukan kerahasiaan melainkan dua hal lain: §10.3 adalah kontrak,
+ * dan rute tanpa guard tidak punya identitas — jadi ia juga tidak punya ember
+ * rate limit per pengguna (`R-03` memakai `u:<user_id>`, dan tanpa sesi ia
+ * jatuh ke `ip:<alamat>`).
  */
+@UseGuards(SessionGuard, RolesGuard)
+@Roles('student', 'mentor', 'superadmin')
 @Controller('pricing')
 export class PricingController {
   constructor(private readonly pricing: PricingConfigService) {}
