@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import type { Kysely } from 'kysely';
 
+import { pastikanTopUpNyala } from '../../common/fitur';
 import { DATABASE, type DB } from '../../infra/kysely';
 import { PricingConfigService } from './pricing-config.service';
 import { SnapClient, type SnapTransaction } from './snap.client';
@@ -61,6 +62,13 @@ export class CheckoutService {
       .executeTakeFirst();
 
     if (!user || user.status !== 'active') {
+      // Kill switch §19.3 (isu #157). Diperiksa di SERVICE, bukan di controller:
+      // `POST /payments/checkout` belum punya controller sama sekali hari ini —
+      // rutenya ada di `ACCESS_MATRIX` dan tidak ada di kode — jadi gerbang di
+      // rute akan jadi gerbang yang tidak dilewati siapa pun. Dan pola yang sama
+      // sudah dipakai `totalRubrik`: penjaga di service berlaku untuk jalur
+      // non-HTTP juga (worker, skrip perbaikan data).
+      pastikanTopUpNyala();
       throw new BadRequestException({
         error: { code: 'NOT_FOUND', message: 'Pengguna tidak ditemukan', details: {} },
       });

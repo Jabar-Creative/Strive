@@ -1,5 +1,6 @@
 export * from './app-origin';
 export * from './env';
+export * from './fitur';
 export * from './observability';
 export * from './security-headers';
 export * from './cursor';

@@ -2345,14 +2345,44 @@ FEATURE_WS_ENABLED=true
 
 ### 19.3 Feature flag
 
-Empat fitur wajib punya kill switch agar bisa dimatikan tanpa deploy:
+**SATU kill switch, bukan empat** — ditulis ulang 14 Okt (keputusan Dev A, isu #157).
 
-| Flag | Kenapa |
-|---|---|
-| `FEATURE_SCAN_ENABLED` | Vendor down → matikan tombol, hindari hold tertahan |
-| `FEATURE_MASTERY_ENABLED` | Fitur `preview`, mungkin perlu dimatikan cepat |
-| `FEATURE_WS_ENABLED` | WS bermasalah → paksa semua klien ke polling |
-| `FEATURE_TOPUP_ENABLED` | Masalah payment → hentikan penjualan, bukan seluruh app |
+| Flag | Dibaca kode? | Kenapa |
+|---|---|---|
+| `FEATURE_TOPUP_ENABLED` | **ya**, `apps/api/src/common/fitur.ts` | Masalah payment → hentikan penjualan, bukan seluruh app |
+
+> **Kenapa versi lama menjanjikan empat, dan kenapa itu lebih buruk daripada satu.**
+>
+> §19.3 dulu mendaftar empat flag dan **nol di antaranya dibaca satu baris kode pun** —
+> `grep -rn "FEATURE_" apps/api/src apps/web` hanya menemukan satu komentar. Itu bukan
+> kelalaian yang kebetulan: tombol mati yang terlihat menyala lebih berbahaya daripada
+> tombol yang jelas-jelas tidak ada, dan di staging scan serta top-up memang mati —
+> karena **kredensial vendornya kosong**, bukan karena tombolnya.
+>
+> Ketiga yang dibuang sudah punya cara dimatikan yang lebih baik daripada flag:
+>
+> - `FEATURE_SCAN_ENABLED` — `K-03` sudah **gagal tertutup** tanpa kredensial Copyleaks:
+>   setiap webhook ditolak dan provider tidak pernah dipanggil. Flag di atasnya hanya
+>   menambah satu tempat lagi yang bisa salah.
+> - `FEATURE_WS_ENABLED` — `RT-5` sudah mewajibkan setiap layar benar **tanpa satu pun
+>   event WS**, dan `Q-05` membuktikannya di browser sungguhan. Mematikan WS berarti tidak
+>   menyalakan gateway-nya.
+> - `FEATURE_MASTERY_ENABLED` — `MT-02`/`MT-03` belum dibangun. Flag untuk fitur yang
+>   belum ada adalah tombol yang tidak tersambung ke apa pun.
+>
+> **Top-up yang berbeda, dan itu yang membuatnya pantas punya kodenya sendiri:** ia
+> memindahkan uang sungguhan, kredensialnya ADA di produksi (jadi tidak gagal tertutup),
+> dan alasan mematikannya muncul mendadak dan menuntut jawaban dalam menit — bukan dalam
+> satu siklus deploy.
+>
+> **Bawaannya NYALA.** Tidak disetel, kosong, atau hanya spasi = nyala; hanya `false`,
+> `0`, `off`, `no` yang mematikan. Kill switch yang gagal TERTUTUP akan mematikan penjualan
+> setiap kali ada yang lupa satu variabel. Dibaca lewat `envTeks`, bukan `??` — jebakan
+> `APP_URL=` kosong yang membuat `cors` memulangkan `*` berasal dari persis ekspresi itu.
+>
+> Mati dijawab `PROVIDER_UNAVAILABLE` 503 — kode §10.2 yang sudah ada, bukan kode baru.
+> Kalau UI nanti perlu membedakan "dimatikan sengaja" dari "vendor mati", itu keputusan
+> §10.2.
 
 ### 19.4 Migrasi
 
