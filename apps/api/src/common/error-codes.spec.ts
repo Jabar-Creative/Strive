@@ -57,14 +57,19 @@ const PRD = join(AKAR, '..', '..', 'docs', 'PRD.md');
  * Kode yang SUDAH dipakai sebelum test ini ada dan belum punya padanan di
  * §10.2. Setiap baris menunggu keputusan di isu #92 — bukan izin permanen.
  */
-const KARANTINA = new Set([
-  'VALIDATION_ERROR', // tidak ada kode validasi umum di §10.2
-  'INVALID_SIGNATURE', // tanda tangan webhook — tidak ada padanannya
-  'PROVIDER_UNAVAILABLE', // vendor mati — tidak ada padanannya
-  'PRICING_NOT_CONFIGURED', // P-01
-  'INVALID_PRICING_PAYLOAD', // SA-02
-  'PRICING_VERSION_CONFLICT', // SA-02
-]);
+/**
+ * KOSONG sejak 14 Okt — dan itu hasil yang dituju, bukan kebetulan.
+ *
+ * Keenam kode yang dulu di sini masuk PRD §10.2 (keputusan Dev A, isu #92),
+ * jadi `kodeSahDariPrd()` mengenalinya sekarang dan karantina tidak punya
+ * pekerjaan lagi. Test `karantina tidak memuat kode yang ternyata SAH` di
+ * bawah yang akan memerah kalau salah satunya tertinggal di sini.
+ *
+ * Dibiarkan ada sebagai `Set` kosong, bukan dihapus: mekanismenya masih
+ * dibutuhkan pada hari berikutnya ada kode yang terlanjur dipakai sebelum
+ * diputuskan. Yang tidak boleh adalah entri tanpa isu yang menyertainya.
+ */
+const KARANTINA = new Set<string>([]);
 
 function kodeSahDariPrd(): Set<string> {
   const prd = readFileSync(PRD, 'utf8');
