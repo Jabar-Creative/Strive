@@ -10,3 +10,4 @@ export * from './orders.controller';
 export * from './midtrans-signature';
 export * from './payment-webhook.service';
 export * from './payment-webhook.controller';
+export * from './order-expiry.service';

@@ -10,6 +10,7 @@ import { OrdersController } from './orders.controller';
 import { PaymentWebhookController } from './payment-webhook.controller';
 import { PaymentWebhookService } from './payment-webhook.service';
 import { SnapClient } from './snap.client';
+import { OrderExpiryService } from './order-expiry.service';
 import { PricingConfigService } from './pricing-config.service';
 import { PricingController } from './pricing.controller';
 
@@ -38,12 +39,13 @@ import { PricingController } from './pricing.controller';
     PaymentWebhookController,
   ],
   providers: [
+    OrderExpiryService,
     PricingConfigService,
     CheckoutService,
     SnapClient,
     OrderReadService,
     PaymentWebhookService,
   ],
-  exports: [PricingConfigService, CheckoutService, OrderReadService],
+  exports: [OrderExpiryService, PricingConfigService, CheckoutService, OrderReadService],
 })
 export class PaymentModule {}

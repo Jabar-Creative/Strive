@@ -9,6 +9,7 @@ import { type Job, type Queue, Worker } from 'bullmq';
 
 import { JADWAL_QUEUE, QUEUE, bullConnection } from '../infra/bullmq';
 import { AiJobsService } from '../modules/ai';
+import { OrderExpiryService } from '../modules/payment';
 import { ScanService } from '../modules/scan';
 import { LeagueRollupService } from './league-rollup.service';
 import { MetricsService } from './metrics.service';
@@ -92,7 +93,8 @@ export type IdJadwal =
   | 'metrics'
   | 'partition'
   | 'reconcile-balance'
-  | 'ai-reaper';
+  | 'ai-reaper'
+  | 'order-expiry';
 
 const DETIK = 1_000;
 const MENIT = 60 * DETIK;
@@ -163,6 +165,16 @@ export const JADWAL: readonly JobBerkala[] = [
       'bukan apakah job sehat ikut tersapu.',
   },
   {
+    id: 'order-expiry',
+    setiapMs: 1 * JAM,
+    alasan:
+      'PA-9: order pending > 24 jam jadi expired (isu #121). PRD menulis "job ' +
+      'harian", dan itu diikuti sebagai ATURAN bukan irama — dengan sapuan ' +
+      'harian order bisa bertahan pending sampai 48 jam, yang membuat ' +
+      'aturannya sendiri tidak benar separuh waktu. Tiap jam membuat batas 24 ' +
+      'jam akurat dalam satu jam.',
+  },
+  {
     id: 'reconcile-balance',
     setiapMs: 24 * JAM,
     alasan:
@@ -187,6 +199,7 @@ export class PenjadwalService implements OnApplicationBootstrap, OnApplicationSh
     private readonly partition: PartitionService,
     private readonly reconcile: ReconcileBalanceService,
     private readonly aiJobs: AiJobsService,
+    private readonly orders: OrderExpiryService,
   ) {}
 
   /**
@@ -202,6 +215,7 @@ export class PenjadwalService implements OnApplicationBootstrap, OnApplicationSh
       'league-rollup': () => this.league.run(),
       metrics: () => this.metrics.runOnce(),
       'ai-reaper': () => this.aiJobs.sapuMenggantung(),
+      'order-expiry': () => this.orders.run(),
       partition: () => this.partition.run(),
       'reconcile-balance': () => this.reconcile.run(),
     };

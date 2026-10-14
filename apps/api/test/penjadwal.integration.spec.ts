@@ -76,6 +76,18 @@ describe('PenjadwalService terhadap Redis + PostgreSQL nyata (isu #203)', () => 
     expect(JADWAL.length).toBeGreaterThan(0);
   });
 
+  it('sembilan job terdaftar — bertambah berarti penjadwalnya ikut diperbarui', () => {
+    // Angka ditulis di sini DENGAN SENGAJA. `JADWAL` yang bertambah tanpa
+    // seseorang menyentuh berkas test ini berarti job baru masuk tanpa ada
+    // yang memeriksa iramanya — dan irama adalah hal yang paling mudah
+    // disalin dari entri sebelahnya tanpa dipikirkan.
+    // Angkanya SALAH di percobaan pertama (kutulis 8; isinya 9 — tujuh asli
+    // plus ai-reaper #131 plus order-expiry #121), dan penjaga ini yang
+    // memberi tahu. Itu persis gunanya: ia menolak daftar yang bertambah
+    // tanpa seseorang menyentuh berkas ini.
+    expect(JADWAL).toHaveLength(9);
+  });
+
   it('setiap job punya irama positif dan ALASAN tertulis', () => {
     // Angka yang ditulis tanpa alasan akan disetel ulang orang berikutnya
     // dengan alasan yang juga tidak tertulis.
