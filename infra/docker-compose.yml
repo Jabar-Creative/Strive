@@ -111,7 +111,7 @@ services:
       AWS_DEFAULT_REGION: us-east-1
     entrypoint: >
       /bin/sh -c "
-      for b in strive-documents strive-assets strive-public; do
+      for b in strive-documents strive-assets; do
         aws --endpoint-url http://minio:9000 s3api create-bucket --bucket $$b ||
         aws --endpoint-url http://minio:9000 s3api head-bucket --bucket $$b;
       done &&

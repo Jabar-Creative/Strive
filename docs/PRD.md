@@ -1909,7 +1909,7 @@ interface PlagiarismProvider {
 | Aspek | Detail |
 |---|---|
 | Dev | MinIO lewat docker-compose |
-| Bucket | `strive-documents` (privat), `strive-assets` (privat), `strive-public` (avatar) |
+| Bucket | `strive-documents` (privat), `strive-assets` (privat). **DUA, bukan tiga** — `strive-public` dibuang 14 Okt (isu #127): `mc mb` membuatnya privat dan tidak ada satu pun `mc anonymous set` di repo, jadi namanya berbohong; dan nol kode pernah membacanya. Avatar akan butuh keputusan akses publik tersendiri saat `avatar_url` benar-benar dirender — lihat isu #163 |
 | Akses | **Signed URL 15 menit.** Tidak ada bucket publik untuk dokumen pengguna. |
 | Enkripsi | Server-side encryption aktif |
 | Retensi | Dokumen scan dihapus otomatis setelah 90 hari; laporan disimpan 1 tahun |
@@ -2125,7 +2125,7 @@ Setiap warna aksen dipatok ke **satu makna** dan tidak boleh dipinjam. Ini atura
 - [x] Webhook memverifikasi signature **sebelum** memproses apa pun
 - [x] Upload divalidasi tipe **dan** magic bytes, bukan hanya ekstensi
 - [x] Upload disimpan di luar webroot, diakses hanya lewat signed URL
-- [x] Tidak ada bucket publik untuk dokumen pengguna — *nama `strive-public` menyesatkan, isu #127*
+- [x] Tidak ada bucket publik untuk dokumen pengguna — *dan sejak 14 Okt tidak ada bucket bernama publik sama sekali: `strive-public` dibuang, isu #127*
 - [x] Query memakai parameter binding (Kysely), tidak ada string concat
 - [x] Header keamanan: `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` — *CSP `apps/web` menunggu nonce App Router, isu #125*
 - [x] CORS whitelist eksplisit, bukan `*`
