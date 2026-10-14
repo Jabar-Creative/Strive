@@ -64,13 +64,13 @@ export const ACCESS_MATRIX: readonly AccessRule[] = [
   // Ditambahkan saat isu #68 — rute ini SUDAH berdiri tapi tidak pernah
   // tercatat di sini, dan tidak ada yang memberi tahu. Sekarang ada test
   // drift yang menolak PR yang menambah rute tanpa menambahkannya ke sini.
-  { route: 'GET /notifications', allow: BELAJAR },
-  { route: 'PATCH /notifications/:id/read', allow: BELAJAR },
-  {
-    route: 'GET /pricing',
-    allow: [],
-    note: 'PUBLIK di kode — tanpa guard sama sekali. PRD §10.3 menulis "semua" (= tiga peran, artinya butuh sesi). Selisih itu BELUM diputuskan; lihat isu #75',
-  },
+  // SEMUA, bukan BELAJAR — dikoreksi 14 Okt (isu #75): §10.3 menulis "semua",
+  // dan superadmin adalah penerima notifikasi juga.
+  { route: 'GET /notifications', allow: SEMUA },
+  { route: 'PATCH /notifications/:id/read', allow: SEMUA },
+  // Dulu `allow: []` dengan catatan "selisih BELUM diputuskan". Diputuskan
+  // 14 Okt (isu #75): ikuti PRD, jadi rute ini butuh sesi.
+  { route: 'GET /pricing', allow: SEMUA },
   {
     route: 'GET /health',
     allow: [],
