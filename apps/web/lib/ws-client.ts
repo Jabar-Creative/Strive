@@ -14,7 +14,14 @@
 
 export const REALTIME_NAMESPACE = '/rt';
 
-/** Interval fallback saat WS mati atau dimatikan lewat FEATURE_WS_ENABLED. */
+/**
+ * Interval fallback saat WS mati — RT-5 mewajibkan setiap layar benar TANPA
+ * satu pun event WS.
+ *
+ * Dulu baris ini menyebut `FEATURE_WS_ENABLED`. Flag itu dihapus 14 Okt (isu
+ * #157): ia tercantum di PRD §19.3 dan `.env.example` tanpa satu baris kode
+ * yang membacanya, dan RT-5 sudah menjamin hal yang sama secara struktural.
+ */
 export const POLLING_FALLBACK_MS = 30_000;
 
 /** Kanal yang aktif di v0.1. Sisanya polling — docs/PRD.md §11. */
