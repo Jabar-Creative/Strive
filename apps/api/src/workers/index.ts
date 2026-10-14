@@ -6,6 +6,7 @@ import { RedisModule } from '../infra/redis';
 import { StorageModule } from '../infra/storage';
 import { AdminModule } from '../modules/admin';
 import { AiModule } from '../modules/ai';
+import { PaymentModule } from '../modules/payment';
 import { ScanModule } from '../modules/scan';
 import { WalletModule } from '../modules/wallet';
 import { NotificationModule } from '../modules/notification';
@@ -85,6 +86,7 @@ import { StreakWarningService } from './streak-warning.service';
     AdminModule,
     WalletModule,
     NotificationModule,
+    PaymentModule,
     ScanModule,
     LeagueModule,
     RealtimeEmitterModule,

@@ -7,7 +7,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { KyselyModule, createDatabase, type DB } from '../src/infra/kysely';
 import { RedisModule } from '../src/infra/redis';
-import { PaymentModule, PaymentWebhookService, hitungTandaTangan } from '../src/modules/payment';
+import {
+  BATAS_PENDING_JAM,
+  OrderExpiryService,
+  PaymentModule,
+  PaymentWebhookService,
+  hitungTandaTangan,
+} from '../src/modules/payment';
 
 /**
  * `P-03` terhadap DATABASE NYATA — PRD §7 E6 `PA-5` … `PA-8`.
@@ -316,6 +322,90 @@ describe('P-03 — POST /webhooks/payment (database nyata)', () => {
     const r = await kirim({ ...notif(id, 'settlement', '999.00'), gross_amount: '55000.00' });
     expect(r.status).toBe(401);
     expect(await saldo()).toEqual({ cache: 0, ledger: 0 });
+  });
+
+  // ── PA-9 / isu #121: order pending kedaluwarsa ─────────────────────────
+
+  it('PA-9: order pending > 24 jam jadi expired', async () => {
+    if (!reachable) return;
+    const id = await order(2200, 55000);
+    // Umur dipalsukan di POSTGRES: batasnya dibandingkan `now()` milik
+    // database, dan TZ proses tidak boleh ikut menentukan hasilnya.
+    await sql`
+      UPDATE orders SET created_at = now() - ${sql.lit(BATAS_PENDING_JAM + 1)} * interval '1 hour'
+      WHERE id = ${id}
+    `.execute(db);
+
+    expect(await new OrderExpiryService(db).run()).toEqual({ kedaluwarsa: 1 });
+    expect(
+      (
+        await db
+          .selectFrom('orders')
+          .select(['status', 'paid_at'])
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('expired');
+  });
+
+  it('PA-9: order pending yang masih MUDA tidak disentuh — penjaga arah sebaliknya', async () => {
+    if (!reachable) return;
+    // Tanpa ini, batas 0 jam pun lulus test di atas dan mengedaluwarsakan
+    // setiap order beberapa detik setelah dibuat.
+    const id = await order(2200, 55000);
+    await sql`
+      UPDATE orders SET created_at = now() - ${sql.lit(BATAS_PENDING_JAM - 1)} * interval '1 hour'
+      WHERE id = ${id}
+    `.execute(db);
+
+    expect(await new OrderExpiryService(db).run()).toEqual({ kedaluwarsa: 0 });
+    expect(
+      (
+        await db
+          .selectFrom('orders')
+          .select('status')
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('pending');
+  });
+
+  it('PA-9: order PAID yang tua tidak ikut tersapu, dan paid_at-nya utuh', async () => {
+    if (!reachable) return;
+    // `WHERE status = 'pending'` yang hilang akan mengubah order lunas jadi
+    // expired — kerusakan yang tidak bisa dipulihkan dari data mana pun.
+    const id = await order(2200, 55000);
+    expect((await kirim(notif(id, 'settlement', '55000.00'))).status).toBe(200);
+    await sql`
+      UPDATE orders SET created_at = now() - ${sql.lit(BATAS_PENDING_JAM * 10)} * interval '1 hour'
+      WHERE id = ${id}
+    `.execute(db);
+
+    expect(await new OrderExpiryService(db).run()).toEqual({ kedaluwarsa: 0 });
+    const o = await db
+      .selectFrom('orders')
+      .select(['status', 'paid_at'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+    expect(o.status).toBe('paid');
+    expect(o.paid_at).not.toBeNull();
+  });
+
+  it('PA-9: webhook settlement yang tiba SETELAH expired tetap mengkreditkan koin', async () => {
+    if (!reachable) return;
+    // Uangnya sudah diterima Midtrans. Pengguna harus dapat koinnya, apa pun
+    // yang dikatakan jam kita — dan `P-03` memeriksa `status === 'paid'` untuk
+    // duplikat, bukan `!== 'pending'`, jadi ini bekerja secara konstruksi.
+    // Test ini yang menjaga bahwa itu tidak berubah tanpa sengaja.
+    const id = await order(2200, 55000);
+    await sql`
+      UPDATE orders SET created_at = now() - ${sql.lit(BATAS_PENDING_JAM + 1)} * interval '1 hour'
+      WHERE id = ${id}
+    `.execute(db);
+    await new OrderExpiryService(db).run();
+
+    expect((await kirim(notif(id, 'settlement', '55000.00'))).status).toBe(200);
+    expect(await saldo()).toEqual({ cache: 2200, ledger: 2200 });
   });
 
   // ── Isu #139: jumlah yang DIBAYAR wajib cocok ──────────────────────────
