@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -80,6 +81,33 @@ export class StorageService {
    * pelan-pelan jadi "satu hari saja supaya tidak merepotkan", dan link yang
    * bocor jadi berlaku satu hari.
    */
+  /**
+   * Menghapus satu objek — isu #123 (retensi 90 hari §16.1).
+   *
+   * ── Kenapa ini sebelumnya tidak ada ──
+   *
+   * `StorageService` punya `put`, `get`, `exists`, dan `signedDownloadUrl`,
+   * dan **nol cara menghapus**. Jadi janji §16.1 *"dokumen sensitif disimpan
+   * maksimal 90 hari"* tidak punya satu pun mekanisme di baliknya — bukan
+   * "belum dijadwalkan", tapi tidak bisa dilakukan sama sekali.
+   *
+   * ── IDEMPOTEN, dan itu bukan kebetulan S3 ──
+   *
+   * `DeleteObject` S3 menjawab 204 untuk kunci yang tidak ada: menghapus dua
+   * kali bukan galat. Itu yang membuat penyapu retensi aman dijalankan ulang
+   * setelah gagal separuh jalan — dan penyapu yang tidak aman dijalankan ulang
+   * adalah penyapu yang orang ragu menjalankannya setelah insiden, yaitu
+   * pelajaran yang sudah tercatat untuk `PartitionService`.
+   *
+   * Yang TIDAK dilakukan di sini: menyentuh baris database. Objeknya dihapus,
+   * barisnya tetap — riwayat laporan plagiarisme harus selamat tanpa
+   * berkasnya, karena yang sensitif dokumennya, bukan fakta bahwa scan pernah
+   * terjadi. Pemanggilnya yang memutuskan bagaimana barisnya ditandai.
+   */
+  async hapus(bucket: string, key: string): Promise<void> {
+    await this.s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+  }
+
   async signedDownloadUrl(bucket: string, key: string): Promise<string> {
     return getSignedUrl(this.s3, new GetObjectCommand({ Bucket: bucket, Key: key }), {
       expiresIn: SIGNED_URL_TTL_SECONDS,
