@@ -122,7 +122,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `MT-01` | Skema mastery_sessions + API | A | W6 | 0,5 | `done` | #59 | 2026-09-17 | Giliran ditambahkan lewat jsonb_insert di DATABASE, bukan dirakit di Node — 10 penambahan paralel diuji, nol yang hilang. Kepemilikan disaring di WHERE, bukan diperiksa setelah baris diambil. Sesi orang lain dan sesi yang tidak ada menjawab identik. |
 | `PR-02` | API submit review + poin berbobot + cap harian | A | W6 | 1 | `done` | — | 2026-09-20 | Cap harian memakai hari LOKAL reviewer (aturan 5), diuji tepat di batas tengah malam lokal — implementasi UTC lulus test biasa tapi gagal yang ini. Test konkurensi versi pertama LULUS tanpa `FOR UPDATE`, jadi ditulis ulang dengan gerbang; sekarang cabut kuncinya dan ia merah (6 berpoin, bukan 5). Nilai rubrik dari klien DIBATASI 0..5 × maks 10 kriteria — tanpa itu `{"x":999999}` mencetak poin lewat endpoint publik (isu #73). CHECK `no_self_review` dibuktikan dengan MENEMBUS service. |
 | `AI-04` | Skor ATS deterministik + daftar temuan konkret | B | W6 | 0,5 | `done` | #211 | 2026-10-09 | 14 aturan §13.3 apa adanya (mulai 100, dikurangi per pelanggaran, clamp 0). Fungsi MURNI tanpa I/O/LLM/jam — deterministik secara KONSTRUKSI; test mengunci: skor dua kali identik + sumber fungsi bebas 'llm'/'httpx'/'await'. 20 test, satu per aturan + AC-CV-3 ('Jan 2024' → error yang MENYEBUT YYYY-MM, di pesan, bukan cuma kode) + clamp bawah (CV kosong mentok 72 — 10 peran penuh pelanggaran yang mendorongnya lewat 100). Keputusan tercatat: ringkasan kosong dihitung 0 kata (aturannya panjang, bukan keberadaan); tanggal kosong BUKAN pelanggaran (kosong ≠ salah format); tahun pendidikan ikut aturan YYYY-MM; rentang dibandingkan leksikografis (YYYY-MM urutan string = kronologis). Kata kerja aktif: daftar 24 kata kerja Indonesia + mayoritas (≤ setengah aktif tidak dihukum) — daftar memang tidak lengkap dan tidak perlu. Sabotase 2 penjaga (penalti email dicabut, tanggal dianggap selalu valid) memerahkan 4 test. Bukti nyata: PDF dua kolom reportlab → ekstraksi AI-02 → susun AI-03 → skor 74 DUA KALI IDENTIK dengan 5 temuan. |
-| `AI-05` | Render PDF satu kolom, ramah parser | B | W6 | 0,5 | `todo` | — | — | — |
+| `AI-05` | Render PDF satu kolom, ramah parser | B | W6 | 0,5 | `done` | `f3c8a20` | 2026-10-18 | AC "terbaca parser ATS sumber terbuka" dibuktikan parser SETARA di test: pdfplumber (alat baca tahap 3 pipeline ini, bukan pyresparser — menambah dependensi berat tanpa pemanggil ditolak kebijakan repo) membaca byte PDF yang dihasilkan, TANPA menyentuh objek CV masukan (menyentuhnya membuat test skor jadi tautologi). SATU KOLOM dibuktikan TIGA lapis: semua awal baris x<200, tidak ada celah antar-kata >40pt, dan detektor dua kolom milik extract.py sendiri mengembalikan False — termasuk halaman lanjutan. Round-trip penuh: render → ekstrak → nama/headline/email/telepon/linkedin/tanggal YYYY-MM PERSIS/skill/posisi/perusahaan semua hadir. Skor §13.3 atas CV yang dibangun ulang dari PDF: 100→100 nol penalti baru, dan penalti masukan TERBAWA bukan musnah; determinisme byte dikunci `invariant=1` (dokumen sama = byte sama). Footer §13.4.5 "saran, bukan penilaian resmi" ikut di PDF. Poin dipotong pembatas yang SAMA dengan ats_score (satu poin data = satu baris = satu poin saat dinilai ulang). Sabotase dua arah oleh orchestrator: seksi digambar x=320 → 2 test merah, dipulihkan 97/97; catatan jujur agent — penjaga reformat tanggal dipikul test round-trip (c), bukan test skor (d), karena "tanggal kosong bukan pelanggaran" (keputusan AI-04). |
 | `PL-01` | Form prompt terstruktur (role/context/task/format… | B | W6 | 1 | `todo` | — | — | — |
 | `ST-01` | store_items + pembelian transaksional (debit ledger) | A | W6 | 1 | `done` | #113 | 2026-09-22 | Dipindah dari Dev B (22 Sep). Entri ledger menunjuk BARIS PEMBELIAN, bukan item: `coin_ledger_ref_uniq` tidak memuat `user_id`, dan `findExisting()` juga tidak — dengan ref ke item, pembeli KEDUA mendapat itemnya GRATIS (lapis idempotensi menemukan entri pembeli pertama lalu mengembalikannya tanpa mendebit siapa pun). Diverifikasi merah: saldo pembeli kedua tetap 1000. Baris pembelian disisipkan SEBELUM debit karena ref butuh idnya; SR-4 dijamin ROLLBACK, dan ada assert nol baris tersisa. `asset_key` tidak pernah keluar dari service (SR-5). |
 | `ST-02` | UI etalase + unduh aset (signed URL 15 menit) | B | W6 | 1 | `todo` | — | — | Memiliki `GET /store/purchases/:id/download` — AC-nya ("URL unduh kedaluwarsa setelah 15 menit") sudah menjanjikannya; path-nya dicatat di sini supaya penyisiran `scripts/audit-rute.mjs` bisa melihatnya (isu #88). |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 59 | 58,5 |
+| `done` | 60 | 59,0 |
 | `review` | 1 | 1,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 3,5 |
-| `todo` | 16 | 15,0 |
+| `todo` | 15 | 14,5 |
 
 ---
 ## Ringkasan per epik
@@ -189,12 +189,12 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E14` | Strive Store | 2,0 | 2 | 1/2 · **50%** | — |
 | `E7` | Klinik Plagiarisme | 5,0 | 4 | 2/4 · **50%** | 1 |
 | `E11` | Peer Review & Mentor | 4,0 | 4 | 2/4 · **50%** | — |
-| `E8` | ATS CV Builder | 6,5 | 7 | 5/7 · **77%** | — |
+| `E8` | ATS CV Builder | 6,5 | 7 | 6/7 · **85%** | — |
 | `E12` | International Mastery Track | 4,0 | 4 | 1/4 · **12%** | — |
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **59/80 · 75%** | **4** |
+| | **Total** | **78,5** | **80** | **60/80 · 75%** | **4** |
 
 ---
 
