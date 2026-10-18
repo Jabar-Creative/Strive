@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RT-02 - Laporan verifikasi useRealtime + fallback polling</title>
+<style>
+  :root { --bg:#fff; --fg:#16181d; --muted:#5b6270; --line:#e3e6ec; --card:#f7f8fa; --ok:#0f7b3f; --ok-bg:#e6f4ec; --code:#f2f3f6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#e8eaef; --muted:#a0a7b4; --line:#2b2f37; --card:#1b1e24; --ok:#6ede9e; --ok-bg:#16301f; --code:#1f232a; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-size:28px; margin:0 0 8px; } h2 { font-size:21px; margin:44px 0 12px; padding-top:18px; border-top:1px solid var(--line); }
+  .lede { color:var(--muted); font-size:17px; margin:0 0 22px; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 26px; }
+  .chip { font-size:13px; padding:4px 10px; border-radius:999px; background:var(--card); border:1px solid var(--line); color:var(--muted); }
+  .chip.ok { background:var(--ok-bg); color:var(--ok); border-color:transparent; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14.5px; }
+  th,td { text-align:left; padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+  th { background:var(--card); font-weight:600; }
+  code { font:13.5px/1.5 ui-monospace,Menlo,monospace; background:var(--code); padding:1px 5px; border-radius:5px; }
+  img { max-width:100%; border:1px solid var(--line); border-radius:10px; margin:10px 0 4px; }
+  .ket { color:var(--muted); font-size:13.5px; margin:2px 0 18px; }
+  .ok-t { color:var(--ok); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>RT-02 — Client hook useRealtime + fallback polling otomatis</h1>
+  <p class="lede">Laporan verifikasi end-to-end item RT-02 (Dev B). Dikerjakan 18 Okt 2026 (sesi susulan minggu 12–16 Okt).</p>
+  <div class="meta">
+    <span class="chip">Lingkungan: lokal (web :3000 · API :3001 + gateway WS · PostgreSQL/Redis Docker)</span>
+    <span class="chip ok">Status: seluruh skenario lulus</span>
+    <span class="chip">Tanggal: 2026-10-18</span>
+  </div>
+
+  <h2>1 · Ringkasan</h2>
+  <p>Layar squad kini memakai hook <code>useRealtime</code>: mesin transport Q-05 (WS + polling 30 dtk) teruji di <code>lib/leaderboard-live</code> dipasang lewat hook yang bisa dipakai layar mana pun — <code>squadId</code> terisi berarti kanal WS squad, <code>null</code> berarti polling-murni (kanal <code>user:</code>/<code>league:</code> memang polling di v0.1, PRD E15). Penjaga refetch in-flight + satu trailing run yang tadinya closure privat squad-screen diangkat menjadi fungsi murni teruji <code>lib/refetch-guard</code>.</p>
+
+  <h2>2 · Matriks skenario</h2>
+  <table>
+    <thead><tr><th>#</th><th>Skenario</th><th>Harapan</th><th>Hasil</th><th>Cara verifikasi</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Registrasi + semai squad (musim aktif, 3 anggota berpoin 100/50/10)</td><td>—</td><td class="ok-t">TERSEMAI</td><td>psql dev lokal</td></tr>
+      <tr><td>2</td><td>Buka /squad dengan WS HIDUP</td><td>Papan 3 baris terisi, chip transport "Langsung"</td><td class="ok-t">LULUS</td><td>Screenshot 01 + assert chip</td></tr>
+      <tr><td>3</td><td><strong>AC: WS "dimatikan seluruhnya"</strong> (rute /api/v1/ws* di-abort di level browser; REST tetap hidup)</td><td>Papan TETAP 3 baris via polling, chip jujur "per 30 dtk", TIDAK ada layar kosong/galat</td><td class="ok-t">LULUS</td><td>Screenshot 02 + context.route abort</td></tr>
+      <tr><td>4</td><td>Data berubah saat WS mati: poin → 200 di Postgres + kunci ZSET dibuang</td><td>Dalam ≤1 tick polling papan menampilkan 200 TANPA reload (lewat rebuildSquad milik aplikasi, aturan keras 7)</td><td class="ok-t">LULUS</td><td>waitForFunction teks "200"</td></tr>
+      <tr><td>5</td><td>Viewport 375px</td><td>Tanpa scroll horizontal</td><td class="ok-t">LULUS</td><td>Screenshot 03 + scrollWidth</td></tr>
+      <tr><td>6</td><td>Console</td><td>Bersih (di luar kegagalan WS yang sengaja diblokir)</td><td class="ok-t">LULUS</td><td>Listener console error</td></tr>
+      <tr><td>7</td><td>Penjaga refetch (unit)</td><td>In-flight ditahan, SATU trailing run, pulih dari lemparan</td><td class="ok-t">LULUS</td><td><code>refetch-guard.spec.ts</code> 4 test</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3 · Bukti visual</h2>
+  <img src="images/01-squad-ws-hidup.png" alt="Layar squad dengan WS hidup, chip Langsung" />
+  <p class="ket">01 — WS hidup: papan terisi, chip "Langsung".</p>
+  <img src="images/02-squad-ws-mati-polling.png" alt="Layar squad saat WS dimatikan, papan tetap terisi lewat polling" />
+  <p class="ket">02 — WS dimatikan: papan TETAP terisi via polling 30 dtk, chip jujur "per 30 dtk", tanpa layar galat (AC RT-02).</p>
+  <img src="images/03-squad-375px.png" alt="Layar squad 375px" />
+  <p class="ket">03 — 375px tanpa scroll horizontal.</p>
+
+  <h2>4 · Katalog regresi</h2>
+  <table>
+    <thead><tr><th>Pemicu</th><th>Gejala</th><th>Root cause</th><th>Expected setelah perbaikan</th><th>Reproduce</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Menjalankan verifikasi browser yang menyemai data ke DB dev BERSAMAAN dengan suite integrasi</td>
+        <td>Data semaian hilang diam-diam (users TRUNCATE CASCADE oleh suite), papan/squad kosong tak terduga</td>
+        <td>Ini jebakan yang sudah tercatat di CLAUDE.md ("satu suite penyentuh DB pada satu waktu") — terjadi LAGI di sesi ini</td>
+        <td>Satu penyentuh DB pada satu waktu: verifikasi browser menunggu suite integrasi selesai</td>
+        <td>Seed baris users sambil integrasi berjalan → baris hilang</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>5 · Keputusan teknis</h2>
+  <ul>
+    <li><strong>WS "dimatikan" dari sudut klien</strong> (rute di-abort di browser): RT-02 item KLIEN; perilaku server saat WS mati adalah milik RT-01 (sudah dibuktikan Dev A). <code>FEATURE_WS_ENABLED</code> hanya komentar di <code>fitur.ts</code> — kill switch yang benar-benar dibangun hanya <code>FEATURE_TOPUP_ENABLED</code> (P-02), jadi tidak ada cara lain mematikan WS tanpa mematikan REST yang seproses.</li>
+    <li><strong>Penyegaran polling dibuktikan lewat jalur rebuild milik aplikasi</strong>: ubah poin di Postgres + buang kunci ZSET → poll berikutnya memicu <code>rebuildSquad</code> (bukan menulis Redis manual).</li>
+    <li>Hook memasang mesin sejak <code>squadId</code> null: panggilan <code>ambil</code> saat null no-op terjaga; transisi null → id tidak memasang ulang mesin.</li>
+  </ul>
+
+  <h2>6 · Verifikasi perintah</h2>
+  <table>
+    <thead><tr><th>Perintah</th><th>Hasil</th></tr></thead>
+    <tbody>
+      <tr><td><code>pnpm --filter @strive/web test</code></td><td>82/82 hijau (4 baru: refetch-guard)</td></tr>
+      <tr><td><code>pnpm lint && pnpm typecheck && pnpm build</code></td><td>hijau</td></tr>
+      <tr><td><code>pnpm --filter @strive/api test:integration</code> (bersih, tanpa pesaing DB)</td><td>hijau penuh</td></tr>
+      <tr><td>Audit keamanan (agent-security)</td><td>terlampir di PR</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
