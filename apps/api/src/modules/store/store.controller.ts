@@ -1,4 +1,5 @@
 import {
+  Param,
   BadRequestException,
   Body,
   Controller,
@@ -57,5 +58,19 @@ export class StoreController {
       });
     }
     return this.store.purchase({ userId, itemId, idempotencyKey });
+  }
+
+  /**
+   * `GET /store/purchases/:id/download` — ST-02, SR-5: signed URL 15 menit.
+   * Kepemilikan dicek di service (WHERE user_id), bukan di guard — pola
+   * F-14. `asset_key` tidak pernah keluar; yang dikirim hanya URL ternilai
+   * pendek + kapan ia kedaluwarsa.
+   */
+  @Get('purchases/:id/download')
+  async download(
+    @CurrentUserId() userId: string,
+    @Param('id') purchaseId: string,
+  ): Promise<{ url: string; expires_at: string }> {
+    return this.store.downloadUrl(userId, purchaseId);
   }
 }
