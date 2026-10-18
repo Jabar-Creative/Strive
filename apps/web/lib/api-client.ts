@@ -21,12 +21,22 @@
 // Batas limit juga dari sana — isu #182: angka harfiah di web diam-diam
 // menjepit lebih ketat daripada API tanpa satu pun yang merah.
 import { WALLET_LEDGER_LIMIT_MAX } from '@strive/contracts';
-import type { HubResponse, WalletLedgerResponse, WalletResponse } from '@strive/contracts';
+import type {
+  CheckoutResponse,
+  HubResponse,
+  OrderResponse,
+  PricingResponse,
+  WalletLedgerResponse,
+  WalletResponse,
+} from '@strive/contracts';
 
 export type {
+  CheckoutResponse,
   CoinEntryType,
   CoinLedgerEntry,
   HubResponse,
+  OrderResponse,
+  PricingResponse,
   WalletLedgerResponse,
   WalletResponse,
 } from '@strive/contracts';
@@ -269,10 +279,9 @@ export function createApiClient(config: ApiClientConfig) {
      * memang menembak Redis tiap kali, bukan cache HTTP.
      */
     getSquadLeaderboard(squadId: string, opts?: Pick<RequestOptions, 'signal'>) {
-      return request<SquadMember[]>(
-        `/squads/${encodeURIComponent(squadId)}/leaderboard`,
-        { signal: opts?.signal },
-      );
+      return request<SquadMember[]>(`/squads/${encodeURIComponent(squadId)}/leaderboard`, {
+        signal: opts?.signal,
+      });
     },
 
     /**
@@ -311,6 +320,38 @@ export function createApiClient(config: ApiClientConfig) {
       }
       const query = qs.toString() === '' ? '' : `?${qs.toString()}`;
       return request<WalletLedgerResponse>(`/wallet/ledger${query}`, { signal: opts?.signal });
+    },
+
+    /** GET /pricing — versi harga aktif + paket top-up (P-04, PRD §6.3). */
+    getActivePricing(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<PricingResponse>('/pricing', { signal: opts?.signal });
+    },
+
+    /**
+     * POST /payments/checkout (⚡) — PA-3: kunci idempoten MILIK PERCOBAAN,
+     * bukan per klik: retry atas percobaan bayar yang sama memakai kunci SAMA
+     * (server memulangkan order yang sama), percobaan baru kunci baru.
+     * Rute ini belum punya controller (isu #233) — klien memanggil kontraknya
+     * apa adanya; 404 ditangani sebagai galat bersih di UI.
+     */
+    checkoutTopup(
+      packageCode: string,
+      idempotencyKey: string,
+      opts?: Pick<RequestOptions, 'signal'>,
+    ) {
+      return request<CheckoutResponse>('/payments/checkout', {
+        method: 'POST',
+        body: { package_id: packageCode },
+        idempotencyKey,
+        signal: opts?.signal,
+      });
+    },
+
+    /** GET /payments/orders/:id — status order untuk polling UI (PRD §10.3). */
+    getOrder(orderId: string, opts?: Pick<RequestOptions, 'signal'>) {
+      return request<OrderResponse>(`/payments/orders/${encodeURIComponent(orderId)}`, {
+        signal: opts?.signal,
+      });
     },
   };
 }

@@ -18,6 +18,8 @@ export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
 export const checkoutResponseSchema = z.object({
   order_id: uuidSchema,
   snap_token: z.string(),
-  redirect_url: z.string().url(),
+  // https EKSPLISIT: `z.string().url()` polos lolos untuk skema javascript:/
+  // data: (temuan audit P-04) — URL ini berakhir di window.open klien.
+  redirect_url: z.string().url().regex(/^https:\/\//),
 });
 export type CheckoutResponse = z.infer<typeof checkoutResponseSchema>;
