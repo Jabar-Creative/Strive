@@ -64,6 +64,10 @@ export function StoreScreen() {
       // klik sebagai izin, dan fetch yang menunggu signed URL bisa lebih lama
       // dari usia izin itu. Jendela diarahkan belakangan.
       const jendela = window.open('', '_blank');
+      // Putus rantai opener REKAN jendela about:blank: setelah dinavigasi
+      // cross-origin ke host storage, konten sana tidak boleh bisa menavigasi
+      // tab ini (reverse tabnabbing — temuan audit ST-02). Handle tetap terpakai.
+      if (jendela) jendela.opener = null;
       api
         .storeDownload(purchaseId)
         .then((res) => {

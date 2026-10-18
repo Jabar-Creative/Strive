@@ -18,7 +18,6 @@ import { type PurchaseResult, StoreService, type StoreItemView } from './store.s
  * Superadmin DITOLAK: menukar koin adalah aktivitas pengguna, dan panel admin
  * tidak punya dompet (PRD §2.4). Pola yang sama dengan `/wallet`.
  *
- * `GET /store/purchases/:id/download` TIDAK ada di sini — ia milik `ST-02`
  * bersama UI etalase, dan acceptance criteria-nya (URL kedaluwarsa 15 menit,
  * aset tidak bisa ditebak) memang menggambarkan perilakunya.
  */
