@@ -21,12 +21,21 @@
 // Batas limit juga dari sana — isu #182: angka harfiah di web diam-diam
 // menjepit lebih ketat daripada API tanpa satu pun yang merah.
 import { WALLET_LEDGER_LIMIT_MAX } from '@strive/contracts';
-import type { HubResponse, WalletLedgerResponse, WalletResponse } from '@strive/contracts';
+import type {
+  HubResponse,
+  ListNotificationsResponse,
+  MarkNotificationReadResponse,
+  WalletLedgerResponse,
+  WalletResponse,
+} from '@strive/contracts';
 
 export type {
   CoinEntryType,
   CoinLedgerEntry,
   HubResponse,
+  ListNotificationsResponse,
+  MarkNotificationReadResponse,
+  Notification,
   WalletLedgerResponse,
   WalletResponse,
 } from '@strive/contracts';
@@ -311,6 +320,26 @@ export function createApiClient(config: ApiClientConfig) {
       }
       const query = qs.toString() === '' ? '' : `?${qs.toString()}`;
       return request<WalletLedgerResponse>(`/wallet/ledger${query}`, { signal: opts?.signal });
+    },
+
+    /** GET /notifications — riwayat milik sendiri + unread_count (N-02). */
+    listNotifications(
+      params: { cursor?: string; limit?: number } = {},
+      opts?: Pick<RequestOptions, 'signal'>,
+    ) {
+      const qs = new URLSearchParams();
+      if (params.cursor) qs.set('cursor', params.cursor);
+      if (params.limit !== undefined) qs.set('limit', String(params.limit));
+      const query = qs.toString() === '' ? '' : `?${qs.toString()}`;
+      return request<ListNotificationsResponse>(`/notifications${query}`, { signal: opts?.signal });
+    },
+
+    /** PATCH /notifications/:id/read — idempoten (PRD §10.3, N-02). */
+    markNotificationRead(id: string, opts?: Pick<RequestOptions, 'signal'>) {
+      return request<MarkNotificationReadResponse>(`/notifications/${encodeURIComponent(id)}/read`, {
+        method: 'PATCH',
+        signal: opts?.signal,
+      });
     },
   };
 }
