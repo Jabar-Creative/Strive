@@ -124,7 +124,9 @@ describe('GET /store/purchases/:id/download (SR-5 + SR-6)', () => {
 
   it('bentuk non-UUID → NOT_FOUND yang sama, bukan 500 (audit ST-02)', async () => {
     if (!reachable) return;
-    await expect(store.downloadUrl(PEMBELI, 'bukan-uuid')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(store.downloadUrl(PEMBELI, 'bukan-uuid')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
     await expect(store.downloadUrl(PEMBELI, '../../etc/passwd')).rejects.toBeInstanceOf(
       NotFoundException,
     );

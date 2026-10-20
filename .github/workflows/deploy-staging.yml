@@ -55,7 +55,33 @@ env:
   WEB_URL: https://strive-staging-web.vercel.app/
 
 jobs:
-  migrasi:
+  # ── Gerbang: apakah commit ini PERLU di-deploy sama sekali? (isu #160) ──
+  #
+  # Merge yang isinya hanya dokumen memicu build ulang tiga image Railway
+  # plus Vercel. Sendirian itu cuma boros; yang membuatnya mendesak adalah
+  # kredit trial Railway yang punya TENGGAL KALENDER (#151), dan repo ini
+  # banyak menulis dokumen.
+  #
+  # ── Kenapa gerbangnya di sini, bukan `paths-ignore` di `on:` ──
+  #
+  # `paths-ignore` TIDAK berlaku untuk `workflow_run`: pemicunya bukan push,
+  # melainkan selesainya workflow lain. Menulisnya di `on:` akan membuat
+  # berkas ini TERLIHAT menyaring tanpa menyaring apa pun — bentuk kegagalan
+  # terburuk untuk sebuah gerbang.
+  #
+  # ── Kenapa pembandingnya penanda, bukan commit sebelumnya ──
+  #
+  # Diff terhadap `HEAD~1` salah untuk rantai commit dokumen: tiga commit
+  # dokumen berurutan masing-masing "hanya dokumen", padahal perubahan kode
+  # sebelum mereka mungkin belum pernah naik — mis. deploy-nya gagal, atau
+  # dibatalkan antrean berkapasitas satu (#165). Pembandingnya tag
+  # `staging-live`, yang HANYA maju setelah smoke hijau (job `tandai`).
+  # Jadi "sudah ter-deploy" adalah fakta yang tercatat, bukan dugaan.
+  #
+  # Tag itu sekaligus menjawab pertanyaan yang #151 catat tidak bisa dijawab
+  # dari riwayat Actions: "deployment mana yang membawa perubahan ini?" —
+  # `railway up` tidak membawa info commit, tapi `git log staging-live` iya.
+  putuskan:
     # `workflow_run` menyala untuk SETIAP CI yang selesai di main, termasuk
     # yang gagal. Deploy hanya boleh jalan kalau CI hijau, atau manusia
     # menekan workflow_dispatch pada main (commit di main sudah melewati
@@ -63,6 +89,70 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      deploy: ${{ steps.nilai.outputs.deploy }}
+      alasan: ${{ steps.nilai.outputs.alasan }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # Riwayat penuh: diff butuh commit penanda yang bisa jauh di belakang.
+          fetch-depth: 0
+
+      - id: nilai
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          PEMICU: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          # Path yang TIDAK memengaruhi apa pun yang berjalan di staging.
+          # Daftar ini sengaja PENDEK dan berisi pengecualian, bukan aturan:
+          # `.github/workflows/**` dan `infra/**` TIDAK boleh masuk ke sini
+          # (keduanya mengubah cara deploy berjalan), begitu pula `db/`,
+          # `scripts/`, `.env.example`, dan manifest paket.
+          ABAIKAN='^(docs/|[^/]*\.md$|\.gitattributes$|\.vscode/|\.claude/|LICENSE$)'
+
+          putuskan() { echo "deploy=$1" >> "$GITHUB_OUTPUT"; echo "alasan=$2" >> "$GITHUB_OUTPUT"; echo "$2"; exit 0; }
+
+          if [ "$PEMICU" = "workflow_dispatch" ]; then
+            putuskan true "workflow_dispatch — manusia yang menekan, gerbang tidak ikut menilai"
+          fi
+
+          git fetch --quiet --force origin 'refs/tags/staging-live:refs/tags/staging-live' 2>/dev/null || true
+
+          if ! git rev-parse -q --verify refs/tags/staging-live >/dev/null; then
+            putuskan true "penanda staging-live belum ada — deploy (gerbang gagal ke arah MEN-DEPLOY, karena tidak men-deploy perubahan yang dibutuhkan lebih mahal daripada satu build boros)"
+          fi
+
+          DASAR=$(git rev-parse refs/tags/staging-live)
+          if ! git merge-base --is-ancestor "$DASAR" "$SHA"; then
+            putuskan true "penanda ($DASAR) bukan leluhur commit ini — riwayat tidak bisa dibandingkan, jadi deploy"
+          fi
+
+          if [ "$DASAR" = "$SHA" ]; then
+            putuskan false "commit ini SUDAH ter-deploy (penanda menunjuk commit yang sama)"
+          fi
+
+          BERUBAH=$(git diff --name-only "$DASAR" "$SHA")
+          PENTING=$(printf '%s\n' "$BERUBAH" | grep -vE "$ABAIKAN" || true)
+
+          echo "Berubah sejak $DASAR:"
+          printf '%s\n' "$BERUBAH" | sed 's/^/  /'
+
+          if [ -z "$PENTING" ]; then
+            putuskan false "hanya dokumen sejak penanda — nol path yang memengaruhi staging"
+          fi
+
+          echo "Path yang memaksa deploy:"
+          printf '%s\n' "$PENTING" | sed 's/^/  /'
+          putuskan true "ada perubahan yang memengaruhi staging"
+
+  migrasi:
+    needs: putuskan
+    if: needs.putuskan.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -268,3 +358,32 @@ jobs:
           done
           echo "::error::web bukan HTTP 200 tanpa redirect (cek Deployment Protection)"
           exit 1
+
+  # ── Penanda: majukan `staging-live` SETELAH smoke hijau (isu #160) ──
+  #
+  # Tag ini yang dibaca gerbang `putuskan` sebagai "sudah ter-deploy". Ia
+  # maju HANYA di sini, jadi deploy yang gagal, dibatalkan, atau tidak sehat
+  # tidak pernah membuat commit berikutnya dianggap sudah naik.
+  #
+  # `contents: write` hanya di job ini — seluruh workflow lainnya tetap
+  # `contents: read` (lihat `permissions:` di atas).
+  tandai:
+    needs: [putuskan, smoke]
+    if: needs.putuskan.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Majukan penanda staging-live
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          git tag --force staging-live "$SHA"
+          git push --force origin "refs/tags/staging-live"
+          echo "staging-live → $SHA"

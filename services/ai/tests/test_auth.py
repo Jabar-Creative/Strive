@@ -17,6 +17,11 @@ client = TestClient(app)
 # Empat jalur persis konstanta JALUR_AI di apps/api (isu #132).
 JALUR = ["/v1/cv", "/v1/prompt", "/v1/interview", "/v1/statement"]
 
+# Rute yang masih skeleton AI-01 (503 NOT_IMPLEMENTED). `/v1/prompt` sudah
+# punya implementasi nyata (PL-01): dengan input kosong ia menjawab 422
+# VALIDATION_ERROR, bukan 503 — jadi tidak boleh ikut parametrize 503 lagi.
+JALUR_SKELETON = ["/v1/cv", "/v1/interview", "/v1/statement"]
+
 BODY = {"job_id": "11111111-1111-4111-8111-111111111111", "input": {}}
 
 
@@ -39,7 +44,7 @@ def test_skema_bukan_bearer_401(jalur: str) -> None:
     assert hasil.status_code == 401
 
 
-@pytest.mark.parametrize("jalur", JALUR)
+@pytest.mark.parametrize("jalur", JALUR_SKELETON)
 def test_token_benar_bukan_401(jalur: str, token_terpasang: str) -> None:
     hasil = client.post(
         jalur, json=BODY, headers={"Authorization": f"Bearer {token_terpasang}"}
@@ -49,6 +54,17 @@ def test_token_benar_bukan_401(jalur: str, token_terpasang: str) -> None:
     # akan menandai job failed padahal hanya belum ada implementasinya.
     assert hasil.status_code == 503
     assert hasil.json()["error"]["code"] == "NOT_IMPLEMENTED"
+
+
+def test_prompt_sudah_diimplementasi_bukan_503(token_terpasang: str) -> None:
+    # Sejak PL-01, /v1/prompt memvalidasi isi input sungguhan: input kosong
+    # ditolak 422 VALIDATION_ERROR (permanen di sisi Node — memang salah
+    # bentuk), bukan 503 skeleton.
+    hasil = client.post(
+        "/v1/prompt", json=BODY, headers={"Authorization": f"Bearer {token_terpasang}"}
+    )
+    assert hasil.status_code == 422
+    assert hasil.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
 def test_token_kosong_gagal_tertutup(monkeypatch: pytest.MonkeyPatch) -> None:
