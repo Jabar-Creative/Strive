@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>N-02 - Laporan verifikasi lonceng notifikasi + banner streak</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #16181d; --muted: #5b6270; --line: #e3e6ec;
+    --card: #f7f8fa; --ok: #0f7b3f; --ok-bg: #e6f4ec;
+    --bad: #b3261e; --bad-bg: #fdeceb; --warn: #8a5a00; --warn-bg: #fdf3e2;
+    --code: #f2f3f6; --accent: #1b4dc1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --fg: #e8eaef; --muted: #a0a7b4; --line: #2b2f37;
+      --card: #1b1e24; --ok: #6ede9e; --ok-bg: #16301f;
+      --bad: #ff9e96; --bad-bg: #3a1c19; --warn: #f0c274; --warn-bg: #35280f;
+      --code: #1f232a; --accent: #8fb0ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 28px; line-height: 1.25; margin: 0 0 8px; }
+  h2 { font-size: 21px; margin: 44px 0 12px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .lede { color: var(--muted); font-size: 17px; margin: 0 0 22px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 26px; }
+  .chip { font-size: 13px; padding: 4px 10px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--line); color: var(--muted); }
+  .chip.ok { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 10px; border: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--card); font-weight: 600; }
+  code { font: 13.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--code); padding: 1px 5px; border-radius: 5px; }
+  img { max-width: 100%; border: 1px solid var(--line); border-radius: 10px; margin: 10px 0 4px; }
+  .ket { color: var(--muted); font-size: 13.5px; margin: 2px 0 18px; }
+  .card { background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 18px; margin: 14px 0; }
+  .card.bad { background: var(--bad-bg); border-color: transparent; }
+  .ok-t { color: var(--ok); font-weight: 600; }
+  .bad-t { color: var(--bad); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>N-02 — Lonceng notifikasi + banner peringatan streak</h1>
+  <p class="lede">Laporan verifikasi end-to-end item backlog N-02 (Dev B). Dikerjakan 18 Okt 2026 (sesi susulan minggu 12–16 Okt).</p>
+
+  <div class="meta">
+    <span class="chip">Lingkungan: lokal (web :3000 · API :3001 · PostgreSQL/Redis/MinIO Docker)</span>
+    <span class="chip ok">Status: seluruh skenario lulus</span>
+    <span class="chip">Tanggal: 2026-10-18</span>
+    <span class="chip">Bukti user: strive-n02-p*&amp;commat;yopmail.com (dibuat per run)</span>
+  </div>
+
+  <h2>1 · Ringkasan fitur</h2>
+  <p>Mahasiswa kini melihat lonceng notifikasi di navigasi setiap layar student: lencana jumlah <em>belum dibaca</em> (dihitung server, bukan klien), panel daftar notifikasi terbaru-dulu, dan menandai dibaca bersifat optimistik yang pulih otomatis kalau permintaan gagal (PRD §7 E16 NO-7). Di Hub, banner menampilkan peringatan streak (<code>streak_warning</code>) belum dibaca yang terbaru; menutupnya menandai notifikasi itu dibaca. Lonceng dan banner berbagi SATU state lewat <code>NotificationProvider</code> supaya lencana dan banner tidak pernah saling melenceng.</p>
+
+  <h2>2 · Matriks skenario</h2>
+  <table>
+    <thead><tr><th>#</th><th>Skenario</th><th>Harapan</th><th>Hasil</th><th>Cara verifikasi</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Registrasi akun baru → masuk Hub (golden path)</td><td>URL berakhir di /hub, tanpa galat</td><td class="ok-t">LULUS</td><td>Playwright: isi form, klik Daftar, polling URL</td></tr>
+      <tr><td>2</td><td>3 notifikasi disemai (2 belum dibaca: streak_warning + job_done; 1 dibaca: league_change)</td><td>—</td><td class="ok-t">TERSEMAI</td><td>psql: INSERT ke DB dev lokal untuk user tsb</td></tr>
+      <tr><td>3</td><td>Buka /hub</td><td>Banner streak tampil membawa judul streak_warning TERBARU; lencana lonceng menampilkan <strong>2</strong> (angka server, bukan hitungan halaman)</td><td class="ok-t">LULUS</td><td>Screenshot 01 + assert teks lencana = "2"</td></tr>
+      <tr><td>4</td><td>Buka panel, klik item job_done</td><td>Lencana turun 2→1 TANPA reload (optimistik), tetap 1 setelah PATCH dijawab server; item berstatus "Dibaca"</td><td class="ok-t">LULUS</td><td>Screenshot 02 + waitForFunction lencana = "1"</td></tr>
+      <tr><td>5</td><td>Klik "Mengerti" di banner</td><td>Banner hilang DAN lencana hilang (0 belum dibaca) pada saat yang sama — state bersama</td><td class="ok-t">LULUS</td><td>waitForFunction elemen lencana null + count banner 0</td></tr>
+      <tr><td>5b</td><td>Sisi server setelah langkah 5</td><td>read_at tersimpan sungguhan: 0 baris belum dibaca di DB (UI tidak berbohong)</td><td class="ok-t">LULUS</td><td>psql: count read_at IS NULL = 0</td></tr>
+      <tr><td>6</td><td>Viewport 375px, buka panel</td><td>Tanpa scroll horizontal (scrollWidth = 375), panel muat</td><td class="ok-t">LULUS</td><td>Screenshot 03 + evaluate scrollWidth</td></tr>
+      <tr><td>7</td><td>Console + jaringan</td><td>Nol error console, nol request gagal (di luar 401 pre-login)</td><td class="ok-t">LULUS</td><td>Listener console 'error' + response ≥400</td></tr>
+      <tr><td>8</td><td>Pemulihan optimistik (NO-7) saat PATCH gagal</td><td>read_at kembali null, hitungan belum dibaca naik kembali</td><td class="ok-t">LULUS (unit)</td><td>Unit test mesin <code>notification-bell.spec.ts</code> + sabotase: cabut pemulihan → 1 test merah → dipulihkan</td></tr>
+      <tr><td>9</td><td>Tamu (tanpa sesi)</td><td>Lonceng tidak tampil sama sekali (bukan error)</td><td class="ok-t">LULUS (unit)</td><td>Transisi <code>bellGagal('UNAUTHENTICATED') → 'tanpaSesi'</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>3 · Bukti visual</h2>
+  <img src="images/01-hub-banner-lonceng-desktop.png" alt="Hub dengan banner streak dan lonceng berlencana 2" />
+  <p class="ket">01 — Hub desktop: banner peringatan streak di atas kartu streak, lencana lonceng "2".</p>
+  <img src="images/02-panel-tandai-dibaca.png" alt="Panel notifikasi terbuka, satu item baru ditandai dibaca" />
+  <p class="ket">02 — Panel notifikasi: item "CV-mu selesai diproses" baru ditandai dibaca, lencana turun ke 1.</p>
+  <img src="images/03-panel-375px.png" alt="Panel notifikasi pada viewport 375px" />
+  <p class="ket">03 — Viewport 375px: panel muat tanpa scroll horizontal.</p>
+
+  <h2>4 · Katalog regresi</h2>
+  <table>
+    <thead><tr><th>Pemicu</th><th>Gejala</th><th>Root cause</th><th>Expected setelah perbaikan</th><th>Reproduce</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Menutup banner streak saat panel lonceng memperlihatkan unread</td>
+        <td>Banner hilang + server menerima PATCH, tetapi lencana lonceng TIDAK turun (tetap "1" selamanya)</td>
+        <td>Lonceng dan banner masing-masing meng-fetch GET /notifications dan memegang state sendiri — dua sumber untuk satu fakta. Ketemu OLEH verifikasi langkah 5 (bukan dari membaca kode)</td>
+        <td>Satu state bersama (<code>NotificationProvider</code>): lencana dan banner berubah di saat yang sama; kegagalan PATCH memulihkan keduanya bersama</td>
+        <td>Daftar → semai notifikasi → buka /hub → klik item di panel → klik "Mengerti" di banner → amati lencana</td>
+      </tr>
+      <tr>
+        <td>Dev server Next.js hidup lama + refactor menambah file baru (provider)</td>
+        <td>Halaman menyajikan komponen versi LAMA (state sendiri) meski kode sudah diperbaiki — perbaikan seolah "tidak bekerja"</td>
+        <td>Chunk basi di cache .next setelah HMR lintas sesi restart</td>
+        <td>Setelah refactor struktural: bersihkan <code>apps/web/.next</code> dan muat ulang halaman penuh sebelum menyimpulkan gagal</td>
+        <td>Bandingkan perilaku sebelum/sesudah <code>rm -rf apps/web/.next</code> + restart dev:web</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>5 · Keputusan teknis yang diambil</h2>
+  <div class="card">
+    <ul>
+      <li><strong>unread_count dihitung SERVER</strong> (query COUNT terpisah, bukan dari isi halaman): pengguna yang lama tidak membuka aplikasi punya belum-dibaca lebih banyak dari halaman pertama; menghitung di klien salah secara konstruksi. Perubahan kontrak bersifat aditif (Dev B pemilik <code>packages/contracts</code>).</li>
+      <li><strong>Stempel waktu masuk sebagai parameter eksplisit</strong> ke mesin (bukan <code>new Date()</code> di dalamnya) supaya unit test deterministik — pola C-03.</li>
+      <li><strong>Guard klik ganda di mesin</strong> (<code>sedangDitandai</code>), bukan cuma tombol disabled — pola L-04.</li>
+      <li><strong>Tamu melihat kosong, bukan error</strong>: 401 → fase <code>tanpaSesi</code> → komponen null.</li>
+    </ul>
+  </div>
+
+  <h2>6 · Verifikasi perintah</h2>
+  <table>
+    <thead><tr><th>Perintah</th><th>Hasil</th></tr></thead>
+    <tbody>
+      <tr><td><code>pnpm test</code> (web) </td><td>91/91 hijau (13 baru: mesin lonceng)</td></tr>
+      <tr><td><code>pnpm --filter @strive/api test</code></td><td>311/311 hijau (spec unit notifikasi diperbarui mock hitungan)</td></tr>
+      <tr><td><code>pnpm --filter @strive/api test:integration</code></td><td>hijau (4 baru: unread_count akurat, turun tepat satu, idempoten, milik sendiri)</td></tr>
+      <tr><td><code>pnpm lint && pnpm typecheck && pnpm build</code></td><td>hijau</td></tr>
+      <tr><td>Sabotase pemulihan NO-7</td><td>1 test merah → dipulihkan → 13/13 hijau</td></tr>
+      <tr><td>Audit keamanan (agent-security)</td><td>terlampir di PR</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

@@ -59,7 +59,17 @@ export const listNotificationsQuerySchema = z.object({
 });
 export type ListNotificationsQuery = z.infer<typeof listNotificationsQuerySchema>;
 
-export const listNotificationsResponseSchema = cursorPaginatedSchema(notificationSchema);
+/**
+ * Ditambah N-02: lencana lonceng butuh jumlah belum dibaca yang AKURAT, dan
+ * menghitungnya di klien dari isi halaman salah secara konstruksi — halaman
+ * berhenti di `limit`, sementara belum dibaca menumpuk tanpa batas bagi
+ * pengguna yang lama tidak membuka aplikasi (NO-5 membatasi 3/hari, bukan
+ * jumlah hari absennya). Server yang menghitung `COUNT(*) WHERE read_at IS
+ * NULL`, klien tidak pernah menghitung ulang.
+ */
+export const listNotificationsResponseSchema = cursorPaginatedSchema(notificationSchema).extend({
+  unread_count: z.number().int().min(0),
+});
 export type ListNotificationsResponse = z.infer<typeof listNotificationsResponseSchema>;
 
 /** PATCH /notifications/:id/read — docs/PRD.md §10.3 "Notifikasi" (ditambahkan N-01). */

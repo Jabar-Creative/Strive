@@ -174,11 +174,17 @@ export class NotificationsService {
    * Cursor-paginated, MILIK SENDIRI SAJA — `user_id = userId` selalu ada di
    * WHERE, tidak bisa dilewati dari controller (CLAUDE.md §Guard vs
    * kepemilikan: kepemilikan dicek di service, bukan cuma guard).
+   *
+   * `unreadCount` N-02: jumlah belum dibaca SELURUH milik pengguna, bukan
+   * hanya yang kebetulan masuk halaman ini. Dihitung server dalam satu
+   * query terpisah (bukan dari `rows`) supaya tetap akurat saat halaman
+   * terpotong `limit`. bigint COUNT dari pg datang sebagai string —
+   * di-Number() eksplisit, idiom yang sama dengan integrations-health.
    */
   async listForUser(
     userId: string,
     options: { cursor?: string; limit: number },
-  ): Promise<CursorPage<NotificationRow>> {
+  ): Promise<CursorPage<NotificationRow> & { unreadCount: number }> {
     let query = this.db
       .selectFrom('notifications')
       .selectAll()
@@ -198,7 +204,15 @@ export class NotificationsService {
       );
     }
 
-    const rows = await query.execute();
+    const [rows, unread] = await Promise.all([
+      query.execute(),
+      this.db
+        .selectFrom('notifications')
+        .select((eb) => eb.fn.countAll<string>().as('n'))
+        .where('user_id', '=', userId)
+        .where('read_at', 'is', null)
+        .executeTakeFirstOrThrow(),
+    ]);
     const hasMore = rows.length > options.limit;
     const page = hasMore ? rows.slice(0, options.limit) : rows;
     const last = page.at(-1);
@@ -209,6 +223,7 @@ export class NotificationsService {
         hasMore && last
           ? encodeCursor({ createdAt: last.created_at.toISOString(), id: last.id })
           : null,
+      unreadCount: Number(unread.n),
     };
   }
 
