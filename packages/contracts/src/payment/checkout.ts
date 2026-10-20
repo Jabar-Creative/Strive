@@ -3,11 +3,14 @@ import { uuidSchema } from '../common';
 
 /**
  * POST /payments/checkout — docs/PRD.md §10.3 + §7 E6 PA-2/PA-4.
- * `package_code` mengacu ke `pricingPackageSchema.code` (GET /pricing).
- * Wajib header `Idempotency-Key` (⚡) — tidak dimodelkan di body, itu header.
+ * `package_id` mengacu ke `pricingPackageSchema.id` (GET /pricing) — nama
+ * fieldnya ikut bentuk {id, name} yang diteruskan seed & `GET /pricing`
+ * (lihat catatan di pricing.ts). Rute-nya sendiri belum punya controller
+ * (isu #233), jadi kontrak inilah satu-satunya definisi sampai controller
+ * berdiri. Wajib header `Idempotency-Key` (⚡) — tidak dimodelkan di body.
  */
 export const checkoutRequestSchema = z.object({
-  package_code: z.string().min(1),
+  package_id: z.string().min(1),
 });
 export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
 
