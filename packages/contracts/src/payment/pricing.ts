@@ -2,14 +2,17 @@ import { z } from 'zod';
 import { coinAmountSchema, isoDateTimeSchema } from '../common';
 
 /**
- * Satu paket top-up — docs/PRD.md §6.3. `code` ASUMSI (PRD hanya menuliskan
- * label "Starter"/"Reguler"/"Skripsi" di tabel harga, bentuk JSON
- * `pricing_config.packages` belum didokumentasikan literal) — perlu
- * disepakati dengan Dev A saat migrasi seed `pricing_config` ditulis.
+ * Satu paket top-up — docs/PRD.md §6.3. Bentuk {id, name} BUKAN asumsi lagi:
+ * inilah yang ditulis seed `F-13` (`db/seeds/seed-dev.mjs`) dan yang
+ * diteruskan apa adanya oleh `GET /pricing` (toPublicResponse memuat
+ * `row.packages` mentah). Draf pertama F-08 memakai {code, label} dengan
+ * catatan "asumsi, perlu disepakati" — kesepakatannya kini ditutup lewat
+ * bentuk yang sudah ter-deploy; P-04 (konsumen pertama endpoint ini)
+ * yang menemukan ketidakcocokannya, karena sebelumnya tidak ada pemakai.
  */
 export const pricingPackageSchema = z.object({
-  code: z.string(),
-  label: z.string(),
+  id: z.string(),
+  name: z.string(),
   coins: coinAmountSchema,
   price_idr: coinAmountSchema,
 });
