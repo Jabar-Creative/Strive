@@ -8,6 +8,7 @@ import type { HubResponse } from '@strive/contracts';
 
 import { ApiError, createApiClient } from '@/lib/api-client';
 import { jamSisaHariLokal, statusStreak } from '@/lib/streak-status';
+import { StreakWarningBanner } from './streak-warning-banner';
 
 /**
  * Layar Hub — S-03 (Dev B), PRD §7 E3 SK-9/SK-10 + §14.4.
@@ -124,6 +125,7 @@ export function HubScreen() {
 
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-3 px-4 pb-8 pt-2" data-testid="hub">
+      <StreakWarningBanner />
       <section
         className="rounded-card border border-line bg-background p-4"
         data-testid="kartu-streak"

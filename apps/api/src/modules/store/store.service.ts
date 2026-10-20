@@ -2,6 +2,7 @@ import { ConflictException, Inject, Injectable, NotFoundException } from '@nestj
 import type { Kysely } from 'kysely';
 
 import { DATABASE, type DB } from '../../infra/kysely';
+import { StorageService, bucketAssets, SIGNED_URL_TTL_SECONDS } from '../../infra/storage';
 import { CoinLedgerService } from '../wallet';
 
 /** Satu baris etalase. `asset_key` SENGAJA tidak ada — lihat catatan kelas. */
@@ -14,6 +15,12 @@ export interface StoreItemView {
   is_active: boolean;
   /** Sudah dibeli pengguna yang bertanya. SR-2: satu item sekali per orang. */
   owned: boolean;
+  /**
+   * Id BARIS pembelian milik pengguna ini — rute unduh ST-02 menunjuk baris
+   * pembelian, bukan item (SR-5: kepemilikan dicek di pembelian). Null saat
+   * belum dimiliki.
+   */
+  purchase_id: string | null;
 }
 
 export interface PurchaseResult {
@@ -76,6 +83,7 @@ export class StoreService {
   constructor(
     @Inject(DATABASE) private readonly db: Kysely<DB>,
     private readonly coins: CoinLedgerService,
+    private readonly storage: StorageService,
   ) {}
 
   /**
@@ -113,6 +121,7 @@ export class StoreService {
       price_coins: r.price_coins,
       is_active: r.is_active,
       owned: r.pid !== null,
+      purchase_id: r.pid,
     }));
   }
 
@@ -198,5 +207,60 @@ export class StoreService {
         balance: entry.balanceAfter,
       };
     });
+  }
+
+  /**
+   * `ST-02` — signed URL unduhan 15 menit (SR-5).
+   *
+   * **Kepemilikan dicek di WHERE, bukan setelah ambil** (pola F-14): satu
+   * query `purchases.id = … AND purchases.user_id = …`; baris yang bukan
+   * milik pemanggil dan baris yang tidak ada menjawab NOT_FOUND yang sama —
+   * pengguna yang belum membeli tidak bisa mengonfirmasi keberadaan id
+   * pembelian orang lain lewat perbedaan respons, apalagi menebak URL aset.
+   *
+   * `asset_key` TIDAK PERNAH ikut respons — yang keluar hanya URL yang sudah
+   * ditandatangani dan berjangka pendek. `is_active` SENGAJA tidak difilter:
+   * SR-6, item yang dinonaktifkan tetap bisa diunduh oleh yang sudah membeli.
+   */
+  async downloadUrl(
+    userId: string,
+    purchaseId: string,
+  ): Promise<{ url: string; expires_at: string }> {
+    // Bentuk UUID diperiksa SEBELUM menyentuh query: kolomnya uuid, dan
+    // parameter bind bukan-uuid membuat Postgres melempar 22P02 → 500,
+    // bukan NOT_FOUND seragam (kelas jebakan order_id Midtrans di CLAUDE.md;
+    // temuan audit ST-02). "Bukan milikmu" dan "bentuknya salah" tidak boleh
+    // bisa dibedakan dari respons.
+    const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!UUID_V4.test(purchaseId)) {
+      throw new NotFoundException({
+        error: { code: 'NOT_FOUND', message: 'Pembelian tidak ditemukan', details: {} },
+      });
+    }
+
+    const baris = await this.db
+      .selectFrom('store_purchases as p')
+      .innerJoin('store_items as i', 'i.id', 'p.item_id')
+      .select(['i.asset_key'])
+      .where('p.id', '=', purchaseId)
+      .where('p.user_id', '=', userId)
+      .executeTakeFirst();
+
+    if (!baris?.asset_key) {
+      // Termasuk item tanpa asset_key (data semaian lama): tidak ada yang
+      // bisa diunduh, dan bentuk jawabannya sama dengan "bukan milikmu".
+      throw new NotFoundException({
+        error: { code: 'NOT_FOUND', message: 'Pembelian tidak ditemukan', details: {} },
+      });
+    }
+
+    const url = await this.storage.signedDownloadUrl(bucketAssets(), baris.asset_key);
+    return {
+      url,
+      // TTL diambil dari KONSTANTA yang sama dengan yang dipakai menandatangani
+      // (`SIGNED_URL_TTL_SECONDS`) — dua angka yang harus sinkron tidak boleh
+      // ditulis dua kali.
+      expires_at: new Date(Date.now() + SIGNED_URL_TTL_SECONDS * 1000).toISOString(),
+    };
   }
 }

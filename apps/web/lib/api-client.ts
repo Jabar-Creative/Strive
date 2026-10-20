@@ -21,12 +21,27 @@
 // Batas limit juga dari sana — isu #182: angka harfiah di web diam-diam
 // menjepit lebih ketat daripada API tanpa satu pun yang merah.
 import { WALLET_LEDGER_LIMIT_MAX } from '@strive/contracts';
-import type { HubResponse, WalletLedgerResponse, WalletResponse } from '@strive/contracts';
+import type {
+  HubResponse,
+  ListNotificationsResponse,
+  MarkNotificationReadResponse,
+  PurchaseStoreItemResponse,
+  StoreItem,
+  StorePurchaseDownloadResponse,
+  WalletLedgerResponse,
+  WalletResponse,
+} from '@strive/contracts';
 
 export type {
   CoinEntryType,
   CoinLedgerEntry,
   HubResponse,
+  ListNotificationsResponse,
+  MarkNotificationReadResponse,
+  Notification,
+  PurchaseStoreItemResponse,
+  StoreItem,
+  StorePurchaseDownloadResponse,
   WalletLedgerResponse,
   WalletResponse,
 } from '@strive/contracts';
@@ -269,10 +284,9 @@ export function createApiClient(config: ApiClientConfig) {
      * memang menembak Redis tiap kali, bukan cache HTTP.
      */
     getSquadLeaderboard(squadId: string, opts?: Pick<RequestOptions, 'signal'>) {
-      return request<SquadMember[]>(
-        `/squads/${encodeURIComponent(squadId)}/leaderboard`,
-        { signal: opts?.signal },
-      );
+      return request<SquadMember[]>(`/squads/${encodeURIComponent(squadId)}/leaderboard`, {
+        signal: opts?.signal,
+      });
     },
 
     /**
@@ -311,6 +325,56 @@ export function createApiClient(config: ApiClientConfig) {
       }
       const query = qs.toString() === '' ? '' : `?${qs.toString()}`;
       return request<WalletLedgerResponse>(`/wallet/ledger${query}`, { signal: opts?.signal });
+    },
+
+    /** GET /store/items — etalase + owned + purchase_id (ST-02). */
+    listStoreItems(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<StoreItem[]>('/store/items', { signal: opts?.signal });
+    },
+
+    /** POST /store/purchase (⚡) — kunci milik percobaan (pola P-04). */
+    purchaseStoreItem(
+      itemId: string,
+      idempotencyKey: string,
+      opts?: Pick<RequestOptions, 'signal'>,
+    ) {
+      return request<PurchaseStoreItemResponse>('/store/purchase', {
+        method: 'POST',
+        body: { item_id: itemId },
+        idempotencyKey,
+        signal: opts?.signal,
+      });
+    },
+
+    /** GET /store/purchases/:id/download — signed URL 15 menit (SR-5). */
+    storeDownload(purchaseId: string, opts?: Pick<RequestOptions, 'signal'>) {
+      return request<StorePurchaseDownloadResponse>(
+        `/store/purchases/${encodeURIComponent(purchaseId)}/download`,
+        { signal: opts?.signal },
+      );
+    },
+
+    /** GET /notifications — riwayat milik sendiri + unread_count (N-02). */
+    listNotifications(
+      params: { cursor?: string; limit?: number } = {},
+      opts?: Pick<RequestOptions, 'signal'>,
+    ) {
+      const qs = new URLSearchParams();
+      if (params.cursor) qs.set('cursor', params.cursor);
+      if (params.limit !== undefined) qs.set('limit', String(params.limit));
+      const query = qs.toString() === '' ? '' : `?${qs.toString()}`;
+      return request<ListNotificationsResponse>(`/notifications${query}`, { signal: opts?.signal });
+    },
+
+    /** PATCH /notifications/:id/read — idempoten (PRD §10.3, N-02). */
+    markNotificationRead(id: string, opts?: Pick<RequestOptions, 'signal'>) {
+      return request<MarkNotificationReadResponse>(
+        `/notifications/${encodeURIComponent(id)}/read`,
+        {
+          method: 'PATCH',
+          signal: opts?.signal,
+        },
+      );
     },
   };
 }
