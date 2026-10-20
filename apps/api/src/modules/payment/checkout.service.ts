@@ -8,8 +8,16 @@ import { SnapClient, type SnapTransaction } from './snap.client';
 
 export interface CheckoutInput {
   userId: string;
-  /** Jumlah koin yang dibeli — harus cocok dengan salah satu paket di pricing_config. */
-  coins: number;
+  /**
+   * `id` paket di `pricing_config.packages` — IDENTITAS, bukan jumlah koin.
+   *
+   * Dulu field ini `coins`, dan itu salah di dua arah: klien mengirim
+   * `package_id` (kontrak `checkoutRequestSchema`), dan mencari paket
+   * berdasarkan jumlah koinnya berarti dua paket dengan koin sama tidak bisa
+   * dibedakan — yang bukan kemustahilan, melainkan keputusan harga yang
+   * belum pernah diambil (paket promo dengan koin sama, harga beda).
+   */
+  packageId: string;
   idempotencyKey: string;
 }
 
@@ -52,6 +60,20 @@ export class CheckoutService {
   ) {}
 
   async checkout(input: CheckoutInput): Promise<CheckoutResult> {
+    // Kill switch §19.3 (isu #157) — PALING AWAL, sebelum apa pun.
+    //
+    // Ia dulu dipanggil di DALAM cabang `if (!user || user.status !== 'active')`,
+    // jadi satu-satunya orang yang bisa mematikannya adalah orang yang tidak
+    // ada atau sudah nonaktif. Untuk pengguna normal — persis orang yang
+    // dimaksud saklar ini — `FEATURE_TOPUP=off` tidak menghentikan apa pun.
+    // Saklar yang terlihat menyala lebih berbahaya daripada saklar yang
+    // jelas-jelas tidak ada (CLAUDE.md, baris `FEATURE_*`).
+    //
+    // Dan ia mendahului pencarian idempotensi dengan sengaja: setelah fitur
+    // dimatikan, request ULANG pun harus ditolak, bukan dilayani dari order
+    // lama.
+    pastikanTopUpNyala();
+
     const sudahAda = await this.findByKey(input.idempotencyKey);
     if (sudahAda) return sudahAda;
 
@@ -62,13 +84,6 @@ export class CheckoutService {
       .executeTakeFirst();
 
     if (!user || user.status !== 'active') {
-      // Kill switch §19.3 (isu #157). Diperiksa di SERVICE, bukan di controller:
-      // `POST /payments/checkout` belum punya controller sama sekali hari ini —
-      // rutenya ada di `ACCESS_MATRIX` dan tidak ada di kode — jadi gerbang di
-      // rute akan jadi gerbang yang tidak dilewati siapa pun. Dan pola yang sama
-      // sudah dipakai `totalRubrik`: penjaga di service berlaku untuk jalur
-      // non-HTTP juga (worker, skrip perbaikan data).
-      pastikanTopUpNyala();
       throw new BadRequestException({
         error: { code: 'NOT_FOUND', message: 'Pengguna tidak ditemukan', details: {} },
       });
@@ -87,7 +102,7 @@ export class CheckoutService {
       });
     }
 
-    const paket = await this.paket(input.coins);
+    const paket = await this.paket(input.packageId);
 
     // Baris order ditulis DULU, sebelum memanggil Midtrans. Urutannya
     // menentukan: kalau Midtrans dipanggil lebih dulu lalu insert gagal, ada
@@ -162,7 +177,7 @@ export class CheckoutService {
 
   /** Paket koin dari `pricing_config` versi aktif — PA-4. */
   private async paket(
-    coins: number,
+    packageId: string,
   ): Promise<{ coins: number; amount_idr: number; version: number }> {
     const cfg = await this.pricing.getCurrentVersion();
     if (!cfg) {
@@ -171,14 +186,14 @@ export class CheckoutService {
       });
     }
 
-    const daftar = (cfg.packages ?? []) as { coins: number; price_idr: number }[];
-    const p = daftar.find((x) => x.coins === coins);
+    const daftar = (cfg.packages ?? []) as { id: string; coins: number; price_idr: number }[];
+    const p = daftar.find((x) => x.id === packageId);
     if (!p) {
       throw new BadRequestException({
         error: {
           code: 'NOT_FOUND',
-          message: 'Paket koin tidak ada di harga versi aktif',
-          details: { coins, tersedia: daftar.map((x) => x.coins) },
+          message: 'Paket tidak ada di harga versi aktif',
+          details: { package_id: packageId, tersedia: daftar.map((x) => x.id) },
         },
       });
     }

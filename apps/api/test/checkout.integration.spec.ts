@@ -114,7 +114,7 @@ describe('CheckoutService (database nyata)', () => {
 
   it('membuat order pending dengan harga dari versi aktif (PA-2, PA-4)', async () => {
     if (!reachable) return;
-    const r = await checkout.checkout({ userId: USER, coins: 2200, idempotencyKey: 'k-1' });
+    const r = await checkout.checkout({ userId: USER, packageId: 'p1', idempotencyKey: 'k-1' });
 
     expect(r).toMatchObject({
       coins: 2200,
@@ -138,8 +138,8 @@ describe('CheckoutService (database nyata)', () => {
   // ── AC yang bisa dibuktikan ─────────────────────────────────────────────
   it('AC: request ulang dengan Idempotency-Key yang sama mengembalikan order yang SAMA', async () => {
     if (!reachable) return;
-    const a = await checkout.checkout({ userId: USER, coins: 2200, idempotencyKey: 'k-sama' });
-    const b = await checkout.checkout({ userId: USER, coins: 2200, idempotencyKey: 'k-sama' });
+    const a = await checkout.checkout({ userId: USER, packageId: 'p1', idempotencyKey: 'k-sama' });
+    const b = await checkout.checkout({ userId: USER, packageId: 'p1', idempotencyKey: 'k-sama' });
 
     expect(b.order_id).toBe(a.order_id);
     expect(b.reused).toBe(true);
@@ -156,7 +156,7 @@ describe('CheckoutService (database nyata)', () => {
   it('idempotensi dijamin DATABASE, bukan pengecekan di kode', async () => {
     if (!reachable) return;
     // Menembus service, langsung ke database — penjaga terakhir harus menahan.
-    await checkout.checkout({ userId: USER, coins: 2200, idempotencyKey: 'k-db' });
+    await checkout.checkout({ userId: USER, packageId: 'p1', idempotencyKey: 'k-db' });
     await expect(
       db
         .insertInto('orders')
@@ -173,8 +173,8 @@ describe('CheckoutService (database nyata)', () => {
 
   it('kunci berbeda menghasilkan order berbeda', async () => {
     if (!reachable) return;
-    const a = await checkout.checkout({ userId: USER, coins: 2200, idempotencyKey: 'k-a' });
-    const b = await checkout.checkout({ userId: USER, coins: 5000, idempotencyKey: 'k-b' });
+    const a = await checkout.checkout({ userId: USER, packageId: 'p1', idempotencyKey: 'k-a' });
+    const b = await checkout.checkout({ userId: USER, packageId: 'p2', idempotencyKey: 'k-b' });
     expect(a.order_id).not.toBe(b.order_id);
     expect(b.amount_idr).toBe(120000);
   });
@@ -182,7 +182,7 @@ describe('CheckoutService (database nyata)', () => {
   // ── PA-5: koin TIDAK bertambah di jalur ini ─────────────────────────────
   it('PA-5: checkout TIDAK menambah koin — saldo tetap nol', async () => {
     if (!reachable) return;
-    await checkout.checkout({ userId: USER, coins: 2200, idempotencyKey: 'k-koin' });
+    await checkout.checkout({ userId: USER, packageId: 'p1', idempotencyKey: 'k-koin' });
 
     const u = await db
       .selectFrom('users')
@@ -208,7 +208,7 @@ describe('CheckoutService (database nyata)', () => {
     await db.updateTable('users').set({ email_verified: false }).where('id', '=', USER).execute();
 
     await expect(
-      checkout.checkout({ userId: USER, coins: 2200, idempotencyKey: 'k-belum' }),
+      checkout.checkout({ userId: USER, packageId: 'p1', idempotencyKey: 'k-belum' }),
     ).rejects.toBeInstanceOf(ForbiddenException);
 
     expect(await db.selectFrom('orders').selectAll().execute()).toHaveLength(0);
@@ -217,9 +217,55 @@ describe('CheckoutService (database nyata)', () => {
   it('paket yang tidak ada di harga aktif ditolak, bukan dibuatkan order', async () => {
     if (!reachable) return;
     await expect(
-      checkout.checkout({ userId: USER, coins: 12345, idempotencyKey: 'k-aneh' }),
+      checkout.checkout({ userId: USER, packageId: 'tidak-ada', idempotencyKey: 'k-aneh' }),
     ).rejects.toBeTruthy();
     expect(await db.selectFrom('orders').selectAll().execute()).toHaveLength(0);
+  });
+
+  it('kill switch §19.3 MATI menolak pengguna NORMAL — bukan hanya yang nonaktif (#157)', async () => {
+    if (!reachable) return;
+    // Bug yang ditemukan saat memasang controller #233: `pastikanTopUpNyala()`
+    // dipanggil di DALAM cabang `if (!user || user.status !== 'active')`.
+    // Jadi satu-satunya orang yang bisa dimatikan saklarnya adalah orang yang
+    // tidak ada atau sudah nonaktif, dan untuk pengguna normal — persis orang
+    // yang dimaksud saklar ini — `FEATURE_TOPUP_ENABLED=off` tidak
+    // menghentikan apa pun.
+    //
+    // Test ini memakai pengguna yang jalur normalnya SUKSES, karena itu
+    // satu-satunya keadaan yang membedakan saklar yang bekerja dari saklar
+    // yang kebetulan tidak pernah ditanya.
+    const sebelum = process.env['FEATURE_TOPUP_ENABLED'];
+    process.env['FEATURE_TOPUP_ENABLED'] = 'off';
+    try {
+      await expect(
+        checkout.checkout({ userId: USER, packageId: 'p1', idempotencyKey: 'k-mati' }),
+      ).rejects.toMatchObject({ status: 503 });
+    } finally {
+      if (sebelum === undefined) delete process.env['FEATURE_TOPUP_ENABLED'];
+      else process.env['FEATURE_TOPUP_ENABLED'] = sebelum;
+    }
+    // Dan tidak meninggalkan jejak: nol order, jadi job kedaluwarsa PA-9
+    // tidak perlu membereskan apa pun yang dibuat saat fitur mati.
+    expect(await db.selectFrom('orders').selectAll().execute()).toHaveLength(0);
+  });
+
+  it('kill switch MATI juga menolak request ULANG, bukan melayaninya dari order lama', async () => {
+    if (!reachable) return;
+    // Pencarian idempotensi mendahului segalanya di versi lama. Kalau saklar
+    // diperiksa SETELAHNYA, mematikan top-up tetap melayani setiap klien yang
+    // mengirim ulang kunci yang sudah pernah sukses — yaitu klien yang sedang
+    // polling status, yang jumlahnya paling banyak justru saat insiden.
+    await checkout.checkout({ userId: USER, packageId: 'p1', idempotencyKey: 'k-ulang' });
+    const sebelum = process.env['FEATURE_TOPUP_ENABLED'];
+    process.env['FEATURE_TOPUP_ENABLED'] = 'false';
+    try {
+      await expect(
+        checkout.checkout({ userId: USER, packageId: 'p1', idempotencyKey: 'k-ulang' }),
+      ).rejects.toMatchObject({ status: 503 });
+    } finally {
+      if (sebelum === undefined) delete process.env['FEATURE_TOPUP_ENABLED'];
+      else process.env['FEATURE_TOPUP_ENABLED'] = sebelum;
+    }
   });
 
   it('SnapClient sungguhan MENOLAK jalan tanpa kredensial, bukan mengembalikan token palsu', async () => {
