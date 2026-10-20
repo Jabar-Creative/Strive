@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>P-04 - Laporan verifikasi UI top-up</title>
+<style>
+  :root { --bg:#fff; --fg:#16181d; --muted:#5b6270; --line:#e3e6ec; --card:#f7f8fa; --ok:#0f7b3f; --ok-bg:#e6f4ec; --warn:#8a5a00; --warn-bg:#fdf3e2; --code:#f2f3f6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#e8eaef; --muted:#a0a7b4; --line:#2b2f37; --card:#1b1e24; --ok:#6ede9e; --ok-bg:#16301f; --warn:#f0c274; --warn-bg:#35280f; --code:#1f232a; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-size:28px; margin:0 0 8px; } h2 { font-size:21px; margin:44px 0 12px; padding-top:18px; border-top:1px solid var(--line); }
+  .lede { color:var(--muted); font-size:17px; margin:0 0 22px; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 26px; }
+  .chip { font-size:13px; padding:4px 10px; border-radius:999px; background:var(--card); border:1px solid var(--line); color:var(--muted); }
+  .chip.ok { background:var(--ok-bg); color:var(--ok); border-color:transparent; }
+  .chip.warn { background:var(--warn-bg); color:var(--warn); border-color:transparent; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14.5px; }
+  th,td { text-align:left; padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+  th { background:var(--card); font-weight:600; }
+  code { font:13.5px/1.5 ui-monospace,Menlo,monospace; background:var(--code); padding:1px 5px; border-radius:5px; }
+  img { max-width:100%; border:1px solid var(--line); border-radius:10px; margin:10px 0 4px; }
+  .ket { color:var(--muted); font-size:13.5px; margin:2px 0 18px; }
+  .ok-t { color:var(--ok); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin:14px 0; }
+  .card.warn { background:var(--warn-bg); border-color:transparent; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>P-04 — UI top-up: pilih paket, bayar, status, kembali ke dompet</h1>
+  <p class="lede">Laporan verifikasi end-to-end item P-04 (Dev B). Dikerjakan 18 Okt 2026 (sesi susulan minggu 12–16 Okt).</p>
+  <div class="meta">
+    <span class="chip">Lingkungan: lokal (web :3005 · API :3002 · DB e2e terisolasi)</span>
+    <span class="chip ok">Seluruh skenario yang tersentuh lulus</span>
+    <span class="chip warn">Alur bayar penuh menunggu rute checkout (#233) + kredensial Midtrans</span>
+  </div>
+
+  <h2>1 · Ringkasan</h2>
+  <p>Dompet kini punya seksi "Isi koin": 3 paket dari <code>GET /pricing</code> (nyata, bukan fixture), pilih paket → <code>POST /payments/checkout</code> (⚡ kunci idempoten milik percobaan, PA-3) → Snap hosted terbuka di tab baru → polling <code>GET /payments/orders/:id</code> tiap 5 detik dengan <strong>batas waktu 10 menit</strong>: lunas → kartu berhasil + saldo menyegarkan senyap; gagal/kedaluwarsa → pesan jelas; batas waktu habis → pesan tenggang — <em>tidak pernah menggantung selamanya</em> (AC). Koin tidak pernah ditambahkan klien (PA-5): layar hanya membaca status.</p>
+
+  <h2>2 · Batasan yang jujur (isu #233)</h2>
+  <div class="card warn">
+    <p><strong>Rute <code>POST /payments/checkout</code> belum punya controller</strong> — servicenya ter-merge dan teruji, tetapi tidak pernah diekspos (komentar <code>checkout.service.ts:66</code> sendiri menuliskannya; ACCESS_MATRIX mendaftarkan rute yang tidak ada). Karena itu di verifikasi ini:</p>
+    <ul>
+      <li>Jalur <em>nyata</em> saat ini dibuktikan: 404 → pesan bersih, layar tetap hidup (screenshot 01).</li>
+      <li>Jalur <em>menunggu → berhasil</em> dibuktikan dengan checkout di-<strong>intercept Playwright</strong> mengarah ke order pending SUNGGUHAN di DB; polling, status, dan kartu berhasil semuanya menyentuh API NYATA tanpa reload (screenshot 02).</li>
+      <li>Item tidak ditandai <code>done</code> sampai rute berdiri dan alur penuh terbukti end-to-end.</li>
+    </ul>
+  </div>
+
+  <h2>3 · Matriks skenario</h2>
+  <table>
+    <thead><tr><th>#</th><th>Skenario</th><th>Harapan</th><th>Hasil</th><th>Cara verifikasi</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Dompet dibuka</td><td>Seksi top-up menampilkan ≥3 paket dari /pricing nyata</td><td class="ok-t">LULUS</td><td>Playwright + assert jumlah radio</td></tr>
+      <tr><td>2</td><td>Klik "Lanjut bayar" (rute belum ada)</td><td>Galat bersih ber-kode, tanpa menggantung, layar tetap bisa dipakai</td><td class="ok-t">LULUS</td><td>Screenshot 01</td></tr>
+      <tr><td>3</td><td>Checkout menjawab (intercept → order pending nyata)</td><td>Fase menunggu: koin + rupiah + hitungan batas waktu tampil; tombol buka halaman bayar lagi</td><td class="ok-t">LULUS</td><td>Assert testid + teks hitungan</td></tr>
+      <tr><td>4</td><td>Order → paid di DB saat layar menunggu</td><td>Kartu "Top-up berhasil · 2.200 koin" muncul via polling ≤5 dtk TANPA reload; saldo menyegarkan senyap</td><td class="ok-t">LULUS</td><td>Screenshot 02 + log GET orders 200</td></tr>
+      <tr><td>5</td><td>375px</td><td>Tanpa scroll horizontal</td><td class="ok-t">LULUS</td><td>Screenshot 03</td></tr>
+      <tr><td>6</td><td>Console</td><td>Bersih di luar 404 skenario #2</td><td class="ok-t">LULUS</td><td>Listener console</td></tr>
+      <tr><td>7</td><td>Batas waktu polling (unit)</td><td>Hitungan 600→0 → fase tenggang, state stabil (tidak menggantung); order terlambat ditolak diam-diam</td><td class="ok-t">LULUS</td><td>9 unit test mesin + sabotase leder tenggang merah</td></tr>
+      <tr><td>8</td><td>Reuse order tanpa redirect (PA-3)</td><td>Tetap masuk fase menunggu</td><td class="ok-t">LULUS</td><td>Unit test</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4 · Bukti visual</h2>
+  <img src="images/01-wallet-paket-dan-galat-404.png" alt="Dompet dengan 3 paket dan galat 404 bersih" />
+  <p class="ket">01 — Tiga paket nyata dari /pricing; galat rute #233 ditampilkan bersih dengan kodenya.</p>
+  <img src="images/02-topup-berhasil-polling.png" alt="Kartu top-up berhasil hasil polling" />
+  <p class="ket">02 — Order → paid di DB: kartu berhasil muncul dari polling API nyata tanpa reload.</p>
+  <img src="images/03-wallet-375px.png" alt="Dompet 375px" />
+  <p class="ket">03 — 375px tanpa scroll horizontal.</p>
+
+  <h2>5 · Katalog regresi</h2>
+  <table>
+    <thead><tr><th>Pemicu</th><th>Gejala</th><th>Root cause</th><th>Expected setelah perbaikan</th><th>Reproduce</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Order lunas saat kartu menunggu tampil</td>
+        <td>Kartu "berhasil" TIDAK muncul; seluruh seksi top-up kembali ke pilih paket (order &amp; hitungan hilang)</td>
+        <td>DUA lapis: (1) <code>onKoinMasuk</code> dipanggil DI DALAM updater state (pembaruan saat render — React menolak, console error "Cannot update a component…"); (2) callback-nya <code>muat()</code> me-reset wallet ke fase memuat yang TIDAK merender TopupSection → remount menghancurkan state polling</td>
+        <td>Efek samping pindah ke <code>useEffect</code> (updater murni); wallet punya <code>muatSaldo</code> senyap yang tidak mengubah fase</td>
+        <td>Intercept checkout → order pending → UPDATE status paid → amati kartu</td>
+      </tr>
+      <tr>
+        <td>Kontrak paket {code,label} vs data nyata {id,name}</td>
+        <td>Radio tak pernah terpilih, tombol bayar mati, warning key React</td>
+        <td>Asumsi F-08 tidak pernah direkonsiliasi dengan seed F-13; P-04 konsumen pertama endpoint</td>
+        <td>Kontrak diselaraskan lewat PR terpisah (#234) sesuai aturan breaking-change kontrak</td>
+        <td>Bandingkan <code>GET /pricing</code> dengan <code>pricingPackageSchema</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>6 · Verifikasi perintah</h2>
+  <table>
+    <thead><tr><th>Perintah</th><th>Hasil</th></tr></thead>
+    <tbody>
+      <tr><td><code>pnpm --filter @strive/web test</code></td><td>87/87 hijau (9 baru: mesin top-up)</td></tr>
+      <tr><td><code>pnpm lint && pnpm typecheck && pnpm build</code></td><td>hijau</td></tr>
+      <tr><td>Sabotase leder tenggang</td><td>1 test merah → dipulihkan</td></tr>
+      <tr><td>Audit keamanan (agent-security)</td><td>terlampir di PR</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

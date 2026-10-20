@@ -22,9 +22,12 @@
 // menjepit lebih ketat daripada API tanpa satu pun yang merah.
 import { WALLET_LEDGER_LIMIT_MAX } from '@strive/contracts';
 import type {
+  CheckoutResponse,
   HubResponse,
   ListNotificationsResponse,
   MarkNotificationReadResponse,
+  OrderResponse,
+  PricingResponse,
   PurchaseStoreItemResponse,
   StoreItem,
   StorePurchaseDownloadResponse,
@@ -33,12 +36,15 @@ import type {
 } from '@strive/contracts';
 
 export type {
+  CheckoutResponse,
   CoinEntryType,
   CoinLedgerEntry,
   HubResponse,
   ListNotificationsResponse,
   MarkNotificationReadResponse,
   Notification,
+  OrderResponse,
+  PricingResponse,
   PurchaseStoreItemResponse,
   StoreItem,
   StorePurchaseDownloadResponse,
@@ -327,6 +333,34 @@ export function createApiClient(config: ApiClientConfig) {
       return request<WalletLedgerResponse>(`/wallet/ledger${query}`, { signal: opts?.signal });
     },
 
+    /** GET /pricing — versi harga aktif + paket top-up (P-04, PRD §6.3). */
+    getActivePricing(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<PricingResponse>('/pricing', { signal: opts?.signal });
+    },
+
+    /**
+     * POST /payments/checkout (⚡) — PA-3: kunci idempoten MILIK PERCOBAAN,
+     * bukan per klik: retry atas percobaan bayar yang sama memakai kunci SAMA
+     * (server memulangkan order yang sama), percobaan baru kunci baru.
+     * Rutenya ADA sejak #243 (isu #233 ditutup 20 Okt) — komentar lama di
+     * sini menulis "belum punya controller", dan itu tidak lagi benar.
+     * Penanganan galat bersihnya tetap dipertahankan: tanpa kredensial
+     * Midtrans (#57) `SnapClient` menolak, jadi UI masih harus tahan
+     * terhadap kegagalan di langkah ini.
+     */
+    checkoutTopup(
+      packageCode: string,
+      idempotencyKey: string,
+      opts?: Pick<RequestOptions, 'signal'>,
+    ) {
+      return request<CheckoutResponse>('/payments/checkout', {
+        method: 'POST',
+        body: { package_id: packageCode },
+        idempotencyKey,
+        signal: opts?.signal,
+      });
+    },
+
     /** GET /store/items — etalase + owned + purchase_id (ST-02). */
     listStoreItems(opts?: Pick<RequestOptions, 'signal'>) {
       return request<StoreItem[]>('/store/items', { signal: opts?.signal });
@@ -342,6 +376,13 @@ export function createApiClient(config: ApiClientConfig) {
         method: 'POST',
         body: { item_id: itemId },
         idempotencyKey,
+        signal: opts?.signal,
+      });
+    },
+
+    /** GET /payments/orders/:id — status order untuk polling UI (PRD §10.3). */
+    getOrder(orderId: string, opts?: Pick<RequestOptions, 'signal'>) {
+      return request<OrderResponse>(`/payments/orders/${encodeURIComponent(orderId)}`, {
         signal: opts?.signal,
       });
     },
