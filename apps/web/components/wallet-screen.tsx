@@ -4,6 +4,8 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { TopupSection } from '@/components/topup-section';
+
 import type { CoinLedgerEntry } from '@strive/contracts';
 import { CoinPill } from '@strive/ui';
 
@@ -100,6 +102,20 @@ export function WalletScreen() {
 
   useEffect(muat, [muat]);
 
+  /**
+   * Segarkan SALDO SAJA, tanpa fase memuat. Dipakai setelah top-up lunas:
+   * `muat()` me-reset ke 'memuat' yang TIDAK merender TopupSection — remount
+   * itu menghancurkan state polling-nya (order, hitungan batas waktu) tepat
+   * pada momen kartu "berhasil" seharusnya tampil. Ketemu lewat verifikasi
+   * browser, bukan tebakan.
+   */
+  const muatSaldo = useCallback(() => {
+    api
+      .getWallet()
+      .then((d) => setState((s) => ({ ...s, saldo: d.balance })))
+      .catch(() => undefined); // gagal senyap: saldo lama tetap; poll berikut mencoba lagi
+  }, [api]);
+
   const muatLedger = useCallback(() => {
     // Tombol disabled adalah lapis pertama; cek ini lapis kedua, dan mesin
     // (mulaiMuatLagi) lapis ketiga — klik ganda tidak boleh menembak dua
@@ -149,6 +165,7 @@ export function WalletScreen() {
     return (
       <div className="mx-auto flex w-full max-w-sm flex-col gap-4 px-4 pb-8 pt-4">
         <SaldoKartu saldo={state.saldo} />
+        <TopupSection onKoinMasuk={muatSaldo} />
         <PesanKosong
           judul="Dompet kamu masih kosong"
           teks="Selesaikan kartu lesson dan jaga streak harian untuk mengumpulkan Strive Coins."
@@ -174,6 +191,11 @@ export function WalletScreen() {
       </header>
 
       <SaldoKartu saldo={state.saldo} />
+
+      {/* Top-up P-04: saat order lunas lewat polling, saldo di atas ikut
+          menyegarkan (onKoinMasuk → muat) — koin sendiri HANYA dari webhook
+          (PA-5); layar ini membaca, tidak pernah menambah. */}
+      <TopupSection onKoinMasuk={muatSaldo} />
 
       <ul className="overflow-hidden rounded-card border border-line bg-background">
         {state.entri.map((e) => (

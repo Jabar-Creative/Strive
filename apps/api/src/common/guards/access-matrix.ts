@@ -96,6 +96,7 @@ export const ACCESS_MATRIX: readonly AccessRule[] = [
   },
   { route: 'GET /store/items', allow: BELAJAR },
   { route: 'POST /store/purchase', allow: BELAJAR },
+  { route: 'GET /store/purchases/:id/download', allow: BELAJAR },
   { route: 'POST /scans', allow: BELAJAR },
   { route: 'GET /scans/:id', allow: BELAJAR },
   { route: 'POST /career/cv', allow: BELAJAR },

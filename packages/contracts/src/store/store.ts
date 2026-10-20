@@ -18,6 +18,14 @@ export const storeItemSchema = z.object({
   kind: storeItemKindSchema,
   price_coins: coinAmountSchema,
   is_active: z.boolean(),
+  /** Sudah dimiliki si penanya — tombol etalase bergantung padanya (ST-02). */
+  owned: z.boolean(),
+  /**
+   * Id baris pembelian si penanya; rute unduh menunjuk baris pembelian
+   * (SR-5), dan tidak ada rute "daftar pembelian" di §10.3 — etalase adalah
+   * satu-satunya pembawa id itu. Null saat belum dimiliki.
+   */
+  purchase_id: uuidSchema.nullable(),
 });
 export type StoreItem = z.infer<typeof storeItemSchema>;
 
