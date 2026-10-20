@@ -354,6 +354,13 @@ jobs:
             -e S3_ENDPOINT=http://127.0.0.1:1
             -e S3_ACCESS_KEY=image-ci
             -e S3_SECRET_KEY=image-ci-bukan-rahasia
+            # Nama bucket ikut WAJIB di produksi sejak isu #237 — kredensial
+            # produksi dengan nama bucket DEV adalah separuh gerbang, dan di
+            # akun yang kebetulan punya bucket bernama sama ia BERHASIL.
+            # Job ini membuktikan gerbang itu bekerja di lapisan deployment:
+            # tanpa dua baris di bawah, kedua container berhenti saat boot.
+            -e S3_BUCKET_DOCUMENTS=image-ci-dokumen
+            -e S3_BUCKET_ASSETS=image-ci-aset
             -e API_PORT=3001
           )
           docker run -d --name api-image "${bersama[@]}" -e MODE=api strive-api:ci

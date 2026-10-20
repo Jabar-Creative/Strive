@@ -88,8 +88,11 @@ export class NotificationsController {
     }
 
     try {
-      const { data, nextCursor } = await this.notifications.listForUser(userId, parsed.value);
-      return { data: data.map(serialize), next_cursor: nextCursor };
+      const { data, nextCursor, unreadCount } = await this.notifications.listForUser(
+        userId,
+        parsed.value,
+      );
+      return { data: data.map(serialize), next_cursor: nextCursor, unread_count: unreadCount };
     } catch (error) {
       if (error instanceof NotificationCursorError) {
         throw new BadRequestException({

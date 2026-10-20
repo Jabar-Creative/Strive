@@ -226,13 +226,12 @@ export class StoreService {
     userId: string,
     purchaseId: string,
   ): Promise<{ url: string; expires_at: string }> {
-    // Bentuk UUID diperiksa SEBELULUM menyentuh query: kolomnya uuid, dan
+    // Bentuk UUID diperiksa SEBELUM menyentuh query: kolomnya uuid, dan
     // parameter bind bukan-uuid membuat Postgres melempar 22P02 → 500,
     // bukan NOT_FOUND seragam (kelas jebakan order_id Midtrans di CLAUDE.md;
     // temuan audit ST-02). "Bukan milikmu" dan "bentuknya salah" tidak boleh
     // bisa dibedakan dari respons.
-    const UUID_V4 =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!UUID_V4.test(purchaseId)) {
       throw new NotFoundException({
         error: { code: 'NOT_FOUND', message: 'Pembelian tidak ditemukan', details: {} },

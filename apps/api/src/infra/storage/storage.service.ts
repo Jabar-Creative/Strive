@@ -115,8 +115,51 @@ export class StorageService {
   }
 }
 
-/** Variabel yang WAJIB eksplisit di produksi — bawaan dev-nya menyesatkan. */
-const WAJIB_DI_PRODUKSI = ['S3_ENDPOINT', 'S3_ACCESS_KEY', 'S3_SECRET_KEY'] as const;
+/**
+ * Variabel yang WAJIB eksplisit di produksi — bawaan dev-nya menyesatkan.
+ *
+ * **Nama bucket ikut di daftar ini sejak isu #237.** Sebelumnya hanya
+ * endpoint dan kredensial yang diperiksa, jadi `createS3FromEnv()` gagal
+ * tertutup sementara `bucketDocuments()`/`bucketAssets()` di bawahnya tetap
+ * diam-diam jatuh ke `strive-documents`/`strive-assets` — nama bucket DEV.
+ * Separuh gerbang: kredensialnya produksi, tujuannya dev.
+ *
+ * Yang membuatnya berbahaya bukan kegagalannya, tapi keberhasilannya. Dengan
+ * kredensial R2 yang sah dan nama bucket dev, panggilan pertama yang mengenai
+ * bucket tak-ada menjawab `NoSuchBucket` — dan di akun yang KEBETULAN punya
+ * bucket bernama sama, ia berhasil: skripsi pengguna produksi tertulis ke
+ * tempat yang tidak pernah dimaksudkan menyimpannya, tanpa satu galat pun.
+ */
+const WAJIB_DI_PRODUKSI = [
+  'S3_ENDPOINT',
+  'S3_ACCESS_KEY',
+  'S3_SECRET_KEY',
+  'S3_BUCKET_DOCUMENTS',
+  'S3_BUCKET_ASSETS',
+] as const;
+
+/**
+ * Nama bucket di produksi: eksplisit atau melempar — tidak pernah bawaan.
+ *
+ * Pemeriksaan di `createS3FromEnv()` menangkapnya lebih awal (saat boot,
+ * ketika masih ada yang menonton), dan itu memang gerbang yang lebih baik.
+ * Yang ini ada karena gerbang itu hanya dilewati proses yang MEMBUAT klien
+ * S3; fungsi bucket bisa dipanggil dari mana saja — skrip perbaikan data,
+ * worker, test yang merakit modul sendiri. Pola yang sama dengan trigger
+ * database di repo ini: aman dari jalur mana pun, bukan dari satu jalur kode.
+ */
+function bucketWajib(nama: string, bawaanDev: string): string {
+  const v = envTeks(nama);
+  if (v !== undefined) return v;
+  if (produksi()) {
+    throw new Error(
+      `${nama} kosong di produksi. Bawaan dev '${bawaanDev}' TIDAK dipakai — ` +
+        'nama bucket dev di akun produksi menulis dokumen pengguna ke tempat ' +
+        'yang tidak dimaksudkan menyimpannya, dan itu berhasil tanpa galat.',
+    );
+  }
+  return bawaanDev;
+}
 
 /**
  * Klien S3 dari env. Satu-satunya tempat kredensial storage dibaca.
@@ -161,7 +204,7 @@ export function createS3FromEnv(): S3Client {
 
 /** Bucket dokumen pengguna — privat, isinya skripsi yang belum disidangkan. */
 export function bucketDocuments(): string {
-  return envTeks('S3_BUCKET_DOCUMENTS') ?? 'strive-documents';
+  return bucketWajib('S3_BUCKET_DOCUMENTS', 'strive-documents');
 }
 
 /**
@@ -184,5 +227,5 @@ export function bucketDocuments(): string {
  * ditambahkan besok mengulang isu ini.
  */
 export function bucketAssets(): string {
-  return envTeks('S3_BUCKET_ASSETS') ?? 'strive-assets';
+  return bucketWajib('S3_BUCKET_ASSETS', 'strive-assets');
 }

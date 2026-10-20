@@ -13,13 +13,15 @@ import { CurrentUserId, Roles, RolesGuard, SessionGuard } from '../../common/gua
 import { type PurchaseResult, StoreService, type StoreItemView } from './store.service';
 
 /**
- * `GET /store/items` + `POST /store/purchase` — PRD §10.3, item `ST-01`.
+ * `GET /store/items` + `POST /store/purchase` (`ST-01`) +
+ * `GET /store/purchases/:id/download` (`ST-02`) — PRD §10.3.
  *
  * Superadmin DITOLAK: menukar koin adalah aktivitas pengguna, dan panel admin
  * tidak punya dompet (PRD §2.4). Pola yang sama dengan `/wallet`.
  *
- * bersama UI etalase, dan acceptance criteria-nya (URL kedaluwarsa 15 menit,
- * aset tidak bisa ditebak) memang menggambarkan perilakunya.
+ * `GET /store/purchases/:id/download` ADA di sini sejak `ST-02` — acceptance
+ * criteria-nya (URL kedaluwarsa 15 menit, aset tidak bisa ditebak) yang
+ * menggambarkan perilakunya.
  */
 @UseGuards(SessionGuard, RolesGuard)
 @Roles('student', 'mentor')

@@ -3,6 +3,7 @@
 export * from './payment.module';
 export * from './pricing-config.service';
 export * from './checkout.service';
+export * from './checkout.controller';
 export * from './snap.client';
 export * from './admin-pricing.controller';
 export * from './order-read.service';
