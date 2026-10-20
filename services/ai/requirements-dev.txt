@@ -1,0 +1,16 @@
+# Dependensi TEST layanan AI — isu #215.
+#
+# `-r requirements.txt` disengaja: test berjalan melawan versi runtime yang
+# SAMA dengan produksi. Dua daftar terpisah yang masing-masing menyebut
+# `fastapi` akan menyimpang diam-diam, dan yang pertama tahu adalah
+# produksi.
+#
+# Dipakai `scripts/dev-ai.mjs` dan job CI `ai service · test`.
+# `infra/Dockerfile.ai` TIDAK memakainya, dan itu seluruh gunanya.
+-r requirements.txt
+
+pytest==8.3.4
+# Fixture test dibuat, bukan direkam: pypdf mengenkripsi PDF fixture (test
+# ekstraksi AI-02). Penulis fixture-nya sendiri reportlab, yang memang
+# runtime — lihat catatannya di requirements.txt.
+pypdf==6.19.0

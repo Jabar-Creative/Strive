@@ -10,9 +10,9 @@
 //   3. venv Windows menaruh interpreter di .venv/Scripts, bukan .venv/bin.
 //
 // Logika venv-nya sengaja dipertahankan sama persis: penanda .venv/.installed
-// berisi hash requirements.txt dan HANYA ditulis setelah pip selesai, supaya
-// venv setengah jadi tidak ikut dipakai dan requirements yang berubah memicu
-// install ulang.
+// berisi hash requirements.txt + requirements-dev.txt (isu #215) dan HANYA
+// ditulis setelah pip selesai, supaya venv setengah jadi tidak ikut dipakai
+// dan requirements yang berubah memicu install ulang.
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -47,6 +47,12 @@ const venvBin = path.join(venvDir, isWindows ? 'Scripts' : 'bin');
 const venvPython = path.join(venvBin, isWindows ? 'python.exe' : 'python');
 const stampFile = path.join(venvDir, '.installed');
 const requirements = path.join(serviceDir, 'requirements.txt');
+// `.venv` lokal memakai daftar DEV, bukan runtime (isu #215): developer
+// menjalankan `pytest` dari venv yang sama. Yang hanya runtime adalah IMAGE.
+// Stempel hash memuat KEDUA berkas — mengubah salah satunya saja harus
+// memicu pemasangan ulang, dan versi runtime hidup di requirements.txt yang
+// dirujuk berkas dev lewat `-r`.
+const requirementsDev = path.join(serviceDir, 'requirements-dev.txt');
 
 /** Lantai versi dibaca dari pyproject.toml — satu angka, satu tempat. */
 function readMinimumPython() {
@@ -109,7 +115,10 @@ function run(cmd, args, opts = {}) {
   }
 }
 
-const want = createHash('sha256').update(fs.readFileSync(requirements)).digest('hex');
+const want = createHash('sha256')
+  .update(fs.readFileSync(requirements))
+  .update(fs.readFileSync(requirementsDev))
+  .digest('hex');
 const have = fs.existsSync(stampFile) ? fs.readFileSync(stampFile, 'utf8').trim() : '';
 
 if (!fs.existsSync(venvPython) || want !== have) {
@@ -133,7 +142,7 @@ if (!fs.existsSync(venvPython) || want !== have) {
   fs.rmSync(venvDir, { recursive: true, force: true });
   run(python.cmd, [...python.prefix, '-m', 'venv', '.venv']);
   run(venvPython, ['-m', 'pip', 'install', '--quiet', '--upgrade', 'pip']);
-  run(venvPython, ['-m', 'pip', 'install', '--quiet', '-r', 'requirements.txt']);
+  run(venvPython, ['-m', 'pip', 'install', '--quiet', '-r', 'requirements-dev.txt']);
   fs.writeFileSync(stampFile, want);
   console.log('[ai] .venv siap.');
 }
