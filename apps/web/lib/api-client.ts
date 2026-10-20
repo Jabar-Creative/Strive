@@ -278,10 +278,9 @@ export function createApiClient(config: ApiClientConfig) {
      * memang menembak Redis tiap kali, bukan cache HTTP.
      */
     getSquadLeaderboard(squadId: string, opts?: Pick<RequestOptions, 'signal'>) {
-      return request<SquadMember[]>(
-        `/squads/${encodeURIComponent(squadId)}/leaderboard`,
-        { signal: opts?.signal },
-      );
+      return request<SquadMember[]>(`/squads/${encodeURIComponent(squadId)}/leaderboard`, {
+        signal: opts?.signal,
+      });
     },
 
     /**
@@ -336,10 +335,13 @@ export function createApiClient(config: ApiClientConfig) {
 
     /** PATCH /notifications/:id/read — idempoten (PRD §10.3, N-02). */
     markNotificationRead(id: string, opts?: Pick<RequestOptions, 'signal'>) {
-      return request<MarkNotificationReadResponse>(`/notifications/${encodeURIComponent(id)}/read`, {
-        method: 'PATCH',
-        signal: opts?.signal,
-      });
+      return request<MarkNotificationReadResponse>(
+        `/notifications/${encodeURIComponent(id)}/read`,
+        {
+          method: 'PATCH',
+          signal: opts?.signal,
+        },
+      );
     },
   };
 }

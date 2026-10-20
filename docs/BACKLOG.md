@@ -116,7 +116,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `N-02` | UI lonceng notifikasi + banner peringatan streak | B | W5 | 0,5 | `done` | `f6a283e` | 2026-10-18 | **AC terbukti di browser sungguhan (Playwright + API nyata, 7 langkah lulus termasuk 375px — `docs/reports/N-02/`).** "Jumlah belum dibaca akurat" dihitung SERVER: `unread_count` (COUNT per user) ditambahkan ke respons GET /notifications — aditif di kontrak milik Dev B; 4 test integrasi DB nyata (akurat TERPISAH dari limit halaman: 5 belum dibaca, halaman 2 item; turun tepat satu saat markRead; idempoten; milik sendiri saja). NO-7 optimistik+pulih: mesin murni `notification-bell` 13 unit test, pemulihan dibuktikan MERAH lewat sabotase lalu dipulihkan. **Verifikasi menemukan bug sendiri sebelum diperbaiki:** lonceng & banner mula-mula memegang state MASING-MASING — menutup banner (PATCH sampai server, DB 0 belum dibaca) tetap meninggalkan lencana "1" selamanya; kini satu state via `NotificationProvider`, keduanya berubah dan pulih BERSAMA. Tamu → lonceng hilang (fase tanpaSesi), bukan error. Audit agent-security: nol Kritis/Tinggi/Sedang; satu catatan Rendah untuk Dev A — komentar `session.guard.ts:42` menyebut `OriginCsrfGuard` yang tak pernah ada sebagai kelas (perlindungan aslinya hidup di `tokenSesiDari()`). |
 | `P-04` | UI top-up: pilih paket, bayar, status, kembali ke… | B | W5 | 0,5 | `todo` | — | — | — |
 | `Q-04` | Job rollup mingguan + promosi/degradasi 20% | A | W5 | 1 | `done` | #112 | 2026-09-22 | Dipindah dari Dev B (22 Sep). Idempotensi SQ-9 ditegakkan `UPDATE … WHERE closed_at IS NULL RETURNING`, bukan periksa-dulu-lalu-tutup — diverifikasi merah, 3 test. Bug yang ditangkap TEST SENDIRI: versi pertama membaca squad per tier DI DALAM loop yang juga menulis tier, jadi squad yang baru naik dari bronze ikut terbaca lagi di silver dan naik DUA KALI dalam satu panggilan. Poin dibaca dari Postgres, bukan ZSET (SQ-4: Redis melayani, Postgres memiliki). Menemukan isu #111: SQ-8 bertentangan dengan §5 Q4 — squad dibentuk ulang tiap minggu, jadi promosi tidak berpengaruh pada apa pun. |
-| `RT-02` | Client hook useRealtime + fallback polling otomatis | B | W5 | 0,5 | `todo` | — | — | — |
+| `RT-02` | Client hook useRealtime + fallback polling otomatis | B | W5 | 0,5 | `done` | `+$(git rev-parse --short HEAD)` | 2026-10-18 | **AC terbukti di browser sungguhan (stack API nyata terisolasi + Playwright, 6 langkah — `docs/reports/RT-02/`).** WS hidup → papan 3 baris, chip "Langsung"; WS "dimatikan seluruhnya" dari sudut klien (rute /api/v1/ws* di-abort level browser, REST tetap hidup — RT-02 item KLIEN; perilaku server WS mati milik RT-01 yang sudah done) → papan TETAP 3 baris via polling, chip jujur "per 30 dtk", NOL layar kosong/galat. Penyegaran nyata tanpa reload: poin diubah di Postgres + kunci ZSET dibuang → satu tick polling menampilkan nilai baru lewat rebuildSquad milik aplikasi sendiri (aturan keras 7). Mesin Q-05 tak diubah; yang baru: penjaga refetch in-flight+SATU-trailing diangkat dari closure tak teruji squad-screen jadi `lib/refetch-guard` (5 unit test; pengerasan audit: lemparan SINKRON tidak membekukan penjaga — diuji merah dulu) + `lib/useRealtime` (squadId null = polling-murni utk kanal user:/league: v0.1). **Dua temuan samping:** bug pra-ada Q-06 — `to_char(...,'OF')` menghasilkan offset tanpa menit → `new Date()` Invalid → layar squad CRASH di jalur API nyata (verifikasi Q-05 dulu pakai stub, tak pernah ketahuan); mitigasi web dipasang ("—" + tak crash), akarnya di isu #231 utk Dev A. Audit agent-security: nol Kritis/Tinggi/Sedang, 2 Low (satu dipasang, satu catatan AbortSignal pasca-unmount perilaku pra-ada). |
 | `K-01` | Upload PDF/DOCX + SHA-256 + simpan ke object storage | A | W6 | 1 | `done` | — | 2026-09-20 | Tipe ditentukan dari BYTE berkasnya, bukan nama/Content-Type — keduanya dari klien. Magic `PK` saja tidak cukup untuk DOCX: setiap .zip/.jar/.xlsx punya empat byte pertama yang sama, jadi entri `word/document.xml` ikut dicari. AC "ditolak SEBELUM menyentuh storage" dibuktikan dengan menghitung panggilan `put` (nol), bukan dengan "objeknya tidak ada" — service yang menyimpan lalu menghapus akan lolos cara kedua. Dibalik urutannya jadi merah: 6 berkas ditolak sampai ke bucket. Kunci objek dari HASH, bukan nama berkas (`../../etc/passwd` diuji). |
 | `K-02` | ScanService: dedup, hold/settle/release, reaper 30… | A | W6 | 1,5 | `done` | — | 2026-09-20 | Aturan 2 (`coin_balance` = SUM(ledger)) di-assert di SETIAP titik, bukan sekali di akhir. Dedup hanya dari scan `done` — dibuktikan menggigit: hapus filternya, 3 test merah. Dua temuan dari menulis test: (1) hasil vendor yang tiba SETELAH reaper melepas koin dulu MELEMPAR Error mentah (500) dan membuang hasil yang vendornya sudah dibayar — sekarang tercatat sebagai anomali, status tetap `released` supaya tidak jadi sumber dedup di tarif yang tidak dibayar siapa pun; (2) `MODE=worker` GAGAL BOOT TOTAL sejak lama (isu #86) — `WorkerModule` tidak mengimpor `KyselyModule`, dan nol test pernah membangunnya. Diperbaiki + `worker.module.spec.ts` ditambahkan, yang langsung menangkap `StorageModule` hilang juga. |
 | `MT-01` | Skema mastery_sessions + API | A | W6 | 0,5 | `done` | #59 | 2026-09-17 | Giliran ditambahkan lewat jsonb_insert di DATABASE, bukan dirakit di Node — 10 penambahan paralel diuji, nol yang hilang. Kepemilikan disaring di WHERE, bukan diperiksa setelah baris diambil. Sesi orang lain dan sesi yang tidak ada menjawab identik. |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 61 | 59,5 |
+| `done` | 62 | 60,0 |
 | `review` | 1 | 1,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 3,5 |
-| `todo` | 14 | 14,0 |
+| `todo` | 13 | 13,5 |
 
 ---
 ## Ringkasan per epik
@@ -183,7 +183,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E2` | Learning Engine | 7,5 | 5 | 5/5 · **100%** | — |
 | `E3` | Career Streak | 5,5 | 5 | 5/5 · **100%** | — |
 | `E5` | Squad & Liga | 6,0 | 6 | 6/6 · **100%** | — |
-| `E15` | Realtime | 2,0 | 2 | 1/2 · **75%** | — |
+| `E15` | Realtime | 2,0 | 2 | 2/2 · **100%** | — |
 | `E16` | Notifikasi | 1,5 | 2 | 2/2 · **100%** | — |
 | `E6` | Payment | 3,5 | 4 | 2/4 · **57%** | 1 |
 | `E14` | Strive Store | 2,0 | 2 | 1/2 · **50%** | — |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **61/80 · 76%** | **4** |
+| | **Total** | **78,5** | **80** | **62/80 · 76%** | **4** |
 
 ---
 
