@@ -1,5 +1,10 @@
-import { PageStub } from '@/components/page-stub';
+import { StoreScreen } from '@/components/store-screen';
 
+/**
+ * /store — etalase Strive Store (ST-02): 8 item seed, pembelian transaksional
+ * (ST-01), unduh via signed URL 15 menit. Layar klien penuh (cookie sesi),
+ * halaman Server Component tipis pola L-04.
+ */
 export default function Page() {
-  return <PageStub title="Strive Store" item="ST-02" dev="B" prd="PRD §7 E14" />;
+  return <StoreScreen />;
 }

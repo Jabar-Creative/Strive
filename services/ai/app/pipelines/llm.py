@@ -10,6 +10,12 @@ Batas yang ditegakkan di sini (§12.3):
 - timeout 60 detik.
 - output JSON mode.
 
+`teks()` (mulai PL-01) adalah panggilan teks polos untuk pemanggil yang
+keluarannya BUKAN JSON (Prompt Lab): batas token dan timeout ditentukan
+PEMANGGIL karena tiap domain punya angkanya sendiri — Prompt Lab memakai
+800 token / 25 dtk (§13.5 kelas feedback; Node memotong sinkronnya di
+30 dtk), penyusunan CV tetap 4096 / 60 dtk.
+
 Kode galat: kegagalan transport/timeout/5xx → 502 `PROVIDER_UNAVAILABLE`
 (kode LAMA, sudah hidup di gateway RT-01); kunci belum diisi → 503
 `PROVIDER_UNAVAILABLE` gagal-tertutup. Keduanya di luar daftar tertutup
@@ -18,7 +24,7 @@ Kode galat: kegagalan transport/timeout/5xx → 502 `PROVIDER_UNAVAILABLE`
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Protocol
 
 import httpx
 from pydantic import BaseModel
@@ -44,13 +50,29 @@ class PemakaianLlm(BaseModel):
 
 
 class LlmKlien(Protocol):
-    """Kontrak klien: satu panggilan, keluar JSON teks + pemakaian."""
+    """Kontrak klien: satu panggilan, keluar teks + pemakaian."""
 
     @property
     def model_nama(self) -> str: ...
 
     async def json(self, system: str, user: str, temperature: float) -> tuple[str, PemakaianLlm]:
         """Keluar (teks_json, pemakaian). Galat → GalatLayanan §10.1."""
+        ...
+
+    async def teks(
+        self,
+        system: str,
+        user: str,
+        temperature: float,
+        maks_token: int,
+        timeout_detik: float,
+    ) -> tuple[str, PemakaianLlm]:
+        """Keluar (teks_polos, pemakaian) tanpa JSON mode.
+
+        `maks_token` dan `timeout_detik` WAJIB eksplisit: keduanya kenop
+        biaya dan batas waktu yang berbeda per domain — memaksa pemanggil
+        menyebut angkanya membuat angka itu bisa dikunci test.
+        """
         ...
 
 
@@ -87,21 +109,61 @@ class KlienOpenAI:
         return self._model
 
     async def json(self, system: str, user: str, temperature: float) -> tuple[str, PemakaianLlm]:
+        return await self._panggil_chat(
+            system,
+            user,
+            temperature,
+            maks_token=MAKS_TOKEN_KELUARAN,
+            timeout_detik=TIMEOUT_DETIK,
+            response_format={"type": "json_object"},
+        )
+
+    async def teks(
+        self,
+        system: str,
+        user: str,
+        temperature: float,
+        maks_token: int,
+        timeout_detik: float,
+    ) -> tuple[str, PemakaianLlm]:
+        return await self._panggil_chat(
+            system,
+            user,
+            temperature,
+            maks_token=maks_token,
+            timeout_detik=timeout_detik,
+            # None = kunci response_format TIDAK dikirim sama sekali:
+            # JSON mode akan memaksa model membungkus teks polos dalam
+            # kutip JSON — rusak untuk pemanggil teks (Prompt Lab).
+            response_format=None,
+        )
+
+    async def _panggil_chat(
+        self,
+        system: str,
+        user: str,
+        temperature: float,
+        maks_token: int,
+        timeout_detik: float,
+        response_format: dict[str, str] | None,
+    ) -> tuple[str, PemakaianLlm]:
+        muatan: dict[str, Any] = {
+            "model": self._model,
+            "temperature": temperature,
+            "max_completion_tokens": maks_token,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        }
+        if response_format is not None:
+            muatan["response_format"] = response_format
         try:
-            async with httpx.AsyncClient(timeout=TIMEOUT_DETIK) as klien:
+            async with httpx.AsyncClient(timeout=timeout_detik) as klien:
                 respons = await klien.post(
                     f"{self._base_url}/chat/completions",
                     headers={"Authorization": f"Bearer {self._api_key}"},
-                    json={
-                        "model": self._model,
-                        "temperature": temperature,
-                        "max_completion_tokens": MAKS_TOKEN_KELUARAN,
-                        "response_format": {"type": "json_object"},
-                        "messages": [
-                            {"role": "system", "content": system},
-                            {"role": "user", "content": user},
-                        ],
-                    },
+                    json=muatan,
                 )
         except httpx.HTTPError as ex:
             raise _galat_transport(f"jaringan ({type(ex).__name__})") from ex

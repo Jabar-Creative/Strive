@@ -200,6 +200,38 @@ describe('GET /squads/me (Q-06)', () => {
     expect(b.me).toEqual({ rank: 3, weekly_points: 10 });
   });
 
+  it('AC: season.ends_at BISA DI-PARSE klien — offset lengkap, bukan `+00` (#231)', async () => {
+    if (!reachable) return;
+    const { squad: b } = (await (await get('/api/v1/squads/me', A3)).json()) as {
+      squad: { season: { ends_at: string } };
+    };
+
+    // Yang diuji BUKAN bentuk stringnya, melainkan apakah klien bisa
+    // memakainya. Assert atas string akan tetap hijau untuk `…+00` —
+    // dan `…+00` adalah persis nilai yang mematikan layar /squad.
+    const diparse = new Date(b.season.ends_at);
+    expect(
+      Number.isFinite(diparse.getTime()),
+      `ends_at tidak bisa di-parse: ${JSON.stringify(b.season.ends_at)}`,
+    ).toBe(true);
+
+    // Dan ia harus menunjuk SAAT yang sama dengan yang tersimpan, bukan
+    // sekadar sesuatu yang kebetulan valid.
+    const baris = await db
+      .selectFrom('league_seasons')
+      .select('ends_at')
+      .where('id', '=', SEASON)
+      .executeTakeFirstOrThrow();
+    expect(diparse.getTime()).toBe(baris.ends_at.getTime());
+
+    // `Intl` adalah yang benar-benar melempar di browser (RangeError:
+    // Invalid time value), jadi ia ikut dipanggil di sini — bukan karena
+    // formatnya penting, tapi karena itu panggilan yang mati.
+    expect(() =>
+      new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeZone: 'UTC' }).format(diparse),
+    ).not.toThrow();
+  });
+
   it('peringkat SERI berbagi angka — RANK(), bukan ROW_NUMBER()', async () => {
     if (!reachable) return;
     // Ayu dan Budi sama-sama 50. ROW_NUMBER akan menempatkan salah satunya di

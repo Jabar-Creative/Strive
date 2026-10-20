@@ -3,6 +3,7 @@ import { Kysely, sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createDatabase, type DB } from '../src/infra/kysely';
+import { StorageService, createS3FromEnv } from '../src/infra/storage';
 import { StoreService } from '../src/modules/store';
 import { CoinLedgerService, InsufficientCoinsError } from '../src/modules/wallet';
 
@@ -59,7 +60,9 @@ async function assertSaldoKonsisten(id = AKU) {
 
 beforeAll(async () => {
   db = createDatabase(url);
-  store = new StoreService(db, new CoinLedgerService());
+  // Argumen ke-3 (StorageService) tidak dipakai jalur yang diuji berkas ini
+  // (beli/idempotensi); instance mati cukup — tidak ada pemanggilan S3 di sini.
+  store = new StoreService(db, new CoinLedgerService(), new StorageService(createS3FromEnv()));
   try {
     await db.selectFrom('store_items').select('id').limit(1).execute();
     reachable = true;
