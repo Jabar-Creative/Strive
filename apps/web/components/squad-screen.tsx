@@ -3,12 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ApiError, createApiClient } from '@/lib/api-client';
-import {
-  buatPapanLive,
-  buatSoketSquad,
-  type ModePapan,
-} from '@/lib/leaderboard-live';
 import type { SquadInfo, SquadMember } from '@/lib/api-client';
+import { useRealtime } from '@/lib/use-realtime';
 
 /**
  * Layar squad & papan mingguan — Q-05 (Dev B), PRD §7 E5 + RT-5.
@@ -34,7 +30,6 @@ export function SquadScreen() {
   const [galat, setGalat] = useState<ApiError | null>(null);
   const [squad, setSquad] = useState<SquadInfo | null>(null);
   const [papan, setPapan] = useState<SquadMember[]>([]);
-  const [mode, setMode] = useState<ModePapan>('polling');
   const sedangMuatRef = useRef(false);
 
   const muat = useCallback(
@@ -70,47 +65,26 @@ export function SquadScreen() {
     return () => batal.abort();
   }, [muat]);
 
-  // Mesin papan: terpasang hanya kalau squad sudah diketahui, dilepas saat
-  // squad berganti atau layar ditutup. `ambil` menembak leaderboard saja —
-  // identitas squad (nama/tier) tidak ikut di-refresh tiap 30 detik.
-  const squadId = squad?.squad_id;
-  useEffect(() => {
-    if (!squadId) return;
-    // Penjaga in-flight + satu trailing refetch (temuan audit Q-05): burst
-    // `score.updated` memancar ke seluruh anggota squad, dan tanpa penjaga
-    // tiap event menembak satu GET — ikut memakai jatah rate limit per
-    // pengguna lintas rute, dan respons paralel bisa selesai tak berurutan
-    // (papan mundur sesaat). Event yang datang saat fetch berjalan cukup
-    // dicatat; satu pengambilan ulang setelah selesai.
-    let sedangAmbil = false;
-    let muncrat = false;
-    const ambil = async () => {
-      if (sedangAmbil) {
-        muncrat = true;
-        return;
-      }
-      sedangAmbil = true;
+  // Papan live via hook RT-02: mesin Q-05 + penjaga refetch in-flight/trailing
+  // (temuan audit Q-05) kini hidup teruji di `lib/`, dipakai ulang tiap layar
+  // realtime — bukan closure privat layar ini. `ambil` menembak leaderboard
+  // saja; identitas squad (nama/tier) tidak ikut di-refresh tiap 30 detik.
+  const squadId = squad?.squad_id ?? null;
+  const { mode } = useRealtime({
+    squadId,
+    apiBase,
+    ambil: async () => {
+      // squadId null (squad belum termuat): polling-murni tanpa tembakan —
+      // mesin tetap terpasang supaya transisi null → id tidak memasang ulang.
+      if (!squadId) return;
       try {
         setPapan(await api.getSquadLeaderboard(squadId));
       } catch {
         // Papan yang sudah tampil tetap tampil; polling/WS berikutnya
         // mencoba lagi. Kegagalan sesaat bukan layar galat.
-      } finally {
-        sedangAmbil = false;
-        if (muncrat) {
-          muncrat = false;
-          void ambil();
-        }
       }
-    };
-    const papanLive = buatPapanLive({
-      squadId,
-      ambil,
-      buatSoket: () => buatSoketSquad(apiBase),
-      saatModeBerubah: setMode,
-    });
-    return () => papanLive.lepas();
-  }, [api, apiBase, squadId]);
+    },
+  });
 
   if (fase === 'memuat')
     return <Pesan judul="Memuat squad…" teks="Sebentar, squad-mu sedang dicari." />;
@@ -138,24 +112,37 @@ export function SquadScreen() {
       />
     );
 
-  const akhirMusim = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(
-    new Date(squad.season.ends_at),
-  );
+  // Pertahanan atas isu #231: `ends_at` dari GET /squads/me memakai
+  // to_char(..., 'OF') yang menghasilkan offset TANPA menit ("+00"), dan
+  // `new Date("+00")` = Invalid Date → Intl melempar RangeError → SELURUH
+  // layar squad mati ("Application error"). Sampai API-nya dibetulkan, nilai
+  // yang tak terbaca ditampilkan sebagai "—" — layar tidak boleh crash
+  // hanya karena satu kolom rusak.
+  const akhirMusim = Number.isNaN(new Date(squad.season.ends_at).getTime())
+    ? null
+    : new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(
+        new Date(squad.season.ends_at),
+      );
 
   return (
-    <div className="mx-auto flex w-full max-w-sm flex-col gap-3 px-4 pb-8 pt-2" data-testid="kartu-squad">
+    <div
+      className="mx-auto flex w-full max-w-sm flex-col gap-3 px-4 pb-8 pt-2"
+      data-testid="kartu-squad"
+    >
       <section className="rounded-card border border-line bg-background p-4">
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="font-medium">{squad.name}</p>
             <p className="mt-1 text-sm text-ink-500">
-              {squad.tier.toUpperCase()} · musim {squad.season.code} · berakhir {akhirMusim}
+              {squad.tier.toUpperCase()} · musim {squad.season.code} · berakhir {akhirMusim ?? '—'}
             </p>
           </div>
           <span
             className="flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-ink-500"
             data-testid="indikator-mode"
-            aria-label={mode === 'langsung' ? 'Papan diperbarui langsung' : 'Papan diperbarui setiap 30 detik'}
+            aria-label={
+              mode === 'langsung' ? 'Papan diperbarui langsung' : 'Papan diperbarui setiap 30 detik'
+            }
           >
             <span
               className={
@@ -170,8 +157,7 @@ export function SquadScreen() {
         </div>
         <p className="mt-3 text-sm">
           Peringkatmu <span className="font-medium">#{squad.me.rank}</span> ·{' '}
-          <span className="font-medium tabular-nums">{squad.me.weekly_points}</span> poin
-          minggu ini
+          <span className="font-medium tabular-nums">{squad.me.weekly_points}</span> poin minggu ini
         </p>
       </section>
 

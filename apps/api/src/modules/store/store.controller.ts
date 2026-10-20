@@ -1,4 +1,5 @@
 import {
+  Param,
   BadRequestException,
   Body,
   Controller,
@@ -12,14 +13,15 @@ import { CurrentUserId, Roles, RolesGuard, SessionGuard } from '../../common/gua
 import { type PurchaseResult, StoreService, type StoreItemView } from './store.service';
 
 /**
- * `GET /store/items` + `POST /store/purchase` — PRD §10.3, item `ST-01`.
+ * `GET /store/items` + `POST /store/purchase` (`ST-01`) +
+ * `GET /store/purchases/:id/download` (`ST-02`) — PRD §10.3.
  *
  * Superadmin DITOLAK: menukar koin adalah aktivitas pengguna, dan panel admin
  * tidak punya dompet (PRD §2.4). Pola yang sama dengan `/wallet`.
  *
- * `GET /store/purchases/:id/download` TIDAK ada di sini — ia milik `ST-02`
- * bersama UI etalase, dan acceptance criteria-nya (URL kedaluwarsa 15 menit,
- * aset tidak bisa ditebak) memang menggambarkan perilakunya.
+ * `GET /store/purchases/:id/download` ADA di sini sejak `ST-02` — acceptance
+ * criteria-nya (URL kedaluwarsa 15 menit, aset tidak bisa ditebak) yang
+ * menggambarkan perilakunya.
  */
 @UseGuards(SessionGuard, RolesGuard)
 @Roles('student', 'mentor')
@@ -57,5 +59,19 @@ export class StoreController {
       });
     }
     return this.store.purchase({ userId, itemId, idempotencyKey });
+  }
+
+  /**
+   * `GET /store/purchases/:id/download` — ST-02, SR-5: signed URL 15 menit.
+   * Kepemilikan dicek di service (WHERE user_id), bukan di guard — pola
+   * F-14. `asset_key` tidak pernah keluar; yang dikirim hanya URL ternilai
+   * pendek + kapan ia kedaluwarsa.
+   */
+  @Get('purchases/:id/download')
+  async download(
+    @CurrentUserId() userId: string,
+    @Param('id') purchaseId: string,
+  ): Promise<{ url: string; expires_at: string }> {
+    return this.store.downloadUrl(userId, purchaseId);
   }
 }
