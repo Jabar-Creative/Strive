@@ -235,7 +235,12 @@ describe('NotificationsService', () => {
       const rows = [nowRow({ id: '1' }), nowRow({ id: '2' })];
       const db = {
         insertInto: vi.fn(),
-        selectFrom: vi.fn(() => chainable(rows)),
+        // Panggilan pertama = halaman daftar, kedua = COUNT belum dibaca
+        // (bigint pg datang sebagai string — N-02).
+        selectFrom: vi
+          .fn()
+          .mockImplementationOnce(() => chainable(rows))
+          .mockImplementationOnce(() => chainable({ n: '2' })),
         updateTable: vi.fn(),
       } satisfies MockDb;
 
@@ -244,6 +249,7 @@ describe('NotificationsService', () => {
 
       expect(page.data).toHaveLength(2);
       expect(page.nextCursor).toBeNull();
+      expect(page.unreadCount).toBe(2);
     });
 
     it('memotong ke `limit` dan mengembalikan next_cursor yang bisa dipakai ulang kalau baris > limit', async () => {
@@ -253,7 +259,10 @@ describe('NotificationsService', () => {
       ];
       const db = {
         insertInto: vi.fn(),
-        selectFrom: vi.fn(() => chainable(rows)),
+        selectFrom: vi
+          .fn()
+          .mockImplementationOnce(() => chainable(rows))
+          .mockImplementationOnce(() => chainable({ n: '0' })),
         updateTable: vi.fn(),
       } satisfies MockDb;
 
@@ -267,7 +276,10 @@ describe('NotificationsService', () => {
       // Cursor harus round-trip: dipakai lagi sebagai input tidak melempar.
       const secondDb = {
         insertInto: vi.fn(),
-        selectFrom: vi.fn(() => chainable([])),
+        selectFrom: vi
+          .fn()
+          .mockImplementationOnce(() => chainable([]))
+          .mockImplementationOnce(() => chainable({ n: '0' })),
         updateTable: vi.fn(),
       } satisfies MockDb;
       const secondService = new TestableNotificationsService(
@@ -279,6 +291,7 @@ describe('NotificationsService', () => {
       ).resolves.toEqual({
         data: [],
         nextCursor: null,
+        unreadCount: 0,
       });
     });
 

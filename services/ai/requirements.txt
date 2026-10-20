@@ -24,10 +24,13 @@ pdfplumber==0.11.10
 # (pickle di CMapDB, fix 20251107) — versi terpasang ini PASCA-perbaikan.
 pdfminer.six==20260107
 python-docx==1.2.0
+# Runtime — render PDF satu kolom (AI-05, PRD §13.2 tahap 6). Berkas ini
+# satu berkas runtime+test (isu #215): reportlab dipakai render_cv di
+# produksi DAN membuat fixture PDF di test; pypdf di bawah murni fixture.
+reportlab==4.4.10
 
 # Test
 pytest==8.3.4
-# Fixture test dibuat, bukan direkam: reportlab menulis PDF (satu kolom,
-# dua kolom, tanpa teks), pypdf mengenkripsinya.
-reportlab==4.4.10
+# Fixture test dibuat, bukan direkam: pypdf mengenkripsi PDF fixture
+# (test ekstraksi AI-02). Penulis fixture sendiri adalah reportlab di atas.
 pypdf==6.19.0

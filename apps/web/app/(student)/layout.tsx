@@ -1,4 +1,6 @@
 import { Nav } from '@/components/nav';
+import { NotificationBell } from '@/components/notification-bell';
+import { NotificationProvider } from '@/components/notification-provider';
 
 const LINKS = [
   { href: '/hub', label: 'Hub' },
@@ -21,8 +23,12 @@ const LINKS = [
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   return (
     <main data-density="student">
-      <Nav links={LINKS} />
-      {children}
+      {/* Provider notifikasi membungkus Nav (lonceng) DAN children (banner
+          streak di Hub) — satu state untuk keduanya, N-02. */}
+      <NotificationProvider>
+        <Nav links={LINKS} aksi={<NotificationBell />} />
+        {children}
+      </NotificationProvider>
     </main>
   );
 }
