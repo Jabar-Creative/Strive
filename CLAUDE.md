@@ -106,6 +106,8 @@ strive-academy/
 │                              outbox · scan · ai-dispatch · notify
 │                              league-rollup · reconcile-balance · reaper
 ├─ services/ai/                Python 3.12 · FastAPI
+│  ├─ requirements.txt         RUNTIME saja — yang masuk image (#215)
+│  ├─ requirements-dev.txt     `-r requirements.txt` + pytest + pypdf
 │  └─ app/
 │     ├─ main.py
 │     ├─ routers/              cv.py · prompt.py · interview.py · statement.py

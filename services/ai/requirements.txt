@@ -1,4 +1,18 @@
-# Runtime — docs/PRD.md §8.4
+# Runtime layanan AI — docs/PRD.md §8.4.
+#
+# **Berkas ini HANYA runtime, dan itu yang membuat `infra/Dockerfile.ai`
+# jujur (isu #215).** Dependensi test tinggal di `requirements-dev.txt`.
+#
+# Sebelum pemisahan ini, `pytest` dan `pypdf` ikut terpasang di image
+# produksi. Akibatnya bukan sekadar image besar: permukaan serangan sebuah
+# layanan yang terekspos publik memuat paket yang tidak pernah dipanggil
+# satu baris pun oleh runtime-nya, dan setiap advisory pada paket itu
+# menjadi advisory pada produksi — pekerjaan audit untuk risiko yang tidak
+# pernah perlu ada.
+#
+# Yang boleh masuk ke sini: paket yang diimpor oleh kode di `app/`.
+# Penjaganya job CI `image runtime` — ia membuktikan `pytest` TIDAK bisa
+# diimpor di dalam image.
 # fastapi 0.115.6 → 0.115.14 (AI-02): patch terakhir garis 0.115. Rentang
 # starlette MELEBAR <0.42 → <0.47.0 (terpasang 0.46.2) — penjaga perilaku
 # tetap pin starlette di bawah. Audit AI-02 menandai CVE-2026-48710
@@ -24,13 +38,7 @@ pdfplumber==0.11.10
 # (pickle di CMapDB, fix 20251107) — versi terpasang ini PASCA-perbaikan.
 pdfminer.six==20260107
 python-docx==1.2.0
-# Runtime — render PDF satu kolom (AI-05, PRD §13.2 tahap 6). Berkas ini
-# satu berkas runtime+test (isu #215): reportlab dipakai render_cv di
-# produksi DAN membuat fixture PDF di test; pypdf di bawah murni fixture.
+# Runtime — render PDF satu kolom (AI-05, PRD §13.2 tahap 6). Ia memang
+# runtime: `render_cv` memanggilnya di produksi. Bahwa test juga memakainya
+# untuk membuat fixture tidak membuatnya dependensi test.
 reportlab==4.4.10
-
-# Test
-pytest==8.3.4
-# Fixture test dibuat, bukan direkam: pypdf mengenkripsi PDF fixture
-# (test ekstraksi AI-02). Penulis fixture sendiri adalah reportlab di atas.
-pypdf==6.19.0
