@@ -4,6 +4,7 @@ import { KyselyModule } from '../../infra/kysely';
 import { WalletModule } from '../wallet';
 
 import { AdminPricingController } from './admin-pricing.controller';
+import { CheckoutController } from './checkout.controller';
 import { CheckoutService } from './checkout.service';
 import { OrderReadService } from './order-read.service';
 import { OrdersController } from './orders.controller';
@@ -33,6 +34,7 @@ import { PricingController } from './pricing.controller';
 @Module({
   imports: [KyselyModule, WalletModule],
   controllers: [
+    CheckoutController,
     PricingController,
     AdminPricingController,
     OrdersController,
