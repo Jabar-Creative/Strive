@@ -457,6 +457,59 @@ describe('CoinLedgerService (database nyata)', () => {
     expect(drift[0]?.drift).toBe(879);
   });
 
+  it("refType 'prompt_run' bisa hold → settle, dan potongan KEDUA ditolak index (#238)", async () => {
+    if (!reachable) return;
+    // PL-01 memotong koin untuk run SINKRON, jadi ia wajib hold → settle
+    // (aturan keras 4). Yang diuji di sini bukan nilai unionnya — `tsc` yang
+    // menjaga itu — melainkan bahwa jalur uangnya benar-benar berdiri dengan
+    // ref ke BARIS prompt_runs, dan bahwa lapis kedua idempotensi
+    // (`coin_ledger_ref_uniq`, migrasi 010) IKUT menutupinya.
+    const runId = '00000000-0000-4000-8000-00000000f00d';
+
+    await db.transaction().execute(async (trx) => {
+      await coins.hold(trx, { userId: USER_A, amount: 20, refType: 'prompt_run', refId: runId });
+      await coins.settle(trx, { userId: USER_A, refType: 'prompt_run', refId: runId });
+    });
+    expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(80);
+
+    // Request BERBEDA dengan niat yang sama (Idempotency-Key baru, baris
+    // prompt_runs yang sama) — yang menahannya index, bukan kode.
+    await expect(
+      db.transaction().execute(async (trx) => {
+        await coins.hold(trx, { userId: USER_A, amount: 20, refType: 'prompt_run', refId: runId });
+      }),
+    ).rejects.toBeTruthy();
+    expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(80);
+  });
+
+  it("'prompt_run' pengguna LAIN dengan refId sama tetap boleh — ruang nama per pengguna", async () => {
+    if (!reachable) return;
+    // Sisi lain migrasi 010: index memuat `user_id`, jadi dua pengguna yang
+    // (secara mustahil) memakai id baris sama tidak saling memblokir. Ini
+    // yang dulu membuat pembayaran reviewer KEDUA ditolak diam-diam.
+    const runId = '00000000-0000-4000-8000-00000000f00e';
+    // USER_B disemai 0 koin oleh fixture, jadi ia diberi saldo dulu — kalau
+    // tidak, yang memerahkan test ini saldo kurang, bukan index, dan ia akan
+    // tetap "lulus" setelah `user_id` dicabut dari index.
+    await db.transaction().execute((trx) =>
+      coins.write(trx, {
+        userId: USER_B,
+        entryType: 'adjust',
+        amount: 100,
+        note: 'saldo untuk uji ruang nama per pengguna',
+      }),
+    );
+
+    await db.transaction().execute(async (trx) => {
+      await coins.hold(trx, { userId: USER_A, amount: 20, refType: 'prompt_run', refId: runId });
+    });
+    await db.transaction().execute(async (trx) => {
+      await coins.hold(trx, { userId: USER_B, amount: 20, refType: 'prompt_run', refId: runId });
+    });
+    expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(80);
+    expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_B))).toBe(80);
+  });
+
   it('hold() menolak jumlah negatif — salah tanda adalah kesalahan pemanggil', async () => {
     if (!reachable) return;
     await expect(
