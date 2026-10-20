@@ -113,7 +113,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `PR-01` | Alokasi 2 reviewer lintas squad, identitas disemb… | A | W5 | 1 | `done` | #58 | 2026-09-17 | PR-2 ditegakkan BENTUK DATA: ReviewQueueItem tidak punya author_id, jadi tidak ada tempat untuk lupa membuangnya. Diuji dengan memeriksa SELURUH isi respons, bukan satu field. PR-1 dijaga di antrean DAN di jalur tulis. |
 | `RT-01` | WS gateway + Redis pub/sub adapter, kanal squad:{id} | A | W5 | 1,5 | `done` | #118 | 2026-09-23 | Dibuktikan dengan DUA aplikasi Nest sungguhan di dua port: klien tersambung ke instance B, event dikirim dari instance A. Satu instance tidak bisa membuktikan apa pun — `server.to()` selalu sampai ke klien di proses yang sama, dengan atau tanpa adapter. Autentikasi handshake dipindah dari `handleConnection` ke middleware `server.use`: `handleConnection` asinkron dan Socket.IO sudah mengirim `connect` sebelum ia selesai, jadi klien yang langsung subscribe ditolak "belum terverifikasi" bergantung kecepatan Postgres. `resolveSessionToken` + `SquadReadService.canRead` diekstrak sebagai sumber tunggal REST dan WS, bukan disalin. `@socket.io/redis-emitter` MEMBUANG Promise dari `publish`; dengan `enableOfflineQueue: false` penolakannya menjadi `unhandledRejection` yang mematikan seluruh worker — `.catch()` saja malah mengubah crash jadi event hilang tanpa suara saat boot, jadi penerbitan dirantai pada kesiapan pertama. Ketiga penjaga dibuktikan merah. `ws:presence:{squad_id}` di PRD §9.4 sengaja TIDAK dibangun (isu #119). |
 | `AI-03` | Penyusunan LLM -> JSON terstruktur, prompt berver… | B | W5 | 1,5 | `done` | #210 | 2026-10-08 | PR bertumpuk di atas #206 (prasyarat AI-02 belum ter-merge). "LLM menulis, kode menilai" bukan slogan: `validasi_keterlacakan` memeriksa tiap pengalaman/gelar/skill/angka keluaran terhadap token sumber dan MENGHAPUS yang tak tertelusur + temuan ber-severity (CV-4) — 5 dokumen kontrol §13.4.4: 3 setia utuh (termasuk fresh-graduate kosong = AC-CV-2), 2 berdusta (CTO Netflix, PhD Stanford, 900 juta baris) semuanya terhapus dengan yang jujur tetap hidup; bukti nyata dari PDF dua kolul reportlab → ekstraksi AI-02 → penyusunan. Cache SHA-256 AI-01 diperiksa SEBELUM LLM (AC "tidak menagih dua kali"; parameter target_role+bahasa masuk kunci, CV-5) dan yang DISIMPAN adalah hasil SUDAH divalidasi — cache hit tidak melompati penjaga. JSON rusak: toleran blok ```json di percobaan pertama (hemat satu panggilan), retry sekali dengan instruksi perbaikan, lalu 422 `LLM_OUTPUT_INVALID` (kode baru di luar §10.2 — dibaringkan di #197). Kalimat larangan halusinasi di system prompt VERBATIM dari PRD §13.4.3, diuji. Sabotase 2 penjaga memerahkan 5 test. Angka ≥3 digit saja ditelusur: "06" dari normalisasi 2021-06 jangan membunuh konten jujur yang sumbernya menulis "Juni 2021". |
-| `N-02` | UI lonceng notifikasi + banner peringatan streak | B | W5 | 0,5 | `todo` | — | — | — |
+| `N-02` | UI lonceng notifikasi + banner peringatan streak | B | W5 | 0,5 | `done` | `f6a283e` | 2026-10-18 | **AC terbukti di browser sungguhan (Playwright + API nyata, 7 langkah lulus termasuk 375px — `docs/reports/N-02/`).** "Jumlah belum dibaca akurat" dihitung SERVER: `unread_count` (COUNT per user) ditambahkan ke respons GET /notifications — aditif di kontrak milik Dev B; 4 test integrasi DB nyata (akurat TERPISAH dari limit halaman: 5 belum dibaca, halaman 2 item; turun tepat satu saat markRead; idempoten; milik sendiri saja). NO-7 optimistik+pulih: mesin murni `notification-bell` 13 unit test, pemulihan dibuktikan MERAH lewat sabotase lalu dipulihkan. **Verifikasi menemukan bug sendiri sebelum diperbaiki:** lonceng & banner mula-mula memegang state MASING-MASING — menutup banner (PATCH sampai server, DB 0 belum dibaca) tetap meninggalkan lencana "1" selamanya; kini satu state via `NotificationProvider`, keduanya berubah dan pulih BERSAMA. Tamu → lonceng hilang (fase tanpaSesi), bukan error. Audit agent-security: nol Kritis/Tinggi/Sedang; satu catatan Rendah untuk Dev A — komentar `session.guard.ts:42` menyebut `OriginCsrfGuard` yang tak pernah ada sebagai kelas (perlindungan aslinya hidup di `tokenSesiDari()`). |
 | `P-04` | UI top-up: pilih paket, bayar, status, kembali ke… | B | W5 | 0,5 | `todo` | — | — | — |
 | `Q-04` | Job rollup mingguan + promosi/degradasi 20% | A | W5 | 1 | `done` | #112 | 2026-09-22 | Dipindah dari Dev B (22 Sep). Idempotensi SQ-9 ditegakkan `UPDATE … WHERE closed_at IS NULL RETURNING`, bukan periksa-dulu-lalu-tutup — diverifikasi merah, 3 test. Bug yang ditangkap TEST SENDIRI: versi pertama membaca squad per tier DI DALAM loop yang juga menulis tier, jadi squad yang baru naik dari bronze ikut terbaca lagi di silver dan naik DUA KALI dalam satu panggilan. Poin dibaca dari Postgres, bukan ZSET (SQ-4: Redis melayani, Postgres memiliki). Menemukan isu #111: SQ-8 bertentangan dengan §5 Q4 — squad dibentuk ulang tiap minggu, jadi promosi tidak berpengaruh pada apa pun. |
 | `RT-02` | Client hook useRealtime + fallback polling otomatis | B | W5 | 0,5 | `todo` | — | — | — |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 59 | 58,5 |
+| `done` | 60 | 59,0 |
 | `review` | 1 | 1,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 4 | 3,5 |
-| `todo` | 16 | 15,0 |
+| `todo` | 15 | 14,5 |
 
 ---
 ## Ringkasan per epik
@@ -184,7 +184,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E3` | Career Streak | 5,5 | 5 | 5/5 · **100%** | — |
 | `E5` | Squad & Liga | 6,0 | 6 | 6/6 · **100%** | — |
 | `E15` | Realtime | 2,0 | 2 | 1/2 · **75%** | — |
-| `E16` | Notifikasi | 1,5 | 2 | 1/2 · **67%** | — |
+| `E16` | Notifikasi | 1,5 | 2 | 2/2 · **100%** | — |
 | `E6` | Payment | 3,5 | 4 | 2/4 · **57%** | 1 |
 | `E14` | Strive Store | 2,0 | 2 | 1/2 · **50%** | — |
 | `E7` | Klinik Plagiarisme | 5,0 | 4 | 2/4 · **50%** | 1 |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **59/80 · 75%** | **4** |
+| | **Total** | **78,5** | **80** | **60/80 · 75%** | **4** |
 
 ---
 
