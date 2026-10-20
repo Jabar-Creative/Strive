@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ST-02 - Laporan verifikasi etalase + unduh aset</title>
+<style>
+  :root { --bg:#fff; --fg:#16181d; --muted:#5b6270; --line:#e3e6ec; --card:#f7f8fa; --ok:#0f7b3f; --ok-bg:#e6f4ec; --code:#f2f3f6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#e8eaef; --muted:#a0a7b4; --line:#2b2f37; --card:#1b1e24; --ok:#6ede9e; --ok-bg:#16301f; --code:#1f232a; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-size:28px; margin:0 0 8px; } h2 { font-size:21px; margin:44px 0 12px; padding-top:18px; border-top:1px solid var(--line); }
+  .lede { color:var(--muted); font-size:17px; margin:0 0 22px; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 26px; }
+  .chip { font-size:13px; padding:4px 10px; border-radius:999px; background:var(--card); border:1px solid var(--line); color:var(--muted); }
+  .chip.ok { background:var(--ok-bg); color:var(--ok); border-color:transparent; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14.5px; }
+  th,td { text-align:left; padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+  th { background:var(--card); font-weight:600; }
+  code { font:13.5px/1.5 ui-monospace,Menlo,monospace; background:var(--code); padding:1px 5px; border-radius:5px; }
+  img { max-width:100%; border:1px solid var(--line); border-radius:10px; margin:10px 0 4px; }
+  .ket { color:var(--muted); font-size:13.5px; margin:2px 0 18px; }
+  .ok-t { color:var(--ok); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ST-02 — UI etalase + unduh aset (signed URL 15 menit)</h1>
+  <p class="lede">Laporan verifikasi end-to-end item ST-02 (Dev B). Dikerjakan 18 Okt 2026 (sesi susulan minggu 12–16 Okt).</p>
+  <div class="meta">
+    <span class="chip">Lingkungan: lokal (web :3005 · API :3002 · DB e2e · MinIO :59000 nyata)</span>
+    <span class="chip ok">Seluruh skenario lulus — SR-5 terbukti ujung-ke-ujung</span>
+  </div>
+
+  <h2>1 · Ringkasan</h2>
+  <p>Layar /store menggantikan stub: etalase 8 item dari <code>GET /store/items</code> (kini membawa <code>owned</code> + <code>purchase_id</code>), tombol Beli memanggil <code>POST /store/purchase</code> (⚡ kunci idempoten per percobaan), dan tombol Unduh memanggil rute BARU <code>GET /store/purchases/:id/download</code> yang menandatangani URL objek MinIO berumur 15 menit. <code>asset_key</code> tidak pernah keluar dari service (SR-5).</p>
+
+  <h2>2 · Matriks skenario</h2>
+  <table>
+    <thead><tr><th>#</th><th>Skenario</th><th>Harapan</th><th>Hasil</th><th>Cara verifikasi</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Objek aset diunggah ke MinIO <code>strive-assets</code></td><td>Aset nyata tersedia</td><td class="ok-t">OK</td><td>PutObject via SDK</td></tr>
+      <tr><td>2</td><td>Buka /store</td><td>8 item dari API nyata</td><td class="ok-t">LULUS</td><td>assert jumlah kartu</td></tr>
+      <tr><td>3</td><td>Beli item 300 koin</td><td>Tombol berubah jadi Unduh; saldo tampil 1.700 — KATA SERVER (<code>res.balance</code>), bukan 2000−300 klien</td><td class="ok-t">LULUS</td><td>Screenshot 01</td></tr>
+      <tr><td>4</td><td><strong>SR-5: klik Unduh</strong></td><td>Signed URL <code>X-Amz-Expires=900</code>; URL tersebut benar-benar MENGUNDUH dari MinIO: HTTP 200 + isi aset persis</td><td class="ok-t">LULUS</td><td>fetch URL bertanda dari Node</td></tr>
+      <tr><td>5</td><td><strong>SR-5: tebak URL tanpa tanda tangan</strong></td><td>403 dari MinIO — yang belum membayar tidak bisa menebak</td><td class="ok-t">LULUS</td><td>fetch URL polos</td></tr>
+      <tr><td>6</td><td>SR-6: item nonaktif tetap bisa diunduh pembelinya</td><td>URL tetap diterbitkan (tanpa filter is_active)</td><td class="ok-t">LULUS</td><td>integrasi DB nyata 5/5</td></tr>
+      <tr><td>7</td><td>IDOR unduhan</td><td>Pembelian orang lain / id asing → NOT_FOUND seragam (kepemilikan di WHERE, pola F-14)</td><td class="ok-t">LULUS</td><td>integrasi DB nyata</td></tr>
+      <tr><td>8</td><td>ALREADY_PURCHASED (balapan kalah)</td><td>Etalase menyinkronkan owned (tombol jadi Unduh), bukan menyalahkan pengguna</td><td class="ok-t">LULUS</td><td>unit test mesin</td></tr>
+      <tr><td>9</td><td>375px + console</td><td>Tanpa scroll horizontal; console bersih</td><td class="ok-t">LULUS</td><td>Screenshot 03</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3 · Bukti visual</h2>
+  <img src="images/01-etalase-setelah-beli.png" alt="Etalase setelah membeli satu item" />
+  <p class="ket">01 — Item pertama sudah dimiliki (tombol Unduh), saldo 1.700 kata server.</p>
+  <img src="images/02-unduh-signed-url.png" alt="Unduhan via signed URL" />
+  <p class="ket">02 — Unduh membuka URL bertanda tangan berumur 900 detik.</p>
+  <img src="images/03-etalase-375px.png" alt="Etalase 375px" />
+  <p class="ket">03 — 375px tanpa scroll horizontal.</p>
+
+  <h2>4 · Keputusan teknis</h2>
+  <ul>
+    <li><code>expires_at</code> respons dihitung dari <code>SIGNED_URL_TTL_SECONDS</code> — KONSTANTA YANG SAMA dengan yang dipakai menandatangani; dua angka yang harus sinkron tidak ditulis dua kali.</li>
+    <li>Etalase membawa <code>purchase_id</code> (nullable) karena §10.3 tidak punya rute "daftar pembelian" — unduhan menunjuk BARIS pembelian, dan etalase adalah satu-satunya pembawa id itu. Kontrak berubah aditif.</li>
+    <li>Unduh membuka jendela SEBELUM fetch (aktifasi klik = izin popup), URL diarahkan setelah respons tiba.</li>
+  </ul>
+
+  <h2>5 · Verifikasi perintah</h2>
+  <table>
+    <thead><tr><th>Perintah</th><th>Hasil</th></tr></thead>
+    <tbody>
+      <tr><td><code>pnpm --filter @strive/api test:integration store</code></td><td>18/18 (5 baru: download)</td></tr>
+      <tr><td><code>pnpm --filter @strive/web test</code></td><td>85/85 (7 baru: mesin etalase)</td></tr>
+      <tr><td><code>pnpm lint && pnpm typecheck</code></td><td>hijau</td></tr>
+      <tr><td>Audit keamanan (agent-security)</td><td>terlampir di PR</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

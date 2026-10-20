@@ -10,10 +10,29 @@ tentang "satu API, dua bentuk galat"; kedua handler di bawah menutupnya di
 sini sebelum ada pemanggil yang sempat mengandalkan bentuk yang salah.
 """
 
+from typing import Any
+
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+_JENIS_DASAR = (str, int, float, bool, type(None))
+
+
+def _sanitasi_ctx(daftar_galat: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # Validator kustom pydantic menyimpan objek ValueError ASLI di ctx; kalau
+    # diteruskan mentah ke JSONResponse, json.dumps melempar TypeError dan
+    # 422 yang sah berubah 500 (ditemukan lewat validator BagianPrompt, PL-01).
+    # Stringify menjaga pesan validator tetap terbaca tanpa membawa objeknya.
+    for galat in daftar_galat:
+        ctx = galat.get("ctx")
+        if isinstance(ctx, dict):
+            galat["ctx"] = {
+                kunci: nilai if isinstance(nilai, _JENIS_DASAR) else str(nilai)
+                for kunci, nilai in ctx.items()
+            }
+    return daftar_galat
 
 
 class GalatLayanan(Exception):
@@ -40,7 +59,7 @@ async def penangan_validasi(request: Request, exc: RequestValidationError) -> JS
             "error": {
                 "code": "VALIDATION_ERROR",
                 "message": "Bentuk permintaan tidak sesuai kontrak (isu #132)",
-                "details": {"errors": exc.errors()[:10]},
+                "details": {"errors": _sanitasi_ctx(exc.errors()[:10])},
             }
         },
     )
