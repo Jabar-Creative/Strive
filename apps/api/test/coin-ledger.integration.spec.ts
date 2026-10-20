@@ -466,20 +466,57 @@ describe('CoinLedgerService (database nyata)', () => {
     // (`coin_ledger_ref_uniq`, migrasi 010) IKUT menutupinya.
     const runId = '00000000-0000-4000-8000-00000000f00d';
 
-    await db.transaction().execute(async (trx) => {
-      await coins.hold(trx, { userId: USER_A, amount: 20, refType: 'prompt_run', refId: runId });
+    const pertama = await db.transaction().execute(async (trx) => {
+      const entri = await coins.hold(trx, {
+        userId: USER_A,
+        amount: 20,
+        refType: 'prompt_run',
+        refId: runId,
+      });
       await coins.settle(trx, { userId: USER_A, refType: 'prompt_run', refId: runId });
+      return entri;
     });
     expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(80);
 
-    // Request BERBEDA dengan niat yang sama (Idempotency-Key baru, baris
-    // prompt_runs yang sama) — yang menahannya index, bukan kode.
-    await expect(
-      db.transaction().execute(async (trx) => {
-        await coins.hold(trx, { userId: USER_A, amount: 20, refType: 'prompt_run', refId: runId });
-      }),
-    ).rejects.toBeTruthy();
+    // Request BERBEDA dengan niat yang sama (tanpa Idempotency-Key, baris
+    // prompt_runs yang sama).
+    //
+    // ── Versi pertama test ini meng-assert `rejects`, dan itu SALAH ──
+    //
+    // CI memerahkannya: `promise resolved "undefined" instead of rejecting`.
+    // Sebabnya bukan penjaga yang bolong, melainkan dugaanku soal BENTUK
+    // kegagalannya. `hold()` memanggil `write()`, dan `write()` memulangkan
+    // entri yang SUDAH ADA lalu berhenti — jadi potongan kedua adalah
+    // no-op yang idempoten, bukan lemparan. `coin_ledger_ref_uniq` ada
+    // sebagai jaring di bawahnya, untuk jalur yang melewati service.
+    //
+    // CLAUDE.md menuliskan kekeliruan ini harfiah: "ukur dulu penjaga mana
+    // yang memerahkan test mana; jangan menulis pembagian tugasnya dari
+    // dugaan." Yang diuji sekarang INVARIANNYA, bukan mekanismenya — dan
+    // itu test yang lebih kuat, karena ia tetap benar kalau kelak
+    // mekanismenya berubah dari no-op menjadi lemparan.
+    const kedua = await db
+      .transaction()
+      .execute((trx) =>
+        coins.hold(trx, { userId: USER_A, amount: 20, refType: 'prompt_run', refId: runId }),
+      );
+
+    // Entri yang SAMA dipulangkan, bukan entri baru.
+    expect(kedua.id).toBe(pertama.id);
+
+    // Dan yang benar-benar penting: saldo TIDAK bergerak, dan baris `hold`
+    // untuk ref ini tetap SATU. Dua potongan untuk satu run prompt lab
+    // berarti pengguna dibayar dua kali untuk satu jawaban.
     expect(await db.transaction().execute((t) => coins.trueBalance(t, USER_A))).toBe(80);
+    const barisHold = await db
+      .selectFrom('coin_ledger')
+      .selectAll()
+      .where('user_id', '=', USER_A)
+      .where('ref_type', '=', 'prompt_run')
+      .where('ref_id', '=', runId)
+      .where('entry_type', '=', 'hold')
+      .execute();
+    expect(barisHold).toHaveLength(1);
   });
 
   it("'prompt_run' pengguna LAIN dengan refId sama tetap boleh — ruang nama per pengguna", async () => {
