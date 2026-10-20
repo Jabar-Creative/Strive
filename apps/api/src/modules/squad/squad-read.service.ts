@@ -72,7 +72,7 @@ export class SquadReadService {
         'squads.league_tier as tier',
         'league_seasons.id as season_id',
         'league_seasons.code as season_code',
-        sql<string>`to_char(league_seasons.ends_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')`.as('ends_at'),
+        'league_seasons.ends_at as ends_at',
       ])
       .where('squad_members.user_id', '=', userId)
       .where('squad_members.left_at', 'is', null)
@@ -89,7 +89,24 @@ export class SquadReadService {
       squad_id: squad.squad_id,
       name: squad.name,
       tier: squad.tier,
-      season: { id: squad.season_id, code: squad.season_code, ends_at: squad.ends_at },
+      season: {
+        id: squad.season_id,
+        code: squad.season_code,
+        // `toISOString()`, BUKAN to_char di SQL — isu #231.
+        //
+        // Dulu baris ini di-format Postgres dengan pola `OF`, dan `OF`
+        // menghasilkan offset TANPA menit (`+00`, bukan `+00:00`). Itu bukan
+        // ISO 8601 yang dikenal `Date`: `new Date('…+00')` = **Invalid Date**,
+        // lalu `Intl.DateTimeFormat().format(invalid)` melempar RangeError
+        // dan seluruh layar /squad mati.
+        //
+        // Bentuk offset yang benar hanya muncul kalau zona databasenya BUKAN
+        // UTC (`+07:00` punya menit), jadi gejalanya hilang di mesin dengan
+        // TZ lokal dan muncul di staging — tempat yang paling mahal untuk
+        // menemukannya. Serialisasi tanggal milik Node, satu idiom untuk
+        // seluruh modul.
+        ends_at: squad.ends_at.toISOString(),
+      },
       members,
       // `me` pasti ada — ia terbaca dari keanggotaan yang sama. Fallback-nya
       // ada supaya tipe tidak berbohong, bukan karena kasusnya diharapkan.
