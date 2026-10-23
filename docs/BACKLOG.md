@@ -162,9 +162,9 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | Total | 80 | 78,5 |
 | `done` | 64 | 61,5 |
 | `review` | 1 | 1,5 |
-| `in_progress` | 1 | 1 |
+| `in_progress` | 1 | 1,0 |
 | `blocked` | 4 | 3,5 |
-| `todo` | 10 | 11 |
+| `todo` | 10 | 11,0 |
 
 ---
 ## Ringkasan per epik
@@ -179,21 +179,21 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---|---:|---:|---:|---:|
 | `E0` | Fondasi & Setup | 10,5 | 12 | 11/12 · **86%** | — |
 | `E1` | Auth & RBAC | 6,5 | 7 | 6/7 · **92%** | 1 |
-| `E4` | Coin & Wallet | 4 | 4 | 4/4 · **100%** | — |
+| `E4` | Coin & Wallet | 4,0 | 4 | 4/4 · **100%** | — |
 | `E2` | Learning Engine | 7,5 | 5 | 5/5 · **100%** | — |
 | `E3` | Career Streak | 5,5 | 5 | 5/5 · **100%** | — |
-| `E5` | Squad & Liga | 6 | 6 | 6/6 · **100%** | — |
-| `E15` | Realtime | 2 | 2 | 2/2 · **100%** | — |
+| `E5` | Squad & Liga | 6,0 | 6 | 6/6 · **100%** | — |
+| `E15` | Realtime | 2,0 | 2 | 2/2 · **100%** | — |
 | `E16` | Notifikasi | 1,5 | 2 | 2/2 · **100%** | — |
 | `E6` | Payment | 3,5 | 4 | 3/4 · **71%** | 1 |
-| `E14` | Strive Store | 2 | 2 | 2/2 · **100%** | — |
-| `E7` | Klinik Plagiarisme | 5 | 4 | 2/4 · **50%** | 1 |
-| `E11` | Peer Review & Mentor | 4 | 4 | 2/4 · **50%** | — |
+| `E14` | Strive Store | 2,0 | 2 | 2/2 · **100%** | — |
+| `E7` | Klinik Plagiarisme | 5,0 | 4 | 2/4 · **50%** | 1 |
+| `E11` | Peer Review & Mentor | 4,0 | 4 | 2/4 · **50%** | — |
 | `E8` | ATS CV Builder | 6,5 | 7 | 6/7 · **85%** | — |
-| `E12` | International Mastery Track | 4 | 4 | 1/4 · **12%** | — |
+| `E12` | International Mastery Track | 4,0 | 4 | 1/4 · **12%** | — |
 | `E13` | Prompt Lab | 1,5 | 2 | 0/2 · **0%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
-| `E10` | Pengerasan & Rilis | 6 | 5 | 3/5 · **50%** | — |
+| `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
 | | **Total** | **78,5** | **80** | **63/80 · 78%** | **5** |
 
 ---
