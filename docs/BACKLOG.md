@@ -132,7 +132,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `SA-02` | PATCH /admin/pricing — terbit versi baru, bukan m… | A | W7 | 0,5 | `done` | #61 | 2026-09-17 | publishNewVersion sekarang menulis audit_log DI DALAM transaksi yang sama — versi tanpa jejak adalah harga yang berubah tanpa ada yang mengaku. actorId dari GUARD, tidak pernah dari body. Harga lama terbukti tetap terbaca untuk order lama. |
 | `AI-07` | UI CV builder: isi profil, jalankan, lihat temuan… | B | W7 | 1 | `todo` | — | — | — |
 | `K-04` | UI klinik: unggah, antrean, skor kemiripan, riwayat | B | W7 | 1 | `todo` | — | — | — |
-| `PL-02` | 3 template contoh + riwayat run | B | W7 | 0,5 | `todo` | — | — | — |
+| `PL-02` | 3 template contoh + riwayat run | B | W7 | 0,5 | `done` | #255 | 2026-10-23 | **AC terbukti di browser nyata — `docs/reports/PL-02/`.** PL-5: template = KONSTANTA STATIS web (PRD §10.3 tak punya rute/tabel template; 'menjadi milik pengguna' = salinan masuk form → tersimpan sebagai run miliknya). Salin → kelima bagian terisi (browser), ubah tanpa menimpa bagian lain (browser), tiap bagian lolos validasi server 1–2000 (unit). PL-6: item expandable `aria-expanded`, pasangan prompt 5 bagian berlabel + output PENUH (275 kar. > batas cuplikan), toggle tutup + pindah fokus tak pernah dua terbuka, 'Salin ke formulir' memuat ulang run lampau. 13 skenario browser LULUS (17/17 cek Playwright, stack e2e nyata) + 11/11 unit; 375px tanpa scroll horizontal, console/network nol galat. 2 run riwayat disemai psql (kunci LLM lokal kosong; jalur LLM nyata dibuktikan PL-01) — preseden seed career-read. Audit keamanan BERSIH (render interpolasi JSX, nol dangerouslySetInnerHTML; saldo/biaya tetap kata server). |
 | `PR-03` | UI antrean review + form rubrik | B | W7 | 1 | `todo` | — | — | — |
 | `PR-04` | Konsol mentor: antrean validasi, approve/tolak, c… | B | W7 | 1 | `todo` | — | — | — |
 | `R-02` | Load test /hub & leaderboard — target p95 <250 ms… | A | W8 | 1 | `done` | — | 2026-09-20 | p95 **6 ms @ 500 rps** (target 250) — margin ~40×. Kurva dicatat, bukan satu titik: 1000 rps masih lulus (20 ms), 1500 rps tidak (353 ms), 3000 rps jenuh di ~1617 rps dengan 15.389 gagal. Headroom nyata 2–3×, bukan tak terbatas. Beban OPEN-LOOP — closed-loop mengurangi laju kirim saat server melambat dan melaporkan p95 yang terlalu bagus (coordinated omission). Leaderboard TIDAK terukur: endpointnya tidak ada dan tidak dimiliki item mana pun (isu #79). |
@@ -160,11 +160,11 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | | Jumlah | Dev-hari |
 |---|---:|---:|
 | Total | 80 | 78,5 |
-| `done` | 64 | 62,0 |
+| `done` | 65 | 62,5 |
 | `review` | 1 | 1,5 |
 | `in_progress` | 0 | 0,0 |
 | `blocked` | 5 | 4,0 |
-| `todo` | 10 | 11,0 |
+| `todo` | 9 | 10,5 |
 
 ---
 ## Ringkasan per epik
@@ -191,10 +191,10 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E11` | Peer Review & Mentor | 4,0 | 4 | 2/4 · **50%** | — |
 | `E8` | ATS CV Builder | 6,5 | 7 | 6/7 · **85%** | — |
 | `E12` | International Mastery Track | 4,0 | 4 | 1/4 · **12%** | — |
-| `E13` | Prompt Lab | 1,5 | 2 | 1/2 · **67%** | — |
+| `E13` | Prompt Lab | 1,5 | 2 | 2/2 · **100%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **64/80 · 79%** | **5** |
+| | **Total** | **78,5** | **80** | **65/80 · 81%** | **5** |
 
 ---
 
