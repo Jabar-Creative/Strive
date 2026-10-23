@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PL-02 - Template contoh + riwayat berpasangan Prompt Lab</title>
+<style>
+  :root { --bg:#fff; --fg:#16181d; --muted:#5b6270; --line:#e3e6ec; --card:#f7f8fa; --ok:#0f7b3f; --ok-bg:#e6f4ec; --warn:#8a5a00; --warn-bg:#fdf3e2; --code:#f2f3f6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#e8eaef; --muted:#a0a7b4; --line:#2b2f37; --card:#1b1e24; --ok:#6ede9e; --ok-bg:#16301f; --warn:#f0c274; --warn-bg:#35280f; --code:#1f232a; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-size:28px; margin:0 0 8px; } h2 { font-size:21px; margin:44px 0 12px; padding-top:18px; border-top:1px solid var(--line); }
+  .lede { color:var(--muted); font-size:17px; margin:0 0 22px; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 26px; }
+  .chip { font-size:13px; padding:4px 10px; border-radius:999px; background:var(--card); border:1px solid var(--line); color:var(--muted); }
+  .chip.ok { background:var(--ok-bg); color:var(--ok); border-color:transparent; }
+  .chip.warn { background:var(--warn-bg); color:var(--warn); border-color:transparent; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14.5px; }
+  th,td { text-align:left; padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+  th { background:var(--card); font-weight:600; }
+  code { font:13.5px/1.5 ui-monospace,Menlo,monospace; background:var(--code); padding:1px 5px; border-radius:5px; }
+  img { max-width:100%; border:1px solid var(--line); border-radius:10px; margin:10px 0 4px; }
+  .ket { color:var(--muted); font-size:13.5px; margin:2px 0 18px; }
+  .ok-t { color:var(--ok); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin:14px 0; }
+  .card.warn { background:var(--warn-bg); border-color:transparent; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PL-02 — 3 template contoh + riwayat run berpasangan</h1>
+  <p class="lede">Laporan verifikasi item PL-02 (Dev B, W7). Tambahan di atas layar Prompt Lab PL-01: seksi template contoh yang bisa disalin lalu diubah (PL-5), dan riwayat run yang menampilkan prompt dan hasilnya berpasangan (PL-6). Dikerjakan 23 Okt 2026.</p>
+  <div class="meta">
+    <span class="chip">Lingkungan: lokal (web :3005 · API :3002 · DB strive_e2e)</span>
+    <span class="chip ok">Browser 17/17 lulus · unit 11/11</span>
+    <span class="chip">User uji: strive-pl02-e2e@yopmail.com</span>
+    <span class="chip">2 run riwayat: 3f1c9e01… · 7d2ab402…</span>
+    <span class="chip">PR #255 · basis pl01-node-run (#252)</span>
+  </div>
+
+  <h2>1 · Ringkasan</h2>
+  <p>Sebelum: layar <code>/career</code> punya form 5 bagian dan riwayat berupa cuplikan satu baris — pengguna baru harus mengarang prompt dari nol, dan hasil lampau tidak bisa dilihat utuh. Sesudah: (1) tiga template siap-jalankan tinggal satu klik, salinannya masuk form dan menjadi milik pengguna untuk diubah; (2) tiap run di riwayat bisa dibuka menjadi pasangan prompt (5 bagian berlabel) + hasil PENUH, dan isinya bisa disalin kembali ke form.</p>
+  <p>Keputusan desain: template adalah <strong>konstanta statis sisi web</strong> — PRD §10.3 tidak punya rute/template tabel, dan "menjadi milik pengguna" berarti salinannya masuk form lalu tersimpan sebagai run miliknya di <code>prompt_runs</code>. Tiap bagian template sengaja lolos validasi server (1–2000 karakter) supaya salinan bisa langsung dijalankan tanpa disunting dulu.</p>
+
+  <h2>2 · Batasan yang jujur</h2>
+  <div class="card warn">
+    <p>Run LLM sungguhan tidak bisa dibuat dari browser lokal (kunci LLM kosong — jalur sukses dengan LLM nyata sudah tercatat di <code>docs/reports/PL-01/</code> lewat 10 test integrasi). Karena itu dua baris riwayat untuk pengujian PL-6 <strong>disemai langsung ke <code>prompt_runs</code> lewat psql</strong> — preseden sah di repo ini (komentar <code>career-read.service</code> sendiri memakai baris yang disemai). Struktur dan output-nya berbentuk persis respons rute riwayat, jadi yang diuji browser adalah render dari data nyata bentuk produksi, bukan stub.</p>
+  </div>
+
+  <h2>3 · Matriks skenario</h2>
+  <table>
+    <thead><tr><th>#</th><th>Skenario</th><th>Harapan</th><th>Hasil</th><th>Cara verifikasi</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>PL-5: tampil tepat 3 template</td><td>3 tombol bernama: Ringkas jurnal kuliah, Rencana belajar UTS, Draf email lamaran magang</td><td class="ok-t">LULUS (jumlah=3)</td><td>Playwright + Screenshot 01</td></tr>
+      <tr><td>2</td><td>PL-5: salin template → form terisi</td><td>kelima bagian (Peran/Konteks/Tugas/Format/Batasan) terisi isi template</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 02</td></tr>
+      <tr><td>3</td><td>PL-5: salinan bisa diubah</td><td>edit Batasan tidak menimpa bagian lain (Peran tetap)</td><td class="ok-t">LULUS</td><td>Playwright (isi + baca ulang)</td></tr>
+      <tr><td>4</td><td>PL-5: tiap bagian template lolos validasi server</td><td>panjang tiap bagian 1–2000 kar. (salinan bisa langsung dijalankan)</td><td class="ok-t">LULUS</td><td>unit test TEMPLATE_CONTOH</td></tr>
+      <tr><td>5</td><td>PL-6: riwayat menampilkan run</td><td>2 run tampil sebagai item</td><td class="ok-t">LULUS (jumlah=2)</td><td>Playwright</td></tr>
+      <tr><td>6</td><td>PL-6: buka pasangan prompt+hasil</td><td>5 bagian berlabel Peran,Konteks,Tugas,Format,Batasan</td><td class="ok-t">LULUS (label persis)</td><td>Playwright + Screenshot 03</td></tr>
+      <tr><td>7</td><td>PL-6: hasil PENUH, bukan cuplikan</td><td>output utuh tampil (panjang 275 kar. &gt; batas cuplikan 60)</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>8</td><td>PL-6: aksesibilitas toggle</td><td>aria-expanded=true terbuka, false tertutup</td><td class="ok-t">LULUS</td><td>Playwright (getAttribute)</td></tr>
+      <tr><td>9</td><td>PL-6: klik lagi menutup</td><td>panel hilang (detached)</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>10</td><td>PL-6: klik run lain → pindah fokus</td><td>panel lama tertutup, tidak pernah dua terbuka</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>11</td><td>Salin run lampau ke form</td><td>kelima bagian terisi dari riwayat (jalankan-ulang PL-01 tetap jalan)</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 04</td></tr>
+      <tr><td>12</td><td>375px mobile</td><td>tanpa scroll horizontal (scrollWidth=375)</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 05</td></tr>
+      <tr><td>13</td><td>Console &amp; network</td><td>nol error console, nol request 4xx/5xx</td><td class="ok-t">LULUS (nol)</td><td>listener Playwright</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4 · Coverage matrix varian</h2>
+  <table>
+    <thead><tr><th>Varian</th><th>Cakupan</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Template (3 varian)</td><td>tiap template: nama + 5 bagian terisi + lolos batas panjang; salin via klik tombol (varian-0 diverifikasi penuh di browser)</td><td class="ok-t">3/3</td></tr>
+      <tr><td>Riwayat (2 run)</td><td>buka/tutup/pindah-fokus/salin-ke-form diuji pada KEDUA run</td><td class="ok-t">2/2</td></tr>
+      <tr><td>Viewport</td><td>desktop 1280px + mobile 375px (login + halaman)</td><td class="ok-t">2/2</td></tr>
+      <tr><td>Toggle state</td><td>terbuka (expanded=true) dan tertutup (expanded=false)</td><td class="ok-t">2/2</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5 · Bukti visual</h2>
+  <img src="images/01-career-termuat.png" alt="Layar career dengan seksi template contoh" />
+  <p class="ket">01 — Layar /career termuat: seksi Template contoh (3 tombol) di atas form 5 bagian.</p>
+  <img src="images/02-template-disalin.png" alt="Template disalin ke form" />
+  <p class="ket">02 — Klik "Ringkas jurnal kuliah": kelima bagian form terisi salinan template.</p>
+  <img src="images/03-riwayat-terbuka.png" alt="Riwayat terbuka: pasangan prompt dan hasil" />
+  <p class="ket">03 — Run 3f1c9e01 dibuka: pasangan Prompt (5 bagian berlabel) + Hasil penuh + tombol Salin ke formulir.</p>
+  <img src="images/04-salin-ke-formulir.png" alt="Run lampau disalin ke form" />
+  <p class="ket">04 — "Salin ke formulir" dari run 7d2ab402: form terisi Tugas run lampau.</p>
+  <img src="images/05-mobile-375.png" alt="Tampilan mobile 375px" />
+  <p class="ket">05 — 375px tanpa scroll horizontal.</p>
+
+  <h2>6 · Katalog regresi (kejatuhan saat mengerjakan)</h2>
+  <table>
+    <thead><tr><th>Pemicu</th><th>Gejala</th><th>Akar</th><th>Penjaga</th></tr></thead>
+    <tbody>
+      <tr><td>Selector prefix <code>[data-testid^="riwayat-"]</code> untuk menghitung item</td><td>jumlah run terbaca 3 (harusnya 2)</td><td>prefix itu juga cocok dengan testid SEKSI <code>riwayat-lab</code></td><td>hitung via <code>[data-testid="riwayat-lab"] &gt; ul &gt; li</code>; dicatat di script verifikasi</td></tr>
+      <tr><td>Login Playwright: klik "Masuk" sekali lalu tunggu</td><td>timeout 120 dtk, URL tak berpindah</td><td>klik terjadi SEBELUM hidrasi React selesai (dev compile pertama) — no-op tanpa error</td><td>helper login: networkidle + jeda + retry klik 3×</td></tr>
+      <tr><td>Seed 2 run dengan id berawalan identik 8 karakter</td><td>dua tombol riwayat ber-testid sama</td><td><code>riwayat-${id.slice(0,8)}</code> kolisi karena seed dibuat id seragam; uuid v4 asli praktis tak kolisi — artefak seed, bukan bug kode</td><td>reseed dengan awalan 8 kar. berbeda (3f1c9e01 / 7d2ab402)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>7 · Verifikasi perintah</h2>
+  <table>
+    <thead><tr><th>Perintah</th><th>Hasil</th></tr></thead>
+    <tbody>
+      <tr><td><code>pnpm --filter @strive/web test</code></td><td>11/11 baru prompt-lab (toggle, pindah fokus, template, pakaiTemplate)</td></tr>
+      <tr><td>Script browser (Playwright, stack e2e)</td><td>17/17 PASS, gagal 0</td></tr>
+      <tr><td><code>pnpm lint &amp;&amp; pnpm typecheck &amp;&amp; pnpm test &amp;&amp; pnpm build &amp;&amp; node scripts/audit-deps.mjs</code></td><td>hijau (exit 0). Catatan audit-deps: 0 baru · 0 basi karena branch ini MEWARISI perbaikan deps #254 (next 15.5.28 + pengecualian segar) lewat pl01-node-run — main sendiri masih merah audit sampai #254 di-merge.</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
