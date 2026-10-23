@@ -1,5 +1,5 @@
 /**
- * Mesin layar Prompt Lab — PL-01 (Dev B), PRD §7 E13.
+ * Mesin layar Prompt Lab — PL-01 + PL-02 (Dev B), PRD §7 E13.
  *
  * Aturan tampilan yang bukan render (pola C-03): saldo & biaya KATA SERVER
  * (respons `balance`), idempotensi MILIK PERCOBAAN (retry sama = kunci sama,
@@ -18,6 +18,8 @@ export interface LabState {
   sedangJalan: boolean;
   hasil: { id: string; output: string } | null;
   riwayat: PromptLabHistoryItem[];
+  /** Id run yang pasangan prompt+hasilnya sedang dibuka (PL-6). */
+  riwayatTerbuka: string | null;
   saldo: number | null;
   biaya: number | null;
   galat: { code: string } | null;
@@ -49,6 +51,7 @@ export function mulaiLab(): LabState {
     sedangJalan: false,
     hasil: null,
     riwayat: [],
+    riwayatTerbuka: null,
     saldo: null,
     biaya: null,
     galat: null,
@@ -102,6 +105,76 @@ export function jalanGagal(state: LabState, code: string): LabState {
 /** Jalankan-ulang dari riwayat (AC backlog): isi formulir dari run lampau. */
 export function muatDariRiwayat(state: LabState, item: PromptLabHistoryItem): LabState {
   return { ...state, form: { ...state.form, ...item.structure }, hasil: null };
+}
+
+/** Satu template contoh (PL-5): nama + kelima bagian siap jalankan. */
+export interface TemplateContoh {
+  nama: string;
+  form: Record<KunciBagian, string>;
+}
+
+/**
+ * Tiga template contoh (PL-5). Konstanta statis sisi web — PRD §10.3 tidak
+ * punya rute template, "menjadi milik pengguna" berarti salinan masuk form,
+ * lalu tersimpan sebagai run miliknya di `prompt_runs`. Tiap bagian wajib
+ * lolos validasi server 1–2000 karakter supaya salinan bisa langsung dijalankan.
+ */
+export const TEMPLATE_CONTOH: readonly TemplateContoh[] = [
+  {
+    nama: 'Ringkas jurnal kuliah',
+    form: {
+      role: 'Asisten riset yang teliti dan terbiasa membaca jurnal ilmiah berbahasa Inggris.',
+      context:
+        'Saya mahasiswa semester akhir yang membaca jurnal untuk tugas kuliah. Jurnalnya berbahasa Inggris dan panjang, sementara saya butuh intisarinya dalam bahasa Indonesia. Saya akan menempelkan isi jurnalnya di sini.',
+      task: 'Ringkas jurnal yang saya tempel: temukan pertanyaan penelitian, metode, temuan utama, dan keterbatasannya.',
+      format:
+        'Poin-poin dengan empat judul: Pertanyaan penelitian, Metode, Temuan utama, Keterbatasan. Maksimal satu kalimat per poin.',
+      constraints:
+        'Bahasa Indonesia. Tidak menambahkan interpretasi di luar isi jurnal. Maksimal 150 kata.',
+    },
+  },
+  {
+    nama: 'Rencana belajar UTS',
+    form: {
+      role: 'Mentor akademik yang menyiapkan mahasiswa menghadapi ujian tengah semester.',
+      context:
+        'Saya mahasiswa dengan tiga mata kuliah yang akan di-UTS minggu depan. Waktu belajar saya sekitar tiga jam per hari dan saya paling produktif di malam hari.',
+      task: 'Susun rencana belajar tujuh hari menuju UTS yang membagi materi per hari dan menyisakan hari terakhir untuk latihan soal.',
+      format: 'Tabel dengan kolom: Hari, Materi, Metode belajar, Target selesai.',
+      constraints:
+        'Total belajar maksimal tiga jam per hari. Sertakan satu jeda istirahat per sesi. Jangan menyarankan begadang.',
+    },
+  },
+  {
+    nama: 'Draf email lamaran magang',
+    form: {
+      role: 'Konsultan karir yang membantu mahasiswa menulis email lamaran magang pertamanya.',
+      context:
+        'Saya mahasiswa tingkat tiga, ingin melamar magang di perusahaan teknologi. Belum ada pengalaman kerja formal — yang saya punya proyek kuliah dan kegiatan organisasi.',
+      task: 'Tulis draf email lamaran magang singkat yang menonjolkan proyek kuliah sebagai bukti kemampuan, lengkap dengan subjek email.',
+      format:
+        'Subjek email di baris pertama, lalu isi email maksimal tiga paragraf pendek, ditutup salam.',
+      constraints:
+        'Bahasa Indonesia formal tapi tidak kaku. Pakai penanda [nama perusahaan] dan [posisi] untuk bagian yang harus saya ganti sendiri. Maksimal 120 kata.',
+    },
+  },
+];
+
+/**
+ * Menyalin template ke formulir (PL-5). Salinan adalah pekerjaan BARU milik
+ * pengguna: hasil dan galat lama dibuang supaya tidak nyangkut di percobaan
+ * berikutnya — yang dijalankan server tetap apa adanya isi formulir.
+ */
+export function pakaiTemplate(state: LabState, t: TemplateContoh): LabState {
+  return { ...state, form: { ...t.form }, galat: null, hasil: null };
+}
+
+/**
+ * Membuka/menutup pasangan prompt+hasil satu run (PL-6). Toggle untuk run
+ * yang sama, pindah fokus untuk run lain — tidak pernah dua terbuka bersamaan.
+ */
+export function bukaRiwayat(state: LabState, id: string): LabState {
+  return { ...state, riwayatTerbuka: state.riwayatTerbuka === id ? null : id };
 }
 
 /** Pesan galat yang bisa dipahami (AC-PL-2) — cabang pada code, bukan message. */

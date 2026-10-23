@@ -6,6 +6,8 @@ import { ApiError, createApiClient } from '@/lib/api-client';
 import {
   KUNCI_BAGIAN,
   LABEL_BAGIAN,
+  TEMPLATE_CONTOH,
+  bukaRiwayat,
   isiBagian,
   jalanGagal,
   jalanTiba,
@@ -14,13 +16,15 @@ import {
   mulaiJalan,
   mulaiLab,
   muatDariRiwayat,
+  pakaiTemplate,
   pesanGalat,
   type LabState,
 } from '@/lib/prompt-lab';
 
 /**
- * Layar Prompt Lab — PL-01 (Dev B), PRD §7 E13. Formulir 5 bagian, jalankan
- * sinkron (⚡ kunci idempoten milik percobaan), riwayat berpasangan PL-6,
+ * Layar Prompt Lab — PL-01 + PL-02 (Dev B), PRD §7 E13. Formulir 5 bagian,
+ * 3 template contoh (PL-5), jalankan sinkron (⚡ kunci idempoten milik
+ * percobaan), riwayat berpasangan prompt+hasil yang bisa dibuka (PL-6),
  * jalankan-ulang dari riwayat. Output dirender TEKS POLOS (interpolasi JSX —
  * tanpa dangerouslySetInnerHTML; isi keluaran LLM sepenuhnya dipengaruhi
  * input pengguna; catatan audit #239).
@@ -79,6 +83,26 @@ export function PromptLabScreen() {
       </header>
 
       <section className="rounded-card border border-line bg-background p-4">
+        <p className="font-medium">Template contoh</p>
+        <p className="mt-1 text-sm text-ink-500">
+          Salin satu, ubah sesukamu, lalu jalankan — salinannya jadi milikmu.
+        </p>
+        <div className="mt-2 flex flex-col gap-2">
+          {TEMPLATE_CONTOH.map((t, i) => (
+            <button
+              key={t.nama}
+              type="button"
+              className="rounded-ctl border border-line px-3 py-2 text-left text-sm hover:bg-line"
+              onClick={() => setState((s) => pakaiTemplate(s, t))}
+              data-testid={`template-${i}`}
+            >
+              {t.nama}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-card border border-line bg-background p-4">
         {KUNCI_BAGIAN.map((k) => (
           <div key={k} className="mb-3 last:mb-0">
             <label className="text-sm font-medium" htmlFor={`bagian-${k}`}>
@@ -135,27 +159,57 @@ export function PromptLabScreen() {
           </p>
         ) : (
           <ul className="mt-2 flex flex-col gap-2">
-            {state.riwayat.map((r) => (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  className="w-full rounded-ctl border border-line px-3 py-2 text-left text-sm hover:bg-line"
-                  onClick={() => setState((s) => muatDariRiwayat(s, r))}
-                  data-testid={`riwayat-${r.id.slice(0, 8)}`}
-                >
-                  <span className="block font-medium">{(r.structure.task ?? '').slice(0, 60)}</span>
-                  <span className="mt-0.5 block text-ink-500">
-                    {(r.output ?? '').slice(0, 80)}…
-                  </span>
-                  <span className="mt-0.5 block text-label text-ink-500">
-                    {new Intl.DateTimeFormat('id-ID', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    }).format(new Date(r.created_at))}
-                  </span>
-                </button>
-              </li>
-            ))}
+            {state.riwayat.map((r) => {
+              const terbuka = state.riwayatTerbuka === r.id;
+              return (
+                <li key={r.id} className="rounded-ctl border border-line">
+                  <button
+                    type="button"
+                    aria-expanded={terbuka}
+                    className="w-full rounded-ctl px-3 py-2 text-left text-sm hover:bg-line"
+                    onClick={() => setState((s) => bukaRiwayat(s, r.id))}
+                    data-testid={`riwayat-${r.id.slice(0, 8)}`}
+                  >
+                    <span className="block font-medium">
+                      {(r.structure.task ?? '').slice(0, 60)}
+                    </span>
+                    <span className="mt-0.5 block text-label text-ink-500">
+                      {new Intl.DateTimeFormat('id-ID', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      }).format(new Date(r.created_at))}{' '}
+                      · {terbuka ? 'tutup' : 'lihat pasangan prompt + hasil'}
+                    </span>
+                  </button>
+                  {terbuka ? (
+                    <div
+                      className="border-t border-line px-3 py-2"
+                      data-testid={`pasangan-${r.id.slice(0, 8)}`}
+                    >
+                      <p className="text-label font-medium uppercase text-ink-500">Prompt</p>
+                      <dl className="mt-1 flex flex-col gap-1.5">
+                        {KUNCI_BAGIAN.map((k) => (
+                          <div key={k}>
+                            <dt className="text-label text-ink-500">{LABEL_BAGIAN[k].label}</dt>
+                            <dd className="whitespace-pre-wrap text-sm">{r.structure[k] ?? ''}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                      <p className="mt-3 text-label font-medium uppercase text-ink-500">Hasil</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm">{r.output ?? ''}</p>
+                      <button
+                        type="button"
+                        className="mt-3 rounded-ctl border border-line px-3 py-1.5 text-sm hover:bg-line"
+                        onClick={() => setState((s) => muatDariRiwayat(s, r))}
+                        data-testid={`salin-${r.id.slice(0, 8)}`}
+                      >
+                        Salin ke formulir
+                      </button>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
