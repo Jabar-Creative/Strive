@@ -30,11 +30,12 @@
 <body>
 <div class="wrap">
   <h1>P-04 — UI top-up: pilih paket, bayar, status, kembali ke dompet</h1>
-  <p class="lede">Laporan verifikasi end-to-end item P-04 (Dev B). Dikerjakan 18 Okt 2026 (sesi susulan minggu 12–16 Okt).</p>
+  <p class="lede">Laporan verifikasi end-to-end item P-04 (Dev B). Dikerjakan 18 Okt 2026 (sesi susulan minggu 12–16 Okt); <strong>diverifikasi ulang 23 Okt</strong> terhadap rute checkout nyata (#243) — bagian 7.</p>
   <div class="meta">
     <span class="chip">Lingkungan: lokal (web :3005 · API :3002 · DB e2e terisolasi)</span>
     <span class="chip ok">Seluruh skenario yang tersentuh lulus</span>
-    <span class="chip warn">Alur bayar penuh menunggu rute checkout (#233) + kredensial Midtrans</span>
+    <span class="chip ok">23 Okt: alur penuh terbukti via rute nyata #243, tanpa intercept</span>
+    <span class="chip warn">Pembayaran Snap sungguhan tetap menunggu kredensial Midtrans (#57)</span>
   </div>
 
   <h2>1 · Ringkasan</h2>
@@ -46,7 +47,7 @@
     <ul>
       <li>Jalur <em>nyata</em> saat ini dibuktikan: 404 → pesan bersih, layar tetap hidup (screenshot 01).</li>
       <li>Jalur <em>menunggu → berhasil</em> dibuktikan dengan checkout di-<strong>intercept Playwright</strong> mengarah ke order pending SUNGGUHAN di DB; polling, status, dan kartu berhasil semuanya menyentuh API NYATA tanpa reload (screenshot 02).</li>
-      <li>Item tidak ditandai <code>done</code> sampai rute berdiri dan alur penuh terbukti end-to-end.</li>
+      <li>Item tidak ditandai <code>done</code> sampai rute berdiri dan alur penuh terbukti end-to-end. <strong>(Terpenuhi 23 Okt — lihat bagian 7: rute #243 ter-merge, alur penuh diverifikasi ulang tanpa intercept.)</strong></li>
     </ul>
   </div>
 
@@ -104,6 +105,31 @@
       <tr><td>Audit keamanan (agent-security)</td><td>terlampir di PR</td></tr>
     </tbody>
   </table>
+  <h2>7 · Verifikasi ulang 23 Okt — rute checkout NYATA (#243), tanpa intercept</h2>
+  <p>Isu #243 memasang controller <code>POST /payments/checkout</code> yang dulu hilang (isu #233), jadi seluruh jalur kini bisa diuji murni lewat rute nyata. Skrip Playwright menjalankan alur lengkap: daftar lewat UI → dompet → klik bayar (percobaan pertama) → klik bayar lagi (kunci idempoten sama, PA-3) → order ditandai lunas di DB → kartu berhasil. <strong>Tidak ada intercept jaringan sama sekali</strong>; satu-satunya sentuhan langsung ke DB adalah <code>UPDATE orders SET status='paid'</code> yang menggantikan webhook Midtrans (kredensial vendor lokal kosong) dan penandaan <code>email_verified</code> karena lokal tidak punya Resend.</p>
+  <table>
+    <thead><tr><th>#</th><th>Langkah</th><th>Harapan</th><th>Hasil</th><th>Cara verifikasi</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Daftar + buka dompet</td><td>Seksi "Isi koin" tampil dengan 3 paket nyata</td><td class="ok-t">LULUS</td><td>testid <code>topup-siap</code></td></tr>
+      <tr><td>2</td><td>Email belum terverifikasi → klik bayar</td><td>Ditolak bersih 403 <code>EMAIL_NOT_VERIFIED</code> (AU-8 memang memblokir top-up), layar tetap hidup</td><td class="ok-t">LULUS</td><td>[NET-CHK] 403 + teks pesan bersih</td></tr>
+      <tr><td>3</td><td>Percobaan pertama (email terverifikasi)</td><td>Rute nyata: order <strong>pending tertulis di DB sebelum</strong> vendor dipanggil; SnapClient gagal-tertutup (kredensial kosong) → 503 dengan pesan bersih, order tetap pending</td><td class="ok-t">LULUS</td><td>psql: order <code>d3bd9837…</code> + [NET-CHK] 503</td></tr>
+      <tr><td>4</td><td>Retry kunci sama (PA-3)</td><td>200 reused — order yang sama dikembalikan, masuk fase menunggu + hitungan batas waktu 10 menit</td><td class="ok-t">LULUS</td><td>[NET-CHK] 200 + <code>topup-menunggu</code> + teks "Batas waktu" — screenshot 04</td></tr>
+      <tr><td>5</td><td>Order → paid di DB</td><td>Kartu berhasil + jumlah koin muncul via polling ≤ 1 siklus, tanpa reload</td><td class="ok-t">LULUS</td><td><code>topup-berhasil</code> + angka koin cocok regex — screenshot 05</td></tr>
+      <tr><td>6</td><td>Console</td><td>Bersih di luar galat vendor skenario</td><td class="ok-t">LULUS</td><td>Listener console + pageerror</td></tr>
+    </tbody>
+  </table>
+  <img src="images/04-rute-nyata-menunggu.png" alt="Fase menunggu hasil retry kunci sama via rute nyata" />
+  <p class="ket">04 — Retry kunci sama → 200 reused: fase menunggu dengan hitungan batas waktu, semuanya via rute nyata #243.</p>
+  <img src="images/05-rute-nyata-berhasil.png" alt="Kartu top-up berhasil via polling rute nyata" />
+  <p class="ket">05 — Order ditandai lunas di DB: kartu berhasil muncul dari polling tanpa reload.</p>
+
+  <div class="card warn">
+    <p><strong>Dua catatan jujur dari verifikasi ini:</strong></p>
+    <ul>
+      <li><strong>Kode galat vendor memakai ulang <code>RATE_LIMITED</code></strong> untuk kasus "kredensial Midtrans belum diatur" (<code>snap.client.ts</code>, gagal-tertutup 503). Pesannya benar dan bersih, tapi kodenya menyesatkan — seharusnya semacam <code>PROVIDER_UNCONFIGURED</code>. Daftar kode §10.2 tertutup, jadi ini <em>dibaringkan untuk keputusan Fatih</em>, bukan diubah diam-diam.</li>
+      <li><strong>Pembayaran Snap sungguhan tetap belum terbukti</strong> — lokal tanpa <code>MIDTRANS_SERVER_KEY</code>, webhook digantikan UPDATE DB. Yang terbukti: seluruh alur aplikasi (order, idempotensi, polling, UI) di atas rute nyata.</li>
+    </ul>
+  </div>
 </div>
 </body>
 </html>
