@@ -3,3 +3,4 @@
 export * from './career.module';
 export * from './career-read.service';
 export * from './career.controller';
+export * from './prompt-lab.service';

@@ -1,7 +1,10 @@
-import { PageStub } from '@/components/page-stub';
+import { PromptLabScreen } from '@/components/prompt-lab-screen';
 
+/**
+ * /career — Prompt Lab (PL-01): form 5 bagian, jalankan sinkron, riwayat.
+ * ATS CV builder menyusul di AI-07 (halaman ini akan menjadi tab/tab-panel
+ * ketika AI-07 datang — sengaja satu layar dulu, bukan dua setengah).
+ */
 export default function Page() {
-  return (
-    <PageStub title="Karir — ATS CV & Prompt Lab" item="AI-07" dev="B" prd="PRD §7 E8 · E13" />
-  );
+  return <PromptLabScreen />;
 }

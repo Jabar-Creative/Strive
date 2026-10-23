@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PL-01 - Laporan verifikasi Prompt Lab (rute run + UI)</title>
+<style>
+  :root { --bg:#fff; --fg:#16181d; --muted:#5b6270; --line:#e3e6ec; --card:#f7f8fa; --ok:#0f7b3f; --ok-bg:#e6f4ec; --warn:#8a5a00; --warn-bg:#fdf3e2; --code:#f2f3f6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#e8eaef; --muted:#a0a7b4; --line:#2b2f37; --card:#1b1e24; --ok:#6ede9e; --ok-bg:#16301f; --warn:#f0c274; --warn-bg:#35280f; --code:#1f232a; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-size:28px; margin:0 0 8px; } h2 { font-size:21px; margin:44px 0 12px; padding-top:18px; border-top:1px solid var(--line); }
+  .lede { color:var(--muted); font-size:17px; margin:0 0 22px; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 26px; }
+  .chip { font-size:13px; padding:4px 10px; border-radius:999px; background:var(--card); border:1px solid var(--line); color:var(--muted); }
+  .chip.ok { background:var(--ok-bg); color:var(--ok); border-color:transparent; }
+  .chip.warn { background:var(--warn-bg); color:var(--warn); border-color:transparent; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14.5px; }
+  th,td { text-align:left; padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+  th { background:var(--card); font-weight:600; }
+  code { font:13.5px/1.5 ui-monospace,Menlo,monospace; background:var(--code); padding:1px 5px; border-radius:5px; }
+  img { max-width:100%; border:1px solid var(--line); border-radius:10px; margin:10px 0 4px; }
+  .ket { color:var(--muted); font-size:13.5px; margin:2px 0 18px; }
+  .ok-t { color:var(--ok); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin:14px 0; }
+  .card.warn { background:var(--warn-bg); border-color:transparent; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PL-01 (Node + UI) — Prompt Lab: rute run + layar</h1>
+  <p class="lede">Laporan verifikasi bagian Node dan web item PL-01 (Dev B). Dikerjakan 23 Okt 2026 (sesi susulan minggu 19–23 Okt); sisi layanan AI selesai 18 Okt (PR #239, merged).</p>
+  <div class="meta">
+    <span class="chip">Lingkungan: lokal (web :3005 · API :3002 + layanan AI :8000 nyata · DB e2e)</span>
+    <span class="chip ok">Integrasi 10/10 · browser 7 langkah lulus</span>
+    <span class="chip warn">Run LLM sukses di browser menunggu kredensial (kunci lokal kosong)</span>
+  </div>
+
+  <h2>1 · Ringkasan</h2>
+  <p><code>POST /career/prompt-lab/run</code> (⚡) berdiri: validasi 5 bagian, kuota PL-4, lalu <strong>hold → settle | release</strong> sesuai keputusan <strong>#245</strong> (aturan keras 4 — bukan debit langsung seperti tulisan lama PRD PL-3; penyuntingan PRD dicatat di PR). Layar <code>/career</code> menggantikan stub: form 5 bagian, biaya dari pricing nyata, riwayat berpasangan (PL-6), dan jalankan-ulang dari riwayat.</p>
+
+  <h2>2 · Batasan yang jujur</h2>
+  <div class="card warn">
+    <p>Kunci LLM lokal kosong → jalur <em>sukses dengan LLM nyata</em> tidak bisa dijalankan di browser. Yang dibuktikan:</p>
+    <ul>
+      <li><strong>Uang + output pada jalur sukses</strong>: 10 test integrasi DB nyata dengan klien AI palsu (hold → settle; koin −20; baris run berisi output; replay kunci sama mengembalikan run yang sama TANPA memanggil LLM lagi).</li>
+      <li><strong>Uang pada jalur gagal (browser, layanan AI NYATA gagal-tertutup karena kunci kosong)</strong>: hold+release di ledger, saldo utuh 200, baris run terhapus, pesan "koin tidak terpotong". Ini justru jalur yang paling sering salah di sistem berbayar.</li>
+    </ul>
+  </div>
+
+  <h2>3 · Matriks skenario</h2>
+  <table>
+    <thead><tr><th>#</th><th>Skenario</th><th>Harapan</th><th>Hasil</th><th>Cara verifikasi</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>AC-PL-1: run sukses (klien AI palsu)</td><td>20 koin terpotong (hold→settle), output tersimpan, prompt_runs +1</td><td class="ok-t">LULUS</td><td>integrasi DB nyata</td></tr>
+      <tr><td>2</td><td>AC-PL-2: LLM gagal</td><td>release (koin kembali), baris run dihapus, galat bersih</td><td class="ok-t">LULUS</td><td>integrasi + browser (AI nyata 503)</td></tr>
+      <tr><td>3</td><td>AC-PL-2: lebih dari batas waktu</td><td>diperlakukan gagal, koin utuh</td><td class="ok-t">LULUS</td><td>integrasi (batas 50 ms)</td></tr>
+      <tr><td>4</td><td>PL-4: run ke-11 hari yang sama</td><td>429 DAILY_AI_QUOTA_EXCEEDED</td><td class="ok-t">LULUS</td><td>integrasi</td></tr>
+      <tr><td>5</td><td>PL-4: kuota GABUNGAN (cv_documents ikut)</td><td>429</td><td class="ok-t">LULUS</td><td>integrasi</td></tr>
+      <tr><td>6</td><td>PL-4: PERCOBAAN GAGAL ikut dihitung (audit T2)</td><td>10× gagal → ke-11 ditolak (hitungan dari ledger hold, bukan baris run)</td><td class="ok-t">LULUS</td><td>integrasi</td></tr>
+      <tr><td>7</td><td>PL-4: tengah malam lokal tak bolong (audit T1)</td><td>pengguna zona +14 tetap terhitung (sisi tanggal disamakan, pola integrations-health)</td><td class="ok-t">LULUS</td><td>integrasi (Pacific/Kiritimati)</td></tr>
+      <tr><td>8</td><td>⚡ replay kunci sama</td><td>run sama dikembalikan, LLM tak dipanggil ulang, sekali potong</td><td class="ok-t">LULUS</td><td>integrasi</td></tr>
+      <tr><td>9</td><td>saldo kurang</td><td>402 INSUFFICIENT_COINS, tanpa baris run</td><td class="ok-t">LULUS</td><td>integrasi + browser (pesan bisa dipahami)</td></tr>
+      <tr><td>10</td><td>Browser: biaya + riwayat + jalankan-ulang</td><td>20 koin dari pricing nyata; riwayat tampil; klik mengisi form</td><td class="ok-t">LULUS</td><td>Screenshot 01</td></tr>
+      <tr><td>11</td><td>Browser: 375px + console</td><td>tanpa scroll horizontal; bersih</td><td class="ok-t">LULUS</td><td>Screenshot 03</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4 · Bukti visual</h4>
+  <img src="images/01-form-dan-galat-bersih.png" alt="Form 5 bagian + galat bersih saat AI 503" />
+  <p class="ket">01 — Form lengkap; run → layanan AI nyata menolak (kunci kosong): pesan menjelaskan koin aman, saldo 200 utuh (ledger hold+release dibuktikan di DB).</p>
+  <img src="images/02-koin-kurang.png" alt="Pesan koin kurang" />
+  <p class="ket">02 — Saldo 0: INSUFFICIENT_COINS dengan pesan yang bisa dipahami, bukan galat teknis.</p>
+  <img src="images/03-form-375px.png" alt="Form 375px" />
+  <p class="ket">03 — 375px tanpa scroll horizontal.</p>
+
+  <h2>5 · Audit keamanan dan perbaikan yang dipasang</h2>
+  <table>
+    <thead><tr><th>Temuan</th><th>Severity</th><th>Penanganan</th></tr></thead>
+    <tbody>
+      <tr><td>T1: batas kuota memakai tengah malam zona SESI (UTC) — jendela 00:00–07:00 WIB bolong</td><td>Medium</td><td class="ok-t">DIPASANG + test regresi zona +14</td></tr>
+      <tr><td>T2: cek kuota balapan (TOCTOU) + percobaan gagal tak dihitung</td><td>Medium</td><td class="ok-t">DIPASANG: kuota di dalam TRX setelah FOR UPDATE baris users; hitungan dari ledger hold (append-only) + test</td></tr>
+      <tr><td>T3: replay kunci paralel → 503 menyesatkan + biaya vendor ganda</td><td>Medium</td><td class="ok-t">DIPASANG: hold balik ref asing → berhenti sebelum LLM (409 KEY_CONFLICT); Error internal tak lagi menyamar PROVIDER_UNAVAILABLE</td></tr>
+      <tr><td>T4: teks mentah vendor masuk note ledger (tampil di riwayat dompet)</td><td>Low</td><td class="ok-t">DIPASANG: alasan generik 'run gagal'</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6 · Verifikasi perintah</h2>
+  <table>
+    <thead><tr><th>Perintah</th><th>Hasil</th></tr></thead>
+    <tbody>
+      <tr><td><code>pnpm --filter @strive/api test:integration prompt-lab</code></td><td>10/10</td></tr>
+      <tr><td><code>pnpm --filter @strive/web test</code></td><td>121/121 (7 baru: mesin lab)</td></tr>
+      <tr><td><code>pnpm lint && pnpm typecheck</code></td><td>hijau</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
