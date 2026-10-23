@@ -380,6 +380,55 @@ export function createApiClient(config: ApiClientConfig) {
       });
     },
 
+    /**
+     * POST /career/prompt-lab/run (⚡) — PL-01, sinkron 30 dtk. Kunci
+     * idempoten MILIK PERCOBAAN: retry run yang sama (mis. jaringan putus
+     * sesaat) memakai kunci SAMA dan server memulangkan run tersimpan.
+     */
+    runPromptLab(
+      sections: {
+        role: string;
+        context: string;
+        task: string;
+        format: string;
+        constraints: string;
+      },
+      idempotencyKey: string,
+      opts?: Pick<RequestOptions, 'signal'>,
+    ) {
+      return request<{ id: string; output: string; balance: number }>('/career/prompt-lab/run', {
+        method: 'POST',
+        body: { sections },
+        idempotencyKey,
+        signal: opts?.signal,
+      });
+    },
+
+    /**
+     * GET /career/prompt-lab/history — riwayat run berpasangan (PL-6).
+     * Bentuknya HALAMAN F-14 `{data, next_cursor}` (meski kontrak
+     * promptLabHistoryResponseSchema lama menulis array — sisi server yang
+     * berdiri adalah HistoryPage; selaras ke sana, bukan sebaliknya).
+     */
+    promptLabHistory(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<{
+        data: Array<{
+          id: string;
+          structure: {
+            role: string;
+            context: string;
+            task: string;
+            format: string;
+            constraints: string;
+          };
+          output: string;
+          self_rating: number | null;
+          created_at: string;
+        }>;
+        next_cursor: string | null;
+      }>('/career/prompt-lab/history', { signal: opts?.signal });
+    },
+
     /** GET /payments/orders/:id — status order untuk polling UI (PRD §10.3). */
     getOrder(orderId: string, opts?: Pick<RequestOptions, 'signal'>) {
       return request<OrderResponse>(`/payments/orders/${encodeURIComponent(orderId)}`, {

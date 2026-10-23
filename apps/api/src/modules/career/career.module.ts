@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
 
+import { AiModule } from '../ai';
+import { PaymentModule } from '../payment';
+import { WalletModule } from '../wallet';
 import { KyselyModule } from '../../infra/kysely';
 import { StorageModule } from '../../infra/storage';
 import { CareerController } from './career.controller';
 import { CareerReadService } from './career-read.service';
+import { PromptLabService } from './prompt-lab.service';
 
 /**
  * E8 · ATS CV + E13 · Prompt Lab — docs/PRD.md §7 E8, E13
@@ -17,9 +21,9 @@ import { CareerReadService } from './career-read.service';
  * Skor ATS DETERMINISTIK, tanpa LLM (CV-6).
  */
 @Module({
-  imports: [KyselyModule, StorageModule],
+  imports: [KyselyModule, StorageModule, WalletModule, PaymentModule, AiModule],
   controllers: [CareerController],
-  providers: [CareerReadService],
+  providers: [CareerReadService, PromptLabService],
   exports: [CareerReadService],
 })
 export class CareerModule {}
