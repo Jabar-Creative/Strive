@@ -1,50 +1,48 @@
 # HANDOFF — Peta Lanjutan untuk Sesi Claude Berikutnya
 
-> Berkas ini ditulis atas permintaan pemilik (18 Okt 2026) supaya sesi
-> Claude di laptop lain bisa langsung melanjutkan tanpa membaca ulang
-> seminggu riwayat. Baca berkas ini + `docs/BACKLOG.md` (papan) + PR/isu
-> terbuka. Protokol kerja: `AGENTS.md` (sembilan langkah, WAJIB).
+> Berkas ini ditulis atas permintaan pemilik (18 Okt 2026, diperbarui
+> 25 Okt 2026) supaya sesi Claude di laptop lain bisa langsung melanjutkan
+> tanpa membaca ulang seminggu riwayat. Baca berkas ini + `docs/BACKLOG.md`
+> (papan) + PR/isu terbuka. Protokol kerja: `AGENTS.md` (sembilan langkah,
+> WAJIB).
 
-## Keadaan sesaat
+## Keadaan sesaat (25 Okt, malam)
 
-- **8 PR menunggu review Fatih (Dev A)** — urutan logis menunggu turun:
-  #229 (N-02) · #232 (RT-02) · #230 (AI-05) · #236 (ST-02) · #234 (kontrak
-  paket {id,name}) → #235 (P-04, **bertumpuk di #234**) · #239 (PL-01 sisi
-  AI) · #240 (wireframe, ringan).
-  Aturan stack: jangan `--delete-branch` sebelum seluruh tumpukan masuk.
-- **4 isu menunggu keputusan Dev A**: #231 (ends_at Q-06 offset tanpa
-  menit — layar squad crash di API nyata), **#233 (controller
-  POST /payments/checkout tidak pernah ada — menahan P-02 dan P-04)**,
-  #237 (bucket default dev di produksi), **#238 (RefType 'prompt_run'
-  / idempotensi prompt_runs — menahan sisi Node PL-01)**.
+- **15 PR gelombang 18–20 Okt SUDAH SEMUA MERGE** (#229–#247, merge 20
+  Okt). Yang menunggu review Fatih (Dev A) tinggal TUJUH:
+  - base `main`, mandiri: **#251** (laporan setup 23 Okt) · **#252**
+    (PL-01 Node+UI) · **#253** (P-04 done) · **#254** (deps next 15.5.28);
+  - bertumpuk: **#255** (PL-02, base `pl01-node-run` = branch #252) →
+    **#258** (PR-03, base `pl02-template-riwayat`) → **#259** (PR-04, base
+    `pr03-antrean-rubrik`).
+  Urutan merge: #252 dulu, GitHub otomatis me-retarget #255 ke main begitu
+  basenya masuk, lalu #258, #259. Aturan stack tetap: jangan
+  `--delete-branch` sebelum seluruh tumpukan masuk.
+- **Papan per 25 Okt malam**: 80 item · 78,5 dev-hari; done 66 (63,5) ·
+  todo 8 (9,5) · lain 6 (5,5). Sisa antrean W7 Dev B: **K-04 (UI klinik),
+  AI-07 (UI CV builder)**.
+- **Isu yang masih menahan pekerjaan**: #90 (kredensial sandbox Copyleaks
+  — menahan K-03/K-04 jalur scan nyata) · #57 (kredensial Midtrans; P-04
+  sudah `done` lewat rute nyata #243, tapi alur bayar SUNGGUHAN dengan
+  uang vendor tetap tak terbukti) · #257 (batas `comment` review hanya di
+  client — kepemilikan Dev A, kode error kontrak §10.2) · #248–#250, #256
+  (fondasi, sebagian milik Dev A).
 - Papan per branch sudah membawa status masing-masing; SETELAH merge,
   jalankan ulang skrip recompute ringkasan dari `AGENTS.md` (konflik tabel
   ringkasan TIDAK PERNAH diselesaikan memilih satu sisi — aturan keras 11).
 
 ## Pekerjaan berikutnya (urut)
 
-1. **Respons review** delapan PR begitu Fatih turun (diutamakan di atas
+1. **Respons review** tujuh PR begitu Fatih turun (diutamakan di atas
    item baru).
-2. **PL-01 sisi Node** begitu #238 diputuskan — desainnya SUDAH SIAP:
-   - `POST /career/prompt-lab/run` (⚡, student+mentor): validasi 5 bagian
-     + `MAKS_KARAKTER_BAGIAN` 10.000 (sisi AI sudah menolak lebih dulu);
-   - kuota PL-4: 10 run AI/hari GABUNGAN (prompt_runs + cv_documents +
-     mastery_sessions) dihitung SQL dengan hari LOKAL pengguna
-     (`AT TIME ZONE streaks.timezone` — pelajaran #193: satu sumber dengan
-     penulis attempt), lewat → 429 `DAILY_AI_QUOTA_EXCEEDED`;
-   - biaya PL-3: dari `pricing_config` aktif (`prompt_run_cost_coins`),
-     debit `spend_ai` SETELAH sukses (AC-PL-2: timeout 30 dtk → nol
-     potongan, nol baris);
-   - panggil `AiServiceClient` jalur `/v1/prompt` (JALUR_AI sudah ada),
-     timeout rute 30 dtk (layanan menolak di 25 dtk);
-   - satu transaksi: insert `prompt_runs` + `coins.write`; idempotensi
-     sesuai keputusan #238;
-   - `GET /career/prompt-lab/history` SUDAH ADA (F-14, career-read).
-   - UI: `/career` form 5 bagian + jalankan + riwayat + jalankan-ulang;
-     output WAJIB teks polos (catatan audit #239).
-3. **P-04 → done** begitu #233 berdiri + kredensial Midtrans: bukti yang
-   belum bisa diambil = alur bayar penuh (UI, mesin, polling, batas waktu
-   — semuanya sudah terbukti seluas itu; lihat PR #235).
+2. **K-04 UI klinik** — periksa dulu seberapa jauh bisa dibuktikan tanpa
+   kredensial Copyleaks (#90): pola P-04 terbukti bisa dipakai (verifikasi
+   seluas permukaan yang ada, status jujur `blocked`/`done` sesuai AC yang
+   benar-benar terbukti; lihat PR #235 → #253).
+3. **AI-07 UI CV builder** — perhatikan #197 (kode error ai_jobs di luar
+   §10.2) dan #207 (bom dekompresi FlateDecode, wajib sebelum /v1/cv
+   diekspos): dua isu itu didesain justru untuk item ini, jangan
+   dilewati saat membangunnya.
 4. Wireframe Stitch: prompt siap tempel di `docs/wireframe-stitch/` —
    Stitch butuh login Google pemilik, agent tidak bisa mewakili.
 
@@ -75,6 +73,18 @@
   (symlink revisi boleh kalau minta versi lain). Skrip verifikasi hari ini
   tersimpan di direktori job sesi, TIDAK di repo — polanya ada di
   laporan tiap item.
+- **MATIKAN dev server sebelum suite integrasi** (pelajaran 25 Okt):
+  `next dev` + `nest start` yang hidup membebani I/O `/mnt/d` (drvfs)
+  sampai fase collect vitest melambat 22 dtk → 1.268 dtk (total 1.454 dtk).
+  Setelah kedua dev server dihentikan: 33 dtk. Jalankan juga lewat
+  `apps/api/node_modules/.bin/vitest run -c vitest.integration.config.mts`
+  langsung (tanpa lapis pnpm, tanpa `| tail` — exit code pipeline milik
+  `tail`, bukan vitest; arahkan output ke berkas + `echo EXIT=$?`).
+- **Screenshot bukti di halaman statis bisa byte-identik dua keadaan**
+  (md5 sama) kalau tidak ada penanda waktu dan keadaan tidak benar-benar
+  berbeda saat diambil: bukti yang sah adalah assert DOM di skrip, bukan
+  dua PNG yang mirip; caption laporan harus menulis apa yang BENAR-BENAR
+  dibuktikan.
 - Setelah `git pull`: **selalu `pnpm i`** (typecheck merah palsu hari ini
   karena node_modules usang). `apps/api/dist` parsial → `rm -rf` dulu.
 - venv layanan AI: `services/ai/.venv` (python3.13 sah). Agent-worktree
