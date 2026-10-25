@@ -181,6 +181,16 @@
       "jalur": "dev/build",
       "alasan": "Tidak ada versi perbaikan — advisory-nya sendiri menuliskan `<0.0.0`, jadi override pnpm mustahil (berbeda dengan brace-expansion #185, yang bisa ditambal). `pnpm why braces --prod` NOL: ia hanya ditarik devDependencies — eslint-config-next (lewat fast-glob), kysely-codegen, dan lint-staged, ketiganya lewat micromatch 4.0.8. Jadi ia tidak pernah ikut ke image produksi; infra/Dockerfile.api hanya membawa dependensi runtime. Dan serangannya menuntut POLA glob bersarang dalam, bukan masukan pengguna: pola di repo ini datang dari berkas konfigurasi kita sendiri dan argumen CLI, bukan dari request. Dicabut begitu micromatch merilis braces yang ditambal.",
       "tinjau_ulang": "2026-11-05"
+    },
+    {
+      "id": "GHSA-mrhx-c7xc-m3w5",
+      "paket": "zod",
+      "severity": "high",
+      "judul": "Zod can exhaust memory while validating oversized constrained collections",
+      "tambal_ke": ">=4.6.6",
+      "jalur": "runtime (browser)",
+      "alasan": "Versi 3.24.1 lewat packages/contracts. Diverifikasi 25 Okt: zod TIDAK PERNAH berjalan di server repo ini — `apps/api` tidak punya dependensi zod dan satu-satunya impor `@strive/contracts` di kode produksinya adalah `import type` (notifications.controller.ts, dengan komentar eksplisit soal crash `node dist/main.js`), jadi tervalidasi-elision saat kompilasi. Yang menjalankan zod hanya apps/web DI BROWSER: validasi form auth dan parse respons API (auth-forms.ts, api-client.ts). 'Memory exhaustion' pada koleksi raksasa menuntut masukan berukuran megabyte yang dikendalikan penyerang — di sisi browser satu-satunya pihak yang bisa memberi masukan itu adalah pengguna terhadap tab-nya sendiri (self-DoS), dan respons API yang diparse dibatasi oleh server kita sendiri. Tambalannya hanya di major 4 (>=4.6.6): upgrade v3→v4 adalah perubahan breaking packages/contracts = PR terpisah sesuai kepemilikan (isu #256), bukan ditambal diam-diam di sini.",
+      "tinjau_ulang": "2026-11-08"
     }
   ]
 }

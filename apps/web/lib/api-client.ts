@@ -21,6 +21,9 @@
 // Batas limit juga dari sana — isu #182: angka harfiah di web diam-diam
 // menjepit lebih ketat daripada API tanpa satu pun yang merah.
 import { WALLET_LEDGER_LIMIT_MAX } from '@strive/contracts';
+// Bentuk antrean + hasil submit review hidup di lib/review-queue (PR-03)
+// — satu definisi untuk method klien dan layar, cermin bentuk server.
+import type { AntreanItem, HasilSubmit } from './review-queue';
 import type {
   CheckoutResponse,
   HubResponse,
@@ -283,6 +286,17 @@ export function createApiClient(config: ApiClientConfig) {
     },
 
     /**
+     * GET /me — A-05. Bentuk lengkap `MyProfile` hidup di
+     * `apps/api/src/modules/users/profile.service.ts`; web hanya menuntut
+     * `id` (namespace draf review per pengguna — temuan audit PR-03) dan
+     * sengaja tidak menyalin field lain, supaya kontrak tidak berganda di
+     * dua tempat yang menua dengan kecepatan berbeda.
+     */
+    getMe(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<{ id: string }>('/me', { signal: opts?.signal });
+    },
+
+    /**
      * GET /squads/:id/leaderboard — papan dari ZSET Redis (Q-06). Dipanggil
      * ulang oleh mesin Q-05 tiap `score.updated` / tiap 30 dtk saat WS
      * mati; server menjawab `Cache-Control: private, max-age=30`, tapi
@@ -427,6 +441,37 @@ export function createApiClient(config: ApiClientConfig) {
         }>;
         next_cursor: string | null;
       }>('/career/prompt-lab/history', { signal: opts?.signal });
+    },
+
+    /**
+     * GET /reviews/queue — antrean review milik pemanggil (PR-03, PRD §10.3).
+     * Respons TIDAK memuat identitas penulis di mana pun (PR-2): bentuk
+     * `AntreanItem` memang tidak punya field-nya — dihilangkan di serializer
+     * server, bukan disembunyikan di sini.
+     */
+    getReviewQueue(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<AntreanItem[]>('/reviews/queue', { signal: opts?.signal });
+    },
+
+    /**
+     * POST /reviews/:id (⚡) — kirim penilaian rubrik. `:id` adalah
+     * attempt_id. Kunci idempoten MILIK PERCOBAAN (pola checkout/prompt-lab):
+     * ia ikut tersimpan di draf penilaian, jadi retry — termasuk setelah
+     * halaman ditutup — memakai kunci yang sama dan tidak menulis dua review.
+     */
+    submitReview(
+      attemptId: string,
+      rubricScores: Record<string, number>,
+      comment: string | undefined,
+      idempotencyKey: string,
+      opts?: Pick<RequestOptions, 'signal'>,
+    ) {
+      return request<HasilSubmit>(`/reviews/${encodeURIComponent(attemptId)}`, {
+        method: 'POST',
+        body: { rubric_scores: rubricScores, ...(comment ? { comment } : {}) },
+        idempotencyKey,
+        signal: opts?.signal,
+      });
     },
 
     /** GET /payments/orders/:id — status order untuk polling UI (PRD §10.3). */
