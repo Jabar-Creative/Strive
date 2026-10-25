@@ -93,9 +93,9 @@
   <img src="images/05-idempoten.png" alt="Idempotensi" />
   <p class="ket">05 — Approve kedua via fetch sesi mentor (overlay atas): status 201, <code>already_validated: true</code>, <code>awarded: false</code> — tidak ada koin ganda.</p>
   <img src="images/06-reject-capped.png" alt="Reject review capped" />
-  <p class="ket">06 — Tolak review di luar jatah berpoin dengan catatan: reviewer tidak menerima koin.</p>
+  <p class="ket">06 — Tolak review di luar jatah berpoin dengan catatan: reviewer tidak menerima koin. Kartu capped sudah keluar dari antrean di frame ini (muat ulang antrean selesai sebelum screenshot), itulah sebabnya 06 dan 07 byte-identik — halaman statis tanpa jam berjalan.</p>
   <img src="images/07-antrean-kosong.png" alt="Antrean kosong" />
-  <p class="ket">07 — Setelah dua keputusan: 0 kartu tersisa, kartu hasil keputusan terakhir masih tampil.</p>
+  <p class="ket">07 — Setelah dua keputusan: assert DOM menghitung <code>0 kartu</code> tersisa; frame ini (identik dengan 06, diambil 1,5 dtk kemudian) memperlihatkan halaman tanpa satu kartu antrean, hanya kartu hasil keputusan terakhir.</p>
   <img src="images/08-forbidden.png" alt="Review asing ditolak" />
   <p class="ket">08 — POST validate review squad lain via sesi mentor (overlay bawah): 403 <code>FORBIDDEN_ROLE</code> — kepemilikan dijaga service, bukan cuma guard peran.</p>
   <img src="images/09-mobile-375.png" alt="Tampilan mobile 375px" />
