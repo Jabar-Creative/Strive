@@ -23,6 +23,8 @@
 import { WALLET_LEDGER_LIMIT_MAX } from '@strive/contracts';
 // Bentuk antrean + hasil submit review hidup di lib/review-queue (PR-03)
 // — satu definisi untuk method klien dan layar, cermin bentuk server.
+// Antrean mentor (PR-04) sama pola: hidup di lib/mentor-console.
+import type { AntreanMentorItem, HasilValidasi } from './mentor-console';
 import type { AntreanItem, HasilSubmit } from './review-queue';
 import type {
   CheckoutResponse,
@@ -470,6 +472,34 @@ export function createApiClient(config: ApiClientConfig) {
         method: 'POST',
         body: { rubric_scores: rubricScores, ...(comment ? { comment } : {}) },
         idempotencyKey,
+        signal: opts?.signal,
+      });
+    },
+
+    /**
+     * GET /mentor/queue — antrean validasi review anggota squad binaan
+     * pemanggil (PR-04, PRD §10.3). `:id` item = peer_reviews.id.
+     * Respons TIDAK memuat identitas PENULIS attempt (semangat PR-2) —
+     * dihilangkan di serializer server.
+     */
+    getMentorQueue(opts?: Pick<RequestOptions, 'signal'>) {
+      return request<AntreanMentorItem[]>('/mentor/queue', { signal: opts?.signal });
+    },
+
+    /**
+     * POST /mentor/reviews/:id/validate — setujui/tolak satu review (PR-6).
+     * Tanpa Idempotency-Key: PRD §10.3 tidak menandai rute ini ⚡;
+     * idempotensinya natural di server (mentor_checked + ref_uniq).
+     */
+    validateMentorReview(
+      reviewId: string,
+      decision: 'approve' | 'reject',
+      note: string | undefined,
+      opts?: Pick<RequestOptions, 'signal'>,
+    ) {
+      return request<HasilValidasi>(`/mentor/reviews/${encodeURIComponent(reviewId)}/validate`, {
+        method: 'POST',
+        body: { decision, ...(note ? { note } : {}) },
         signal: opts?.signal,
       });
     },
