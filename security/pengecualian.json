@@ -43,66 +43,6 @@
       "tinjau_ulang": "2026-11-21"
     },
     {
-      "id": "GHSA-535w-7cp7-47q4",
-      "paket": "multer",
-      "severity": "high",
-      "judul": "multer vulnerable to Denial of Service via oversized array index in field names",
-      "tambal_ke": ">=2.3.0",
-      "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat. Diperpanjang 23 Okt: verifikasi ulang — masih NOL FileInterceptor/UploadedFile/memoryStorage di apps/api (K-04 belum dibangun).",
-      "tinjau_ulang": "2026-11-21"
-    },
-    {
-      "id": "GHSA-5528-5vmv-3xc2",
-      "paket": "multer",
-      "severity": "high",
-      "judul": "Multer Vulnerable to Denial of Service via Uncontrolled Recursion",
-      "tambal_ke": ">=2.1.1",
-      "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat. Diperpanjang 23 Okt: verifikasi ulang — masih NOL FileInterceptor/UploadedFile/memoryStorage di apps/api (K-04 belum dibangun).",
-      "tinjau_ulang": "2026-11-21"
-    },
-    {
-      "id": "GHSA-72gw-mp4g-v24j",
-      "paket": "multer",
-      "severity": "high",
-      "judul": "Multer vulnerable to Denial of Service via deeply nested field names",
-      "tambal_ke": ">=2.2.0",
-      "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat. Diperpanjang 23 Okt: verifikasi ulang — masih NOL FileInterceptor/UploadedFile/memoryStorage di apps/api (K-04 belum dibangun).",
-      "tinjau_ulang": "2026-11-21"
-    },
-    {
-      "id": "GHSA-v52c-386h-88mc",
-      "paket": "multer",
-      "severity": "high",
-      "judul": "Multer vulnerable to Denial of Service via resource exhaustion",
-      "tambal_ke": ">=2.1.0",
-      "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat. Diperpanjang 23 Okt: verifikasi ulang — masih NOL FileInterceptor/UploadedFile/memoryStorage di apps/api (K-04 belum dibangun).",
-      "tinjau_ulang": "2026-11-21"
-    },
-    {
-      "id": "GHSA-wc9g-mqfw-jrwm",
-      "paket": "multer",
-      "severity": "high",
-      "judul": "multer vulnerable to Denial of Service via crafted multipart field names",
-      "tambal_ke": ">=2.3.0",
-      "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat. Diperpanjang 23 Okt: verifikasi ulang — masih NOL FileInterceptor/UploadedFile/memoryStorage di apps/api (K-04 belum dibangun).",
-      "tinjau_ulang": "2026-11-21"
-    },
-    {
-      "id": "GHSA-xf7r-hgr6-v32p",
-      "paket": "multer",
-      "severity": "high",
-      "judul": "Multer vulnerable to Denial of Service via incomplete cleanup",
-      "tambal_ke": ">=2.1.0",
-      "jalur": "runtime",
-      "alasan": "Parser multipart, transitif lewat @nestjs/platform-express. Seluruh advisory-nya DoS melalui badan multipart. Penyisiran R-03: NOL pemakaian — tidak ada FileInterceptor, UploadedFile, maupun rute yang menerima multipart di seluruh apps/api. Jalur upload (K-01) memakai buffer langsung, bukan multer. Jadi kodenya terpasang tapi tidak pernah dijalankan. WAJIB ditinjau ulang sebelum rute upload HTTP pertama dibuat. Diperpanjang 23 Okt: verifikasi ulang — masih NOL FileInterceptor/UploadedFile/memoryStorage di apps/api (K-04 belum dibangun).",
-      "tinjau_ulang": "2026-11-21"
-    },
-    {
       "id": "GHSA-c2c7-rcm5-vvqj",
       "paket": "picomatch",
       "severity": "high",
@@ -173,14 +113,14 @@
       "tinjau_ulang": "2026-12-23"
     },
     {
-      "id": "GHSA-vfj7-8cjw-p6xm",
-      "paket": "braces",
+      "id": "GHSA-mrhx-c7xc-m3w5",
+      "paket": "zod",
       "severity": "high",
-      "judul": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
-      "tambal_ke": "<0.0.0 (TIDAK ADA versi perbaikan)",
-      "jalur": "dev/build",
-      "alasan": "Tidak ada versi perbaikan — advisory-nya sendiri menuliskan `<0.0.0`, jadi override pnpm mustahil (berbeda dengan brace-expansion #185, yang bisa ditambal). `pnpm why braces --prod` NOL: ia hanya ditarik devDependencies — eslint-config-next (lewat fast-glob), kysely-codegen, dan lint-staged, ketiganya lewat micromatch 4.0.8. Jadi ia tidak pernah ikut ke image produksi; infra/Dockerfile.api hanya membawa dependensi runtime. Dan serangannya menuntut POLA glob bersarang dalam, bukan masukan pengguna: pola di repo ini datang dari berkas konfigurasi kita sendiri dan argumen CLI, bukan dari request. Dicabut begitu micromatch merilis braces yang ditambal.",
-      "tinjau_ulang": "2026-11-05"
+      "judul": "Zod can exhaust memory while validating oversized constrained collections",
+      "tambal_ke": ">=4.6.6",
+      "jalur": "runtime (hanya browser)",
+      "alasan": "DUA instance zod terpasang, dan hanya SATU yang tidak bisa ditambal. better-auth memakai zod 4 — sudah ditutup override `zod@4: ^4.6.6` (terpasang 4.6.7). Yang tersisa zod 3.25.76 milik `packages/contracts`, dan garis 3.x TIDAK punya versi perbaikan: tambalannya hanya ada di >=4.6.6. Tidak bisa dicapai dari server: `apps/api` punya NOL impor `from 'zod'` dan memvalidasi query secara manual dengan sengaja — alasannya terdokumentasi di `apps/api/src/modules/notification/list-query.util.ts` (mengimpor NILAI dari @strive/contracts membuat `node dist/main.js` crash ERR_UNSUPPORTED_DIR_IMPORT). Jadi tidak ada satu pun `.parse()`/`.safeParse()` di sisi server atas input penyerang. Satu-satunya pemanggil runtime ada di BROWSER: `apps/web/lib/auth-forms.ts` (login, register) dan `app/(auth)/reset/finish/page.tsx` (password) — ketiganya memvalidasi field yang DIKETIK pengguna sendiri, berbentuk objek datar berisi string, bukan collection ber-constraint yang jadi sasaran advisory ini. Menghabiskan memori di situ berarti menghabiskan memori tab sendiri. Perbaikan sebenarnya: isu #256 (zod 3 → 4 di packages/contracts, lajur Dev B). Diverifikasi 26 Okt 2026, bukan diasumsikan. Tanggal tinjau ulang dan analisis jangkauannya mengikuti #256/#258 (@kemalzaki, 25 Okt) — ia sampai ke kesimpulan yang sama sehari lebih dulu, dan tanggalnya lebih ketat daripada yang kutulis.",
+      "tinjau_ulang": "2026-11-08"
     }
   ]
 }
