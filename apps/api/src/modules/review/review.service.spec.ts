@@ -1,7 +1,14 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 
-import { RUBRIC_KRITERIA, RUBRIC_MAX_SCORE, RUBRIC_TOTAL_MAX, totalRubrik } from './review.service';
+import {
+  MAKS_KOMENTAR,
+  RUBRIC_KRITERIA,
+  RUBRIC_MAX_SCORE,
+  RUBRIC_TOTAL_MAX,
+  pastikanKomentarWajar,
+  totalRubrik,
+} from './review.service';
 
 /**
  * Rubrik peer review — PRD §7 E11 `PR-10`, isu #73.
@@ -75,5 +82,52 @@ describe('totalRubrik — batas (isu #73)', () => {
     // yang hilang pertama biasanya kriteria yang paling spesifik ke produk.
     expect([...RUBRIC_KRITERIA]).toContain('sitasi');
     expect(RUBRIC_KRITERIA).toHaveLength(4);
+  });
+});
+
+/**
+ * Panjang `comment` — isu #257 (@kemalzaki, audit PR-03).
+ *
+ * `maxLength={500}` di DOM bukan batas: ia tidak ada di jalur mana pun selain
+ * browser yang menurutinya. Yang diuji di sini penjaga SERVICE-nya, karena
+ * itu satu-satunya tempat yang juga berlaku untuk worker dan skrip
+ * perbaikan data.
+ */
+describe('pastikanKomentarWajar — batas panjang comment (isu #257)', () => {
+  it('tanpa comment (undefined) lolos — komentar memang opsional', () => {
+    expect(() => pastikanKomentarWajar(undefined)).not.toThrow();
+  });
+
+  it('komentar kosong lolos — kosong bukan terlalu panjang', () => {
+    expect(() => pastikanKomentarWajar('')).not.toThrow();
+  });
+
+  it('TEPAT di batas lolos, satu karakter di atasnya ditolak', () => {
+    // Batas diuji dari kedua sisinya. Test yang hanya mengirim 1 MB akan
+    // tetap hijau untuk implementasi yang salah menulis `>=`, dan off-by-one
+    // di batas yang dikirim klien berarti UI 500 karakter menolak sendiri.
+    expect(() => pastikanKomentarWajar('a'.repeat(MAKS_KOMENTAR))).not.toThrow();
+    expect(() => pastikanKomentarWajar('a'.repeat(MAKS_KOMENTAR + 1))).toThrow(BadRequestException);
+  });
+
+  it('1 MB ditolak dengan VALIDATION_ERROR, bukan kode baru', () => {
+    // §10.2 daftar TERTUTUP (#92). #257 mengusulkan `COMMENT_TOO_LONG`;
+    // keadaan ini persis arti `VALIDATION_ERROR`, dan menambah kode untuk
+    // keadaan yang sudah punya kodenya membuat daftar tertutup berhenti
+    // berarti.
+    try {
+      pastikanKomentarWajar('x'.repeat(1024 * 1024));
+      throw new Error('seharusnya melempar');
+    } catch (e) {
+      const isi = (e as BadRequestException).getResponse() as {
+        error: { code: string; details: { field: string; length: number; max: number } };
+      };
+      expect(isi.error.code).toBe('VALIDATION_ERROR');
+      expect(isi.error.details.field).toBe('comment');
+      expect(isi.error.details.max).toBe(MAKS_KOMENTAR);
+      // Panjang SEBENARNYA ikut dilaporkan: klien yang memotong sendiri perlu
+      // tahu seberapa jauh ia melewati, bukan cuma bahwa ia melewati.
+      expect(isi.error.details.length).toBe(1024 * 1024);
+    }
   });
 });

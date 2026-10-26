@@ -119,6 +119,49 @@ export interface SubmitReviewResult {
  * `NaN`, `Infinity`, pecahan, dan objek kosong semuanya menghasilkan total
  * yang tidak berarti.
  */
+/**
+ * Batas panjang `comment` peer review — isu #257 (@kemalzaki, audit PR-03).
+ *
+ * `apps/web` membatasinya lewat `maxLength={500}` di DOM, dan itu **bukan
+ * batas**: `POST /reviews/:attempt` dengan `comment` 1 MB tersimpan utuh ke
+ * `peer_reviews.comment text`. Yang bisa menumbuhkannya bukan cuma penyerang
+ * — pengguna sah yang menempelkan satu dokumen pun bisa, dan penulis
+ * penilaian melihatnya penuh di UI karena respons tidak memotong.
+ *
+ * **500 di sini, dan angkanya masih ditulis dua kali.** Rumah yang benar
+ * `packages/contracts` supaya web mengimpornya alih-alih mengetik ulang —
+ * pelajaran #182: angka harfiah di web diam-diam menjepit lebih ketat
+ * daripada API tanpa satu pun yang merah. Paket itu lajur Dev B, jadi
+ * pemindahannya diminta di #257; yang TIDAK boleh menunggu adalah sisi
+ * servernya, karena selama ia tidak ada, batas 500 hanya hidup di DOM.
+ */
+export const MAKS_KOMENTAR = 500;
+
+/**
+ * Di SERVICE, bukan di controller — alasan yang sama dengan `totalRubrik()`
+ * (lihat catatan di `review.controller.ts`): penjaga di service berlaku untuk
+ * jalur non-HTTP juga (worker, skrip perbaikan data). Penjaga yang hanya ada
+ * di controller adalah penjaga yang bisa dilewati dengan memanggil service.
+ *
+ * `VALIDATION_ERROR`, BUKAN kode baru. #257 mengusulkan `COMMENT_TOO_LONG`;
+ * daftar §10.2 tertutup (#92), dan ini persis arti `VALIDATION_ERROR`:
+ * klien mengirim field yang melanggar batas yang sudah didokumentasikan.
+ * Menambah kode untuk keadaan yang sudah punya kodenya membuat daftar
+ * tertutup berhenti berarti.
+ */
+export function pastikanKomentarWajar(comment: string | undefined): void {
+  if (comment === undefined) return;
+  if (comment.length > MAKS_KOMENTAR) {
+    throw new BadRequestException({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: `Catatan review maksimal ${MAKS_KOMENTAR} karakter`,
+        details: { field: 'comment', length: comment.length, max: MAKS_KOMENTAR },
+      },
+    });
+  }
+}
+
 export function totalRubrik(scores: Record<string, number>): number {
   const kunci = Object.keys(scores);
 
@@ -267,6 +310,9 @@ export class ReviewService {
    */
   async submit(input: SubmitReviewInput): Promise<SubmitReviewResult> {
     const rubrik = totalRubrik(input.rubricScores);
+    // Panjang komentar diperiksa di sini, berdampingan dengan rubriknya —
+    // satu tempat yang menolak badan request yang tidak wajar (isu #257).
+    pastikanKomentarWajar(input.comment);
 
     return this.db.transaction().execute(async (trx) => {
       // Kunci baris reviewer DULU, sebelum menghitung apa pun.
