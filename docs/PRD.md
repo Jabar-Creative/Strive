@@ -1615,6 +1615,7 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 | `INVALID_PRICING_PAYLOAD` | 400 | Payload harga baru tidak memenuhi bentuk §6. `details` memuat `field` |
 | `PRICING_VERSION_CONFLICT` | 409 | Harga sudah diubah orang lain sejak payload ini dibaca — penulisan ditolak alih-alih menimpa |
 | `LLM_OUTPUT_INVALID` | 422 | Model tidak menghasilkan JSON yang sah setelah satu percobaan ulang (§12.3). **Bukan** `VALIDATION_ERROR`, yang berarti "yang KAMU kirim salah bentuk"; dan **bukan** `PROVIDER_UNAVAILABLE`, karena vendornya menjawab tepat waktu — yang rusak isinya |
+| `KEY_CONFLICT` | 409 | Kunci idempotensi (⚡) sedang dipakai percobaan LAIN — replay paralel atau tabrakan kunci. Ditolak sebelum vendor dipanggil: menjalankan dua kali berarti membayar dua kali (`PL-01`) |
 
 > **Daftar ini TERTUTUP.** Kode yang tidak ada di sini tidak boleh dikirim API, karena
 > `packages/contracts` diturunkan dari tabel ini dan klien diminta bercabang pada `code`,
@@ -1662,6 +1663,15 @@ Prefiks **`/api/v1`**. Auth Bearer JWT kecuali disebutkan lain.
 > `LLM_OUTPUT_INVALID` yang ketujuh **belum** dipakai: Dev B mengangkatnya di #197 sebelum
 > menulis kodenya, lalu membaringkannya. Itu urutan yang benar, dan ia yang pertama masuk
 > daftar ini dengan cara itu sejak `ROLE_CHANGE_FORBIDDEN`.
+>
+> `KEY_CONFLICT` menyusul 23 Okt 2026 (`PL-01`, PR #252) — urutan terbalik lagi: kodenya
+> terlanjur ditulis di `prompt-lab.service.ts` sebelum barisnya ada di sini, dan yang
+> menangkap justru penjaganya sendiri (`error-codes.spec.ts` memerahkan branch-nya). Ia
+> perlu ada karena dua permintaan paralel dengan kunci idempotensi yang sama tidak boleh
+> menjalankan pekerjaannya dua kali — itu berarti membayar vendor dua kali untuk satu
+> potongan koin — dan tidak ada kode 409 lama yang bermakna "kunci ini sedang dipakai
+> percobaan lain": `EMAIL_TAKEN` dan `ALREADY_PURCHASED` menjawab keadaan yang sudah
+> menetap, bukan percobaan yang masih berjalan.
 >
 > **Daftar ini tetap TERTUTUP.** Penjaganya `apps/api/src/common/error-codes.spec.ts`, yang
 > membaca tabel di atas langsung dari berkas ini — jadi kode baru di kode tanpa baris di sini
