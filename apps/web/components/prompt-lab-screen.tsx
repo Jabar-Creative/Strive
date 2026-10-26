@@ -40,7 +40,9 @@ export function PromptLabScreen() {
       api.getActivePricing({ signal: batal.signal }),
       api.promptLabHistory({ signal: batal.signal }),
     ])
-      .then(([harga, riwayat]) => setState((s) => labSiap(s, harga.prompt_run_cost_coins, riwayat.data)))
+      .then(([harga, riwayat]) =>
+        setState((s) => labSiap(s, harga.prompt_run_cost_coins, riwayat.data)),
+      )
       .catch(() => setState(labGagal('NETWORK')));
     return () => batal.abort();
   }, [api]);
