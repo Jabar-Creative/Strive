@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PR-03 - UI antrean review + form rubrik</title>
+<style>
+  :root { --bg:#fff; --fg:#16181d; --muted:#5b6270; --line:#e3e6ec; --card:#f7f8fa; --ok:#0f7b3f; --ok-bg:#e6f4ec; --warn:#8a5a00; --warn-bg:#fdf3e2; --code:#f2f3f6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#e8eaef; --muted:#a0a7b4; --line:#2b2f37; --card:#1b1e24; --ok:#6ede9e; --ok-bg:#16301f; --warn:#f0c274; --warn-bg:#35280f; --code:#1f232a; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-size:28px; margin:0 0 8px; } h2 { font-size:21px; margin:44px 0 12px; padding-top:18px; border-top:1px solid var(--line); }
+  .lede { color:var(--muted); font-size:17px; margin:0 0 22px; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 26px; }
+  .chip { font-size:13px; padding:4px 10px; border-radius:999px; background:var(--card); border:1px solid var(--line); color:var(--muted); }
+  .chip.ok { background:var(--ok-bg); color:var(--ok); border-color:transparent; }
+  .chip.warn { background:var(--warn-bg); color:var(--warn); border-color:transparent; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14.5px; }
+  th,td { text-align:left; padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+  th { background:var(--card); font-weight:600; }
+  code { font:13.5px/1.5 ui-monospace,Menlo,monospace; background:var(--code); padding:1px 5px; border-radius:5px; }
+  img { max-width:100%; border:1px solid var(--line); border-radius:10px; margin:10px 0 4px; }
+  .ket { color:var(--muted); font-size:13.5px; margin:2px 0 18px; }
+  .ok-t { color:var(--ok); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin:14px 0; }
+  .card.warn { background:var(--warn-bg); border-color:transparent; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PR-03 — UI antrean review + form rubrik</h1>
+  <p class="lede">Laporan verifikasi item PR-03 (Dev B, W7, PRD §7 E11). Layar antrean review peer di halaman <code>/squad</code>: daftar micro-task yang menunggu penilaian, form rubrik 4 kriteria, draf yang bertahan tutup halaman, dan pesan hasil jelas soal poin. Dikerjakan 24–25 Okt 2026.</p>
+  <div class="meta">
+    <span class="chip">Lingkungan: lokal (web :3005 · API :3002 · DB strive_e2e)</span>
+    <span class="chip ok">Browser 26/26 lulus · unit 29/29</span>
+    <span class="chip">Reviewer uji: strive-pr03-e2e@yopmail.com</span>
+    <span class="chip">Attempt bukti: 14cc42ae…</span>
+    <span class="chip">Basis pl02-template-riwayat (#255)</span>
+    <span class="chip ok">PR #258</span>
+  </div>
+
+  <h2>1 · Ringkasan</h2>
+  <p>Sebelum: endpoint <code>GET /reviews/queue</code> dan <code>POST /reviews/:id</code> (PR-02) sudah berdiri tapi tidak ada satu pun layar yang memakainya — pengguna tidak bisa menilai sesama anggota, dan dua review per attempt (PR-1) tidak akan pernah terpenuhi dari UI. Sesudah: halaman <code>/squad</code> memuat seksi "Antrean review" berisi attempt yang menunggu penilaian (judul lesson, tanggal, badge <code>sudah dinilai 0/2</code>), dan membuka satu item menampilkan jawaban penulis secara anonim plus form rubrik.</p>
+  <p>Dua acceptance criteria item terbukti: (1) <strong>rubrik menampilkan kriteria yang sama dengan yang dipakai mentor</strong> — daftar kriteria diambil dari konstanta tunggal yang dijaga drift-guard membaca <code>docs/PRD.md</code> PR-10 langsung (kejelasan, ketepatan, kelengkapan, sitasi; 0..5 per kriteria), jadi menyimpang dari PRD memerahkan test, bukan bergantung ketelitian; (2) <strong>draf penilaian tersimpan lokal kalau halaman tertutup</strong> — autosave tiap perubahan ke localStorage, nilai + komentar + kunci idempoten kembali utuh setelah reload, dan kunci itu TIDAK lahir ulang sehingga retry tetap satu review.</p>
+  <p>Keputusan desain: penilaian tetap dihitung server (aturan keras 9) — <code>rubrikLengkap</code> di sisi web hanya men-disable tombol kirim, tidak pernah memutuskan poin; identitas penulis tidak ada di UI karena memang tidak dikirim server (PR-2, bukan disembunyikan di sisi tampilan); kunci draf menjadi per-pengguna setelah audit (lihat seksi 5).</p>
+
+  <h2>2 · Batasan yang jujur</h2>
+  <div class="card warn">
+    <p>Dua keadaan uji yang perlu diketahui pembaca: (1) Attempt bukti dan akun uji <strong>disemai lewat psql</strong> — antrean butuh attempt milik pengguna lain yang sudah selesai, dan membuatnya lewat UI berarti menyelesaikan lesson sungguhan sebagai author; bentuk barisnya persis keluaran <code>POST /attempts</code> (termasuk <code>card_results</code> jsonb). (2) Fase cap PR-4 butuh <strong>5 review berpoin di hari yang sama</strong> oleh satu reviewer — empat di antaranya disemai langsung lewat psql (dua reviewer per attempt, sesuai PR-1) supaya submit ke-6 bisa dibuktikan tersimpan tanpa poin. Yang diuji browser adalah jalur sungguhan: antrean, draf, submit, dan pesan hasil semuanya lewat API.</p>
+  </div>
+
+  <h2>3 · Matriks skenario (26 cek)</h2>
+  <table>
+    <thead><tr><th>#</th><th>Skenario</th><th>Harapan</th><th>Hasil</th><th>Cara verifikasi</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Login reviewer</td><td>sesi terbentuk, mendarat di /hub</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>2a</td><td>Antrean tampil</td><td>tepat 1 item menunggu</td><td class="ok-t">LULUS (jumlah=1)</td><td>Playwright + Screenshot 01</td></tr>
+      <tr><td>2b</td><td>Info item</td><td>judul lesson + tanggal + badge "sudah dinilai 0/2"</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>3</td><td>PR-2 anonimitas</td><td>nama &amp; email penulis TIDAK tampil di mana pun</td><td class="ok-t">LULUS</td><td>Playwright (teks seksi)</td></tr>
+      <tr><td>4a</td><td>Aksesibilitas toggle</td><td>aria-expanded=true saat terbuka</td><td class="ok-t">LULUS</td><td>Playwright (getAttribute)</td></tr>
+      <tr><td>4b</td><td>AC-1: kriteria rubrik = PR-10</td><td>Kejelasan, Ketepatan, Kelengkapan, Sitasi — tanpa kriteria lain</td><td class="ok-t">LULUS</td><td>Playwright + unit drift-guard baca PRD</td></tr>
+      <tr><td>4c</td><td>Total awal</td><td>"Total rubrik: 0 / 20"</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>4d</td><td>Gerbang kirim</td><td>tombol kirim disabled saat draf kosong</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>5</td><td>Jawaban penulis tampil</td><td>teks jawaban + label benar/salah per kartu</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 02</td></tr>
+      <tr><td>6a</td><td>Dua kriteria terisi</td><td>tombol MASIH disabled (empat wajib)</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>6b</td><td>Total live</td><td>4+5 = "9 / 20" tanpa kirim apa pun</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>7a</td><td>AC-2: draf bertahan reload</td><td>skor 4/5 + komentar kembali utuh; dua kriteria lain tetap kosong</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 03</td></tr>
+      <tr><td>7b</td><td>Kunci idempoten melewati reload</td><td>kunci SAMA sebelum/sesudah (uuid 36 kar.) — retry = 1 review</td><td class="ok-t">LULUS</td><td>Playwright (baca localStorage)</td></tr>
+      <tr><td>7c</td><td>Gerbang setelah reload</td><td>tombol masih disabled (draf belum lengkap)</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>8a</td><td>Empat kriteria terisi</td><td>tombol kirim ENABLED</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 04</td></tr>
+      <tr><td>8b</td><td>Total akhir</td><td>4+5+3+2 = "14 / 20"</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>9</td><td>Submit berpoin</td><td>"+14 poin (1/5 review berpoin hari ini)"</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 05</td></tr>
+      <tr><td>10</td><td>PR-3 anti review ganda</td><td>attempt yang barusan dinilai HILANG dari antrean saya</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>10b</td><td>PR-1 dua reviewer</td><td>DB: attempt kini punya 1 dari 2 review (menunggu reviewer ke-2)</td><td class="ok-t">LULUS (reviews=1)</td><td>psql</td></tr>
+      <tr><td>11</td><td>Draf dibuang setelah sukses</td><td>localStorage kunci draf = null</td><td class="ok-t">LULUS</td><td>Playwright (evaluate)</td></tr>
+      <tr><td>12</td><td>Filter antrean</td><td>bait 2-review &amp; attempt ter-review tidak tampil; hanya attempt baru 0/2</td><td class="ok-t">LULUS (jumlah=1)</td><td>Playwright</td></tr>
+      <tr><td>13</td><td>AC-PR-3: cap PR-4</td><td>submit ke-6 hari itu: "tersimpan tanpa poin — jatah 5 habis"</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 06</td></tr>
+      <tr><td>14</td><td>Bukti DB cap</td><td>tepat 5 review berpoin hari itu; review ke-6 wp=0</td><td class="ok-t">LULUS (berpoin=5, wp6=0)</td><td>psql</td></tr>
+      <tr><td>15</td><td>375px mobile</td><td>tanpa scroll horizontal (scrollWidth=375)</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 07</td></tr>
+      <tr><td>16</td><td>Console</td><td>nol error sepanjang alur</td><td class="ok-t">LULUS</td><td>listener Playwright</td></tr>
+      <tr><td>17</td><td>Network</td><td>nol request 4xx/5xx</td><td class="ok-t">LULUS</td><td>listener Playwright</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4 · Coverage matrix varian</h2>
+  <table>
+    <thead><tr><th>Varian</th><th>Cakupan</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Kriteria rubrik (4)</td><td>keempat kriteria diisi bertahap (2 → 4); total live diuji di 0, 9, 14; nama kriteria dijaga drift-guard terhadap PRD PR-10</td><td class="ok-t">4/4</td></tr>
+      <tr><td>Gerbang tombol kirim</td><td>kosong, separuh (2 kriteria), lengkap — plus tetap disabled setelah reload draf separuh</td><td class="ok-t">3/3</td></tr>
+      <tr><td>Hasil submit (2)</td><td>berpoin (+14, 1/5) dan capped (tanpa poin, jatah habis)</td><td class="ok-t">2/2</td></tr>
+      <tr><td>Draf (3 keadaan)</td><td>tersimpan (reload), terhapus (sukses), per-pengguna (isolasi antar akun — unit test)</td><td class="ok-t">3/3</td></tr>
+      <tr><td>Antrean (3 filter)</td><td>belum direview (tampil), sudah 2 review (tidak), sudah dinilai saya (tidak)</td><td class="ok-t">3/3</td></tr>
+      <tr><td>Viewport</td><td>desktop 1280px + mobile 375px</td><td class="ok-t">2/2</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5 · Audit keamanan (agent-security)</h2>
+  <p>Audit dijalankan atas seluruh diff PR-03 sebelum commit. Nol temuan Critical/High. Wilayah yang diperiksa dan bersih: XSS (nol <code>dangerouslySetInnerHTML</code>, semua interpolasi lewat JSX), anonimitas PR-2 (bentuk data memang tanpa field author), kunci jawaban (<code>card_results</code> tanpa <code>why</code>), localStorage diperlakukan tak terpercaya (draf rusak/dimanipulasi dibuang), validasi skor sepenuhnya di server, rahasia (nol), konfigurasi (tak berubah), supply chain (nol dependensi baru).</p>
+  <table>
+    <thead><tr><th>Temuan</th><th>Severity</th><th>Tindakan</th></tr></thead>
+    <tbody>
+      <tr><td>Batas panjang <code>comment</code> (500) hanya di client — server menerima panjang berapa pun</td><td>Low</td><td><strong>Isu GitHub untuk Dev A</strong>: perbaikan menuntut kode error baru (terdaftar PRD §10.2 dulu) + penjaga <code>error-codes.spec.ts</code>, sebidang dengan service Dev A — pola preseden isu #233. Tidak ditambal buru-buru di PR ini supaya diff tetap satu bidang. <strong>Isu #257.</strong></td></tr>
+      <tr><td>Kunci draf localStorage tidak per pengguna — dua akun di satu profil browser saling mewarisi draf</td><td>Low</td><td><strong>Dipatch di PR ini</strong>: kunci jadi <code>strive:draf-review:v1:&lt;userId&gt;:&lt;attemptId&gt;</code>; identitas dari <code>GET /me</code>; gagal-tertutup (tanpa id, draf tidak dimuat/di-disimpan, kirim tetap jalan); 3 unit test isolasi baru.</td></tr>
+      <tr><td>Kartu true/false tampil "(tidak dijawab)" padahal dijawab (jawaban boolean, bukan string)</td><td>catatan</td><td><strong>Dipatch di PR ini</strong>: boolean dipakaikan label Ya/Tidak supaya tidak kembar dengan label benar/salah correctness.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6 · Bukti visual</h2>
+  <img src="images/01-antrean.png" alt="Antrean review satu item" />
+  <p class="ket">01 — /squad: seksi Antrean review, satu item menunggu (badge "sudah dinilai 0/2"), tanpa identitas penulis.</p>
+  <img src="images/02-form-rubrik.png" alt="Form rubrik terbuka" />
+  <p class="ket">02 — Form terbuka: jawaban penulis (anonim) + rubrik 4 kriteria PR-10, total 0/20, tombol kirim disabled.</p>
+  <img src="images/03-draf-kembali.png" alt="Draf kembali setelah reload" />
+  <p class="ket">03 — Setelah reload halaman: skor 4 + 5 dan komentar kembali utuh (AC draf), tombol masih disabled.</p>
+  <img src="images/04-lengkap.png" alt="Empat kriteria terisi" />
+  <p class="ket">04 — Empat kriteria terisi: total live 14/20, tombol kirim enabled.</p>
+  <img src="images/05-hasil.png" alt="Hasil submit berpoin" />
+  <p class="ket">05 — Submit sukses: "+14 poin (1/5 review berpoin hari ini)"; attempt hilang dari antrean (anti review ganda).</p>
+  <img src="images/06-capped.png" alt="Submit ke-6 tanpa poin" />
+  <p class="ket">06 — Submit ke-6 di hari yang sama: "tersimpan tanpa poin — jatah 5 habis" (cap PR-4, AC-PR-3).</p>
+  <img src="images/07-mobile-375.png" alt="Tampilan mobile 375px" />
+  <p class="ket">07 — 375px tanpa scroll horizontal.</p>
+
+  <h2>7 · Katalog regresi (kejatuhan saat mengerjakan)</h2>
+  <table>
+    <thead><tr><th>Pemicu</th><th>Gejala</th><th>Akar</th><th>Penjaga / perbaikan</th></tr></thead>
+    <tbody>
+      <tr><td>Menyisipkan <code>const reviewerId = psql(…)</code> di atas deklarasi <code>psql</code> pada script verifikasi</td><td>crash <code>ReferenceError: Cannot access 'psql' before initialization</code> sebelum browser dibuka</td><td>TDZ <code>const</code> — baris baru memakai fungsi yang dideklarasi di bawahnya</td><td>urutan deklarasi diperbaiki; bukan bug kode produk, dicatat supaya pola sisip-di-atas tidak diulang</td></tr>
+      <tr><td>Patch draf per-pengguna diterapkan saat web dev :3005 masih berdiri</td><td>7a hijau tapi 7b merah: draf LAMA (kunci tanpa userId) masih terbaca — kode baru tidak pernah dihidangkan</td><td>file watching tidak bekerja di mount Windows <code>/mnt/d</code> (drvfs tanpa inotify) — Next dev menghidangkan compile basi tanpa error</td><td>restart web sebelum verifikasi + pre-flight probe yang membaca bentuk kunci localStorage langsung; jangan percaya "server masih jalan" sebagai "kode terbaru" di WSL</td></tr>
+      <tr><td>Rerun verifikasi tanpa membersihkan data run sebelumnya</td><td>check 9 melaporkan "5/5" (harusnya 1/5) lalu seed bait menabrak <code>lesson_attempts_user_id_lesson_id_attempt_date_idx</code></td><td>4 review bait run pagi itu masih tercatat HARI INI (cap menghitung created_at hari lokal) dan attempt bait tanggal sama sudah ada</td><td>reset presisi sebelum tiap run: hapus attempt author hari ini + review reviewer di attempt utama; jangan hapus review reviewer di attempt lain (bait 24 Okt berguna sebagai filter antrean)</td></tr>
+      <tr><td>Kartu true/false dirender sebagai teks jawaban</td><td>tampil "(tidak dijawab)" padahal penulis menjawab</td><td><code>answer</code> kartu true/false adalah BOOLEAN (swipe kiri/kanan di lesson-player), bukan string — <code>??</code> fallback menelan <code>false</code>… tidak: <code>false</code> string-kosong bukan, ia lolos sebagai nilai falsy yang dibaca "tidak ada"</td><td><code>bacaKartu</code> menerima <code>string | boolean | null</code>; boolean dipakaikan label Ya/Tidak (temuan audit)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>8 · Kejadian fondasi: 3 advisory tinggi baru terbit di tengah gerbang</h2>
+  <div class="card warn">
+    <p>Run gerbang pertama merah di langkah kelima: audit-deps menemukan <strong>3 advisory high BARU tanpa satu commit pun</strong> (zod GHSA-mrhx-c7xc-m3w5, body-parser GHSA-27r3-jxmh-p828, multer GHSA-q7qp-rjg7-q26m) — kelas kejadian yang sama dengan braces (#199/#201) dan brace-expansion (#185), kelimanya kalender advisory, bukan kode siapa pun. Ditangani di sesi yang sama:</p>
+    <ul>
+      <li><strong>body-parser 1.20.4 → 1.20.9 dan multer 2.0.2 → 2.5.0</strong> ditambal lewat <code>pnpm.overrides</code> root (keduanya transitive <code>@nestjs/platform-express</code>, tambal sesama major — pola preseden brace-expansion). <code>pnpm install</code> + lockfile + audit bersih.</li>
+      <li><strong>zod</strong>: tambalannya hanya di major 4, sementara contracts memakai v3 — upgrade major = perubahan breaking contracts = PR terpisah (isu <strong>#256</strong>). Sementara: pengecualian tertulis di <code>security/pengecualian.json</code> dengan alasan jangkauan yang diverifikasi (zod nol di server — apps/api tak punya dependensi zod dan impor contracts produksinya <code>import type</code> semata; zod hanya jalan di browser) dan tanggal tinjau ulang 2026-11-08, lebih pendek dari pengecualian lain karena ini utang, bukan keputusan.</li>
+    </ul>
+  </div>
+
+  <h2>9 · Verifikasi perintah</h2>
+  <table>
+    <thead><tr><th>Perintah</th><th>Hasil</th></tr></thead>
+    <tbody>
+      <tr><td><code>pnpm --filter @strive/web test</code></td><td>29/29 review-queue (termasuk drift-guard PRD PR-10, isolasi draf per pengguna, draf rusak dibuang); workspace web 154/154</td></tr>
+      <tr><td>Script browser (Playwright, stack e2e)</td><td>26/26 PASS, gagal 0 — run bukti DIMULAI setelah perubahan kode terakhir</td></tr>
+      <tr><td><code>pnpm lint &amp;&amp; pnpm typecheck &amp;&amp; pnpm test &amp;&amp; pnpm build &amp;&amp; node scripts/audit-deps.mjs</code></td><td><span class="ok-t">LULUS</span> — <code>GATES_EXIT=0</code> (25 Okt, run dimulai setelah perubahan terakhir). audit-deps: 12 tinggi/kritis · 12 dikecualikan · 0 baru · 0 basi.</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
