@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PR-04 - Konsol mentor: antrean validasi review</title>
+<style>
+  :root { --bg:#fff; --fg:#16181d; --muted:#5b6270; --line:#e3e6ec; --card:#f7f8fa; --ok:#0f7b3f; --ok-bg:#e6f4ec; --warn:#8a5a00; --warn-bg:#fdf3e2; --code:#f2f3f6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#e8eaef; --muted:#a0a7b4; --line:#2b2f37; --card:#1b1e24; --ok:#6ede9e; --ok-bg:#16301f; --warn:#f0c274; --warn-bg:#35280f; --code:#1f232a; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-size:28px; margin:0 0 8px; } h2 { font-size:21px; margin:44px 0 12px; padding-top:18px; border-top:1px solid var(--line); }
+  .lede { color:var(--muted); font-size:17px; margin:0 0 22px; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 26px; }
+  .chip { font-size:13px; padding:4px 10px; border-radius:999px; background:var(--card); border:1px solid var(--line); color:var(--muted); }
+  .chip.ok { background:var(--ok-bg); color:var(--ok); border-color:transparent; }
+  .chip.warn { background:var(--warn-bg); color:var(--warn); border-color:transparent; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14.5px; }
+  th,td { text-align:left; padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+  th { background:var(--card); font-weight:600; }
+  code { font:13.5px/1.5 ui-monospace,Menlo,monospace; background:var(--code); padding:1px 5px; border-radius:5px; }
+  img { max-width:100%; border:1px solid var(--line); border-radius:10px; margin:10px 0 4px; }
+  .ket { color:var(--muted); font-size:13.5px; margin:2px 0 18px; }
+  .ok-t { color:var(--ok); font-weight:600; }
+  .warn-t { color:var(--warn); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin:14px 0; }
+  .card.warn { background:var(--warn-bg); border-color:transparent; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PR-04 — Konsol mentor: antrean validasi review</h1>
+  <p class="lede">Laporan verifikasi item PR-04 (Dev B, W7, PRD §7 E11). Layar <code>/mentor</code> tempat mentor menyetujui atau menolak penilaian peer anggota squad binaannya: approve menyalakan 15 koin untuk reviewer (selama review itu berpoin), reject wajib catatan, keputusan pertama final. Dikerjakan 25 Okt 2026.</p>
+  <div class="meta">
+    <span class="chip">Lingkungan: lokal (web :3005 · API :3002 · DB strive_e2e)</span>
+    <span class="chip ok">Browser 24/24 lulus · unit 8/8 · integrasi 13/13</span>
+    <span class="chip">Mentor uji: strive-pr04-mentor-1792929657@yopmail.com</span>
+    <span class="chip">Review bukti: f3bc5243 (approve) · 28c85724 (tolak)</span>
+    <span class="chip">Basis pr03-antrean-rubrik (stack #258)</span>
+  </div>
+
+  <h2>1 · Ringkasan</h2>
+  <p>Sebelum: penilaian peer sudah bisa dikirim pengguna lewat UI PR-03, tapi tidak ada satu pun layar untuk mentor menutupinya — review menumpuk tanpa keputusan, dan janji PRD bahwa review berpoin layak dapat 15 koin setelah divalidasi mentor tidak pernah bisa terpenuhi dari produk. Sesudah: mentor yang login masuk ke <code>/mentor</code>, melihat antrean review yang dibuat anggota squad binaannya (nama reviewer, judul lesson, skor rubrik total, badge berpoin atau di luar jatah), membuka satu kartu untuk membaca rubrik yang dikirim reviewer beserta komentarnya, lalu memutuskan: Setujui (catatan opsional) atau Tolak (catatan wajib).</p>
+  <p>Dua acceptance criteria item terbukti: (1) <strong>mentor hanya melihat review dari squad binaannya</strong> — kepemilikan dijawab di service dengan query join ke <code>squads.mentor_id</code> (guard hanya menjawab peran; superadmin lolos middleware tapi antreannya kosong karena ia bukan mentor_id squad mana pun); (2) <strong>menyetujui review memicu entri koin untuk reviewer tepat sekali</strong> — koin ditulis lewat <code>CoinLedgerService</code> (aturan keras 3), tepat sekali dijaga tiga lapis: cek <code>mentor_checked</code> setelah <code>FOR UPDATE</code>, index unik <code>coin_ledger_ref_uniq</code> migrasi 010, dan <code>findExisting</code> di service koin; keputusan kedua dijawab <code>already_validated</code> tanpa melempar dan tanpa baris ledger baru.</p>
+  <p>Keputusan desain: skor yang tampil adalah skor yang dikirim reviewer (mentor memvalidasi, tidak menilai ulang); identitas penulis attempt tidak ada karena memang tidak pernah dikirim server (PR-2, anti-kolusi); tidak ada draf lokal karena keputusan bersifat final di server — menyimpan draf hanya menggoda menunda; review dengan <code>weighted_points = 0</code> (penulis cap 5 berpoin/hari PR-4 reviewer) tetap bisa divalidasi tapi tanpa koin, sesuai janji PRD bahwa mentor menutup review tanpa mencetak koin ke-6.</p>
+
+  <h2>2 · Batasan yang jujur</h2>
+  <div class="card warn">
+    <p>Tiga keadaan uji yang perlu diketahui pembaca: (1) Data uji <strong>disemai lewat psql</strong> — antrean butuh review dari anggota squad binaan yang mentornya akun uji, dan membuatnya lewat UI berarti menyelesaikan lesson sungguhan sebagai dua pengguna; bentuk barisnya persis keluaran <code>POST /attempts</code> dan <code>POST /reviews</code>. (2) Verifikasi browser dijalankan <strong>dua kali</strong>: data run pertama tetap tercatat karena <code>coin_ledger</code> append-only (trigger menolak DELETE, aturan keras 1) dan satu reviewer hanya boleh satu review per attempt (index unik), jadi run kedua memakai attempt dan review baru — dua baris <code>earn_review</code> berbeda ref_id untuk reviewer yang sama justru jadi bukti ledger terus bertambah tanpa bisa diretas balik. (3) Uji idempotensi dan review asing dieksekusi lewat <code>fetch</code> dari dalam sesi mentor di browser (bukan lewat UI), karena UI dengan benar menyembunyikan kartu yang sudah divalidasi — respons JSON lengkap ditampilkan sebagai overlay di screenshot.</p>
+  </div>
+
+  <h2>3 · Matriks skenario (24 cek)</h2>
+  <table>
+    <thead><tr><th>#</th><th>Skenario</th><th>Harapan</th><th>Hasil</th><th>Cara verifikasi</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Login mentor</td><td>sesi terbentuk, mendarat di /hub</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 01</td></tr>
+      <tr><td>2</td><td>Antrean binaan tampil</td><td>tepat 2 kartu menunggu</td><td class="ok-t">LULUS (jumlah=2)</td><td>Playwright + Screenshot 02</td></tr>
+      <tr><td>3</td><td>Nama reviewer tampil</td><td>"PR04 rev1" pada kedua kartu</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>4</td><td>Judul lesson tampil</td><td>2 judul lesson attempt berbeda</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>5</td><td>Badge berpoin</td><td>"berpoin +6" pada kartu pertama</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>6</td><td>Badge di luar jatah</td><td>"di luar jatah berpoin" pada kartu capped</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>7</td><td>Skor total</td><td>16/20 dan 11/20</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>8</td><td>PR-2 anonimitas</td><td>nama &amp; id PENULIS tidak tampil di mana pun</td><td class="ok-t">LULUS</td><td>Playwright (teks antrean)</td></tr>
+      <tr><td>9</td><td>Rubrik reviewer readonly</td><td>kejelasan 5/5 · sitasi 4/5</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 03</td></tr>
+      <tr><td>10</td><td>Komentar reviewer tampil</td><td>teks komentar run 2 terbaca</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>11</td><td>Tolak terkunci tanpa catatan</td><td>tombol Tolak disabled</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>12</td><td>Setujui aktif</td><td>tombol Setujui bisa diklik</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>13</td><td>Approve berpoin</td><td>pesan "Disetujui. 15 koin tercatat untuk reviewer."</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 04</td></tr>
+      <tr><td>14</td><td>Kartu keluar antrean</td><td>kartu yang divalidasi lenyap dari daftar</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>15</td><td>Idempotensi (edge)</td><td>approve kedua: 200/201, already_validated=true, awarded=false</td><td class="ok-t">LULUS (201)</td><td>fetch sesi browser + Screenshot 05</td></tr>
+      <tr><td>16</td><td>Tolak capped terkunci dulu</td><td>tombol Tolak disabled sebelum catatan</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>17</td><td>Tolak capped terbuka</td><td>tombol Tolak aktif setelah catatan diisi</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>18</td><td>Reject tanpa koin</td><td>pesan "Ditolak dengan catatan. Reviewer tidak menerima koin."</td><td class="ok-t">LULUS</td><td>Playwright + Screenshot 06</td></tr>
+      <tr><td>19</td><td>Antrean habis</td><td>0 kartu tersisa setelah dua keputusan</td><td class="ok-t">LULUS (0)</td><td>Playwright + Screenshot 07</td></tr>
+      <tr><td>20</td><td>Review asing (negative)</td><td>403 FORBIDDEN_ROLE untuk review squad lain</td><td class="ok-t">LULUS</td><td>fetch sesi browser + Screenshot 08</td></tr>
+      <tr><td>21</td><td>Console bersih</td><td>0 error di luar jejak 403 yang dipicu skenario 20 sendiri</td><td class="ok-t">LULUS</td><td>Playwright console listener</td></tr>
+      <tr><td>22</td><td>Network bersih</td><td>0 request 4xx/5xx tak terduga</td><td class="ok-t">LULUS</td><td>Playwright response listener</td></tr>
+      <tr><td>23</td><td>Login mobile</td><td>sesi jalan di viewport 375px</td><td class="ok-t">LULUS</td><td>Playwright</td></tr>
+      <tr><td>24</td><td>375px tanpa scroll horizontal</td><td>scrollWidth ≤ 375</td><td class="ok-t">LULUS (375)</td><td>Playwright + Screenshot 09</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4 · Screenshot bukti</h2>
+  <img src="images/01-login-mentor.png" alt="Login mentor" />
+  <p class="ket">01 — Login mentor uji, mendarat di /hub.</p>
+  <img src="images/02-antrean.png" alt="Antrean konsol mentor" />
+  <p class="ket">02 — Antrean 2 kartu binaan: skor 16/20 berpoin +6 dan 11/20 di luar jatah berpoin. Identitas penulis tidak tampil. (Tombol bulat "N" kiri bawah adalah indikator dev Next.js, bukan bagian aplikasi.)</p>
+  <img src="images/03-kartu-rubrik.png" alt="Kartu rubrik reviewer" />
+  <p class="ket">03 — Kartu terbuka: rubrik readonly yang dikirim reviewer (kejelasan 5/5, sitasi 4/5), komentar reviewer, kolom catatan, Tolak terkunci tanpa catatan.</p>
+  <img src="images/04-approve.png" alt="Approve berpoin" />
+  <p class="ket">04 — Approve dengan catatan: pesan hasil "Disetujui. 15 koin tercatat untuk reviewer."</p>
+  <img src="images/05-idempoten.png" alt="Idempotensi" />
+  <p class="ket">05 — Approve kedua via fetch sesi mentor (overlay atas): status 201, <code>already_validated: true</code>, <code>awarded: false</code> — tidak ada koin ganda.</p>
+  <img src="images/06-reject-capped.png" alt="Reject review capped" />
+  <p class="ket">06 — Tolak review di luar jatah berpoin dengan catatan: reviewer tidak menerima koin. Kartu capped sudah keluar dari antrean di frame ini (muat ulang antrean selesai sebelum screenshot), itulah sebabnya 06 dan 07 byte-identik — halaman statis tanpa jam berjalan.</p>
+  <img src="images/07-antrean-kosong.png" alt="Antrean kosong" />
+  <p class="ket">07 — Setelah dua keputusan: assert DOM menghitung <code>0 kartu</code> tersisa; frame ini (identik dengan 06, diambil 1,5 dtk kemudian) memperlihatkan halaman tanpa satu kartu antrean, hanya kartu hasil keputusan terakhir.</p>
+  <img src="images/08-forbidden.png" alt="Review asing ditolak" />
+  <p class="ket">08 — POST validate review squad lain via sesi mentor (overlay bawah): 403 <code>FORBIDDEN_ROLE</code> — kepemilikan dijaga service, bukan cuma guard peran.</p>
+  <img src="images/09-mobile-375.png" alt="Tampilan mobile 375px" />
+  <p class="ket">09 — Viewport 375px: layout satu kolom, scrollWidth 375 (tanpa scroll horizontal).</p>
+
+  <h2>5 · Katalog regresi</h2>
+  <p>Yang ketemu selama verifikasi PR-04, dipetakan supaya tidak diulang. Tiga yang pertama adalah bug script verifikasi (bukan aplikasi), dua terakhir jebakan lingkungan yang mencatat waktu nyata:</p>
+  <table>
+    <thead><tr><th>Pemicu</th><th>Gejala</th><th>Sebab</th><th>Perbaikan / perlakuan</th></tr></thead>
+    <tbody>
+      <tr><td>Approve kedua lewat fetch</td><td>assert idempotensi FAIL padahal perilaku benar</td><td>respons sukses POST NestJS adalah <strong>201</strong>, bukan 200; assert menuntut persis 200</td><td>assert menerima 200/201 — respons sukses bukan kontrak satu angka</td></tr>
+      <tr><td>Cek "Antrean kosong" setelah keputusan</td><td>teks "Antrean kosong" tidak tampil, assert FAIL</td><td>cabang render <code>antrean.length === 0 &amp;&amp; !hasil</code>: saat kartu hasil masih tampil, teks kosong memang tidak dirender (perilaku benar)</td><td>assert diganti ke hitungan kartu = 0 — uji keadaan yang benar-benar dirender, bukan teks yang kita bayangkan</td></tr>
+      <tr><td>Listener console selama skenario 403</td><td>"console tanpa error" FAIL</td><td>browser mencatat resource 4xx sebagai console error otomatis — 403 itu berasal dari fetch FORBIDDEN_ROLE yang skenario uji picu sendiri</td><td>filter jejak 403 milik skenario; error lain tetap harus nol</td></tr>
+      <tr><td>Web dev tanpa <code>API_URL</code></td><td>/mentor redirect ke /login, antrean tak pernah render (timeout 120 dtk)</td><td><code>apps/web/middleware.ts</code> membaca <code>API_URL</code> sisi server (default :3001), BUKAN <code>NEXT_PUBLIC_API_URL</code> — saat API jalan di port lain, middleware memanggil /me ke port salah</td><td>start web dengan <code>API_URL</code> eksplisit; dicatat sebagai jebakan fondasi di laporan auto-mode</td></tr>
+      <tr><td>Ingin rerun E2E dengan data sama</td><td>tidak bisa reset</td><td><code>coin_ledger</code> append-only (trigger menolak DELETE) dan index unik satu review per reviewer per attempt</td><td>rerun memakai attempt + review baru; jejak run lama justru bukti append-only hidup (lihat seksi 6)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6 · Bukti database</h2>
+  <p>Query langsung ke <code>strive_e2e</code> setelah skenario selesai (dua run verifikasi digabung):</p>
+  <table>
+    <thead><tr><th>Pertanyaan</th><th>Hasil</th><th>Artinya</th></tr></thead>
+    <tbody>
+      <tr><td>Baris <code>earn_review</code> reviewer PR04 rev1</td><td>2 baris @ +15 (ref_id 7b8cf602 run-1, f3bc5243 run-2)</td><td>ledger append-only terjaga: baris lama tidak bisa dihapus, run baru menambah baris baru</td></tr>
+      <tr><td><code>users.coin_balance</code> rev1</td><td>30</td><td>sama dengan <code>SUM(coin_ledger.amount)</code> — aturan keras 2 (cache = kebenaran ledger)</td></tr>
+      <tr><td>Status 4 review rev1</td><td>semua <code>mentor_checked = t</code></td><td>keputusan mentor menutup review; keputusan pertama final</td></tr>
+      <tr><td><code>audit_log</code> aksi mentor</td><td>4 entri <code>mentor.review.validate</code> (2 approve, 2 reject)</td><td>tiap keputusan tercatat dengan pelaku dan before/after</td></tr>
+    </tbody>
+  </table>
+
+  <h2>7 · Cakupan varian &amp; gerbang</h2>
+  <table>
+    <thead><tr><th>Gerbang</th><th>Cakupan</th><th>Hasil</th></tr></thead>
+    <tbody>
+      <tr><td>Unit (<code>mentor.service.spec.ts</code>)</td><td>pesan hasil, guard catatan, mapping galat</td><td class="ok-t">8/8 lulus</td></tr>
+      <tr><td>Integrasi DB nyata (<code>mentor-validate.integration.spec.ts</code>)</td><td>14 test: kepemilikan antrean, anonimitas respons, koin tepat sekali (3 lapis), finalitas keputusan, capped tanpa koin, FORBIDDEN_ROLE, NOT_FOUND, reviewer keluar squad, self-validation</td><td class="ok-t">14/14 lulus</td></tr>
+      <tr><td>Browser (Playwright)</td><td>24 cek: golden path + negative + edge, desktop 1280px &amp; mobile 375px</td><td class="ok-t">24/24 lulus</td></tr>
+      <tr><td>Gerbang repo (lint · typecheck · test · build · audit-deps)</td><td>lima langkah, dijalankan setelah perubahan terakhir (termasuk penjaga audit L1), tanpa dev server hidup</td><td class="ok-t">hijau (EXIT=0)</td></tr>
+      <tr><td>Audit keamanan</td><td>seluruh file PR-04 (API + web) oleh agen audit terpisah, sebelum commit</td><td class="warn-t">0 Kritis/Tinggi/Sedang; 1 Low DIPASANG di PR ini, 2 Info tanpa tindakan — detail di bawah</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="audit">8 · Audit keamanan (agen terpisah, sebelum commit)</h2>
+  <p>Empat wilayah diperiksa penuh: celah kode aplikasi, rahasia bocor, dependency, konfigurasi. Hasil: <strong>0 Kritis / 0 Tinggi / 0 Sedang</strong>, 1 Low (dipasang penjaganya di PR ini), 2 Info tanpa tindakan.</p>
+  <table>
+    <thead><tr><th>Temuan</th><th>Isi</th><th>Tindakan</th></tr></thead>
+    <tbody>
+      <tr><td>L1 (Low)</td><td>Validasi review yang ditulis mentor SENDIRI tidak dicek. Mentor sah saja menjadi <em>anggota</em> squad (<code>eligibleUsers</code> tidak memfilter peran saat <code>formSquads</code>); bila kebetulan ditunjuk mentor squad tempat dia anggota, dia bisa menyetujui reviewnya sendiri: +15 koin per review, maksimum 75/hari oleh cap berpoin. Jalurnya lahir dari penunjukan admin, itu sebabnya Low bukan Medium.</td><td class="ok-t">DIPASANG: satu cabang <code>FORBIDDEN_ROLE</code> di <code>mentor.service.ts</code> + test integrasi "self-validation"; penjaga dibuktikan merah saat disabotase (<code>false &amp;&amp;</code>) sebelum dijalankan hijau 14/14.</td></tr>
+      <tr><td>Info 1</td><td>404 sebelum 403 memberi oracle keberadaan review bagi mentor dengan ID tebakan. ID <code>peer_reviews</code> uuid buatan server, enumerasi tidak praktis; urutan 404-dulu konvensi repo (squad.service, squad-read.service).</td><td>tanpa tindakan, dicatat supaya tidak dilaporkan ulang sebagai celah</td></tr>
+      <tr><td>Info 2</td><td>Komentar usang "OriginCsrfGuard" di <code>session.guard.ts:42</code> (file LAMA, bukan diff PR ini); perlindungan CSRF yang nyata ada di <code>token-sesi.ts</code> (cookie hanya dipercaya kalau Origin tidak asing).</td><td>di luar PR ini; disebut di body PR untuk pemilik file</td></tr>
+    </tbody>
+  </table>
+  <p>Yang diperiksa dan bersih: semua query lewat query builder Kysely ter-bind (nol <code>sql``</code> dengan input user), React auto-escape tanpa <code>dangerouslySetInnerHTML</code>, POST dijaga CSRF lewat mekanisme #154 opsi (b), nol rute terbuka tak sengaja (ACCESS_MATRIX cocok dengan <code>@Roles</code>), race double-approve tertutup <code>FOR UPDATE</code> + index migrasi 010, jumlah koin konstanta server dengan drift-guard, identitas penulis tidak pernah di-SELECT, nol kredensial di file baru, nol perubahan manifest dependency, CORS tetap fail-closed.</p>
+</div>
+</body>
+</html>
