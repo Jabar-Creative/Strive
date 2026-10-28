@@ -399,9 +399,15 @@ Item belum selesai sampai **semua** baris ini benar:
 > sampai saat itu, tidak ada staging untuk di-deploy, dan DoD yang mensyaratkannya membuat
 > **nol item bisa `done`** — termasuk item yang sudah ter-merge dan ter-review.
 >
-> **Staging sudah BERDIRI sejak 25 Sep 2026 (isu #151) dan itu belum mengubah apa pun
-> di sini** — `F-05` masih `review`, V1–V13 belum terbukti. Jangan membaca "URL-nya
-> hidup" sebagai "staging siap". Lihat bagian **Staging** di bawah.
+> **Staging berdiri 25 Sep 2026 dan MATI 26 Okt 2026 (isu #151), dan baris DoD ini
+> tetap dilonggarkan — sekarang tanpa pilihan lain.** `F-05` berstatus `blocked`:
+> **dua belas dari tiga belas V terbukti**, dan satu-satunya yang tersisa (V13,
+> rollback terukur) mustahil tanpa deployment yang hidup. Jangan membaca "URL web
+> masih 200" sebagai "staging ada" — Vercel hidup tanpa backend. Lihat bagian
+> **Staging** di bawah.
+>
+> Blok ini sebelumnya menulis "V1–V13 belum terbukti", dan itu basi sejak akhir
+> September.
 >
 > **Saat Dev A bilang "staging ready": kembalikan baris pertama menjadi**
 > `Ter-merge ke `main` **dan ter-deploy ke staging**`, hapus blok catatan ini, lalu
@@ -463,16 +469,48 @@ sebelum me-merge-nya** — tidak ada lagi yang melakukannya untukmu.
 
 ---
 
-## Staging — berdiri 25 September 2026, BELUM dinyatakan siap
+## Staging — berdiri 25 September 2026, MATI 26 Oktober 2026
 
-Ringkasan hidupnya ada di **isu #151**; yang di sini cuma yang perlu diketahui
-sebelum menyentuh sesuatu. `F-05` berstatus `review`, bukan `done`.
+Ringkasan hidupnya ada di **isu #151**. `F-05` berstatus **`blocked`** sejak
+28 Okt 2026, bukan `review` dan bukan `done` — lihat di bawah.
 
-**Per 27 Sep: sepuluh dari tiga belas V terbukti** (`docs/reports/F-05/README.md`).
-Yang menahan tinggal tiga, dan tidak satu pun soal kode: **V11** staging belum
-punya konten (workflow tidak menjalankan `pnpm seed`), **V13** rollback butuh
-akses Railway, dan **V8** tidak berlaku sampai router `AI-01` ada. Pipeline
-deploy sendiri sudah terbukti bekerja ujung ke ujung.
+> ## ⚠ Staging Railway MATI sekitar 26 Oktober 2026
+>
+> Diukur 28 Okt: `api` dan `ai` menjawab **`404 Application not found`** dari
+> edge Railway. Itu bukan 502 dari service yang sakit — service-nya **sudah
+> tidak ada**. Kredit trial habis seperti yang dijadwalkan kalender sejak awal.
+> Web di Vercel tetap 200, **tanpa backend**.
+>
+> **Pemicu otomatis `deploy-staging.yml` DIMATIKAN**, `workflow_dispatch`
+> dipertahankan. Sebelum dimatikan, enam run berturut-turut gagal di job
+> `migrasi` (`read ECONNRESET`) — dan urutannya menahan dengan benar: migrasi
+> gagal sebelum apa pun ter-deploy, `web` tidak pernah naik mendahului API-nya,
+> `tandai` tidak memajukan penanda. Yang rusak bukan pipeline.
+>
+> Deploy sukses terakhir `a56cb96` (20 Okt); tag `staging-live` masih di situ.
+>
+> **Jangan membaca bagian di bawah sebagai keadaan hari ini.** Alamat, perilaku,
+> dan temuan di situ berlaku untuk instance yang sudah mati; ia dipertahankan
+> karena ia yang menjelaskan bagaimana staging dibangun dan apa yang sudah
+> terbukti di atasnya.
+
+**Dua belas dari tiga belas V TERBUKTI** (`docs/reports/F-05/README.md`): V1–V6,
+V9, V10, V12 (25 Sep), **V7** (27 Sep, setelah #152), **V11** (28 Sep, setelah
+job semai #168), **V8** (30 Sep, setelah router `AI-01` #183). Pipeline deploy
+sendiri terbukti bekerja ujung ke ujung.
+
+> **Blok ini sebelumnya menulis "sepuluh dari tiga belas" dan menyebut V11 serta
+> V8 masih menahan.** Keduanya lulus akhir September dan kalimat ini tidak ikut
+> berubah selama sebulan — persis pola yang tabel jebakan di bawah namai:
+> catatan yang benar saat ditulis, berhenti benar, dan tidak ada apa pun yang
+> memerahkannya. Dikoreksi 28 Okt.
+
+**Yang menahan `F-05` tinggal SATU: V13 (rollback terukur) — dan ia sekarang
+MUSTAHIL.** Rollback hanya bisa diukur terhadap deployment yang hidup. Baris itu
+bukan tertunda; ia hilang bersama instance-nya, dan peringatannya tertulis tiga
+kali (13, 17, 20 Okt) dengan kalimat yang sama. `blocked`, bukan `review`, karena
+yang menahannya berpindah dari "akses" ke **keputusan biaya** — sejenis dengan
+`P-02`/`K-03`/`SA-04` yang menunggu vendor.
 
 | Proses | Tempat | Catatan |
 |---|---|---|
@@ -507,8 +545,12 @@ Vercel → smoke. Berkasnya `.github/workflows/deploy-staging.yml`,
    menambahkannya ke `DATABASE_URL` privat. Lihat baris `sslmode` di tabel
    jebakan.
 4. **Jangan mengembalikan baris DoD "ter-deploy ke staging"** hanya karena
-   staging sudah hidup. Itu menunggu pengumuman Dev A, dan pengumuman itu
-   menuntut V1–V13 terbukti lebih dulu.
+   staging hidup kembali. Itu menunggu pengumuman Dev A, dan pengumuman itu
+   menuntut **V13** terbukti lebih dulu — dua belas V lain sudah terbukti di
+   instance yang mati, dan bukti itu TIDAK otomatis berlaku untuk instance
+   baru. Staging baru di penyedia lain berarti V1–V12 perlu dijalankan ulang,
+   karena yang dibuktikan kebanyakan baris itu adalah perilaku
+   infrastrukturnya, bukan perilaku kodenya.
 
 **Yang mati di staging, dan sebabnya** — supaya tidak dikira bug baru:
 tidak ada email (`RESEND_API_KEY` kosong, jadi reset password mustahil dan
@@ -524,20 +566,29 @@ lalu mencatat "Worker pool hidup": **tujuh** job berkala berdiri lengkap,
 teruji, dan ditandai `done` di papan tanpa satu pun pernah dipanggil di
 produksi. `PenjadwalService` sekarang menyalakan ketujuhnya.
 
-**Railway trial: kredit US$5, tanpa metode bayar.** Perkiraan pemakaian
-±US$6–7/bulan, jadi seluruh service Railway akan **berhenti sekitar 20–25 hari
-sejak 25 Sep** tanpa peringatan tagihan — web di Vercel tetap hidup tapi tanpa
-backend. Ini tenggat kalender, bukan risiko.
+**Railway trial: kredit US$5, tanpa metode bayar — dan tenggatnya SUDAH LEWAT.**
+Perkiraan pemakaian ±US$6–7/bulan, jadi seluruh service Railway akan berhenti
+sekitar 20–25 hari sejak 25 Sep tanpa peringatan tagihan. Ini ditulis sebagai
+tenggat kalender, bukan risiko — dan ia terjadi seperti itu.
 
-> **Diukur 13 Okt (hari ke-18): masih HIDUP.** `api`, `ai`, dan web ketiganya
-> menjawab 200, dan `/health/ready` melaporkan `database: ok, redis: ok`. Yang
-> TIDAK bisa dijawab dari terminal: apakah metode bayarnya sudah dipasang, atau
-> kreditnya sekadar lebih awet daripada perkiraan. Jadi perkiraan 20–25 hari
-> jangan dibaca sebagai sudah terlewati — dibaca sebagai **belum terbukti**.
+> **Riwayat pengukurannya, karena ia pelajaran tentang membaca "masih hidup":**
 >
-> Dan jangan menjadikan "staging menjawab 200 hari ini" alasan menunda **V13**:
-> rollback terukur butuh akses Railway, jadi ia jadi mustahil dibuktikan tepat
-> pada hari kreditnya habis.
+> | Tanggal | Hari ke- | Hasil |
+> |---|---:|---|
+> | 13 Okt | 18 | HIDUP · `database: ok, redis: ok` |
+> | 17 Okt | 22 | HIDUP · sama |
+> | 20 Okt | 25 | HIDUP · sama — **deploy sukses terakhir, `a56cb96`** |
+> | 28 Okt | 33 | **MATI** · `404 Application not found` |
+>
+> Tiga pengukuran "masih hidup" berturut-turut, dan tidak satu pun dari
+> ketiganya memberi informasi tentang kapan ia akan mati — yang mereka ukur
+> keadaan hari itu, bukan sisa kreditnya. Itu sebabnya catatan 13 Okt menolak
+> membaca "hidup di hari ke-18" sebagai "perkiraan 20–25 hari sudah terlewati",
+> dan penolakan itu ternyata benar.
+>
+> **Dan V13 hilang persis seperti yang diperingatkan tiga kali:** rollback
+> terukur hanya mungkin terhadap deployment yang hidup. Peringatan yang benar
+> tapi tidak ditindaklanjuti tetap berakhir dengan hal yang diperingatkannya.
 
 ---
 

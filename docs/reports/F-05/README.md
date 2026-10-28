@@ -84,7 +84,7 @@ Terhadap deployment yang sedang melayani (`c8dd108`). Perintah dan keluarannya d
 | V10 | Daftar, masuk, refresh, masih masuk | **LULUS di Chrome.** Registrasi lewat halaman web sungguhan → mendarat di `/hub` dengan sesi aktif → muat ulang penuh → **masih masuk**. Cookie `__Secure-better-auth.session_token; HttpOnly; Secure; SameSite=None` — keputusan opsi A (#149) bekerja. **Safari/iOS belum diuji** dan tetap risiko ITP |
 | V11 | Satu lesson, koin, ledger, rekonsiliasi nol baris | **LULUS** — 28 Sep, setelah job semai (#168) dijalankan. `/hub` mengembalikan lesson sungguhan; `POST /attempts` menjawab `rewarded: true`, `score: 0` (tebakan salah, **dinilai server**), `points: 5`, `coins: 8`, streak dibuat, quest naik. Kirim ulang dengan Idempotency-Key SAMA → saldo tetap 8 dan ledger tetap **satu** entri `earn_lesson` +8 ber-`ref_type: attempt`. `users.coin_balance` = `SUM(coin_ledger)` |
 | V12 | WebSocket subscribe | **LULUS.** WSS ke `/api/v1/ws` dengan `transports: ['websocket']` saja (bukan polling): tersambung, handshake menolak sesi palsu dengan pesan yang benar, lalu dengan sesi sah `subscribe` **dijawab** `FORBIDDEN_ROLE` — artinya `canRead` benar-benar meng-query Postgres dan handler membalas, bukan menggantung (jebakan yang ditutup #144) |
-| V13 | Rollback diukur | **TIDAK TERBUKTI.** Butuh akses dashboard/CLI Railway; CLI tidak terpasang di mesin yang menjalankan verifikasi ini. Tetap milik manusia |
+| V13 | Rollback diukur | **TIDAK TERBUKTI, dan sejak 28 Okt 2026 TIDAK BISA LAGI dibuktikan di instance ini.** Staging Railway mati sekitar 26 Okt (kredit trial habis, #151): `api` dan `ai` menjawab `404 Application not found` dari edge Railway — service-nya sudah tidak ada, bukan sakit. Rollback hanya bisa diukur terhadap deployment yang HIDUP, jadi baris ini bukan tertunda melainkan **hilang bersama instance-nya**. Peringatannya tertulis tiga kali (13, 17, 20 Okt) dengan kalimat yang sama: *rollback terukur jadi mustahil dibuktikan tepat pada hari kreditnya habis.* Yang dibutuhkan untuk menghidupkannya kembali bukan akses, melainkan **staging baru** — dan itu keputusan biaya. Prosedurnya sendiri tetap tertulis di `docs/runbooks/rollback-staging.md`, dan tetap belum pernah diukur siapa pun |
 
 ### Susulan 27 September — V7 lulus, dan deploy akhirnya mendarat
 
@@ -95,7 +95,14 @@ Run [36125323914](https://github.com/Jabar-Creative/Strive/actions/runs/36125323
 
 Empat run di antaranya (`03b860b`, `26f0aa0`, `ffa9e78`, `62f3af0`) tercatat `cancelled` — bukan karena ada yang membatalkannya, melainkan karena antrean `concurrency` hanya memuat satu run pending. Isu #165.
 
-Sisa yang menahan `F-05`: **V11** (staging tidak punya konten), **V13** (butuh akses Railway), dan **V8** (tidak berlaku sampai `AI-01`).
+**Sisa yang menahan `F-05` tinggal SATU: V13.** Baris ini sempat menyebut tiga, dan dua di antaranya sudah
+terbukti setelahnya tanpa baris ini ikut diperbarui — **V11 lulus 28 Sep** (setelah job semai #168 dijalankan) dan
+**V8 lulus 30 Sep** (setelah `AI-01` #183 mendarat). Keduanya tercatat benar di tabel di atas dan di papan; yang
+basi kalimat ringkasan ini. Dikoreksi 28 Okt 2026.
+
+Dan V13 sekarang **tidak bisa dibuktikan sama sekali**: staging Railway mati sekitar 26 Okt. `F-05` diubah
+`review` → `blocked` di papan, karena yang menahannya berpindah dari "akses" ke **keputusan biaya** — sejenis
+dengan `P-02`/`K-03`/`SA-04` yang menunggu vendor, bukan sejenis dengan pekerjaan yang tinggal dijalankan.
 
 ### Susulan 28 September — V11 lulus, staging akhirnya berisi
 

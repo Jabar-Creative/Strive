@@ -44,15 +44,26 @@ ada kode yang menulis saldo di luar `CoinLedgerService`. Koreksi ditulis sebagai
   semuanya dipanggil manual. Runbook di bawah menyebutkan cara memanggilnya.
 - **Agregator log.** `error_rate_5xx` dan `p95_latency_hub` (§17.2) belum bisa dihitung;
   sumbernya sudah ada di log per-request, yang mengagregasinya bagian `F-05`.
-- **Staging hidup, dan sebagian sudah terbukti.** Railway `strive-staging` +
-  Vercel `strive-staging-web`, deploy otomatis dari `main` sudah berjalan
-  (`.github/workflows/deploy-staging.yml`), rollback di
-  [`rollback-staging.md`](rollback-staging.md). Per 25 Sep: **V1–V6, V9, V10,
-  V12 terbukti**; V7 menunggu #152 ter-deploy, V11 terblokir karena staging
-  belum punya konten, **V13 (rollback < 5 menit) belum pernah diukur** — dan
-  itu justru baris yang paling dibutuhkan runbook ini. Lihat
+- **Staging Railway MATI sekitar 26 Okt 2026, dan runbook ini kehilangan
+  sasarannya.** `api` dan `ai` menjawab `404 Application not found` dari edge
+  Railway — service-nya sudah tidak ada (kredit trial habis, #151). Web di
+  Vercel masih 200, tanpa backend. Pemicu otomatis
+  `.github/workflows/deploy-staging.yml` **dimatikan** 28 Okt;
+  `workflow_dispatch` sengaja dipertahankan supaya pipeline masih bisa diuji
+  begitu infrastrukturnya ada.
+
+  **Dua belas dari tiga belas V tetap terbukti** dan tidak dibatalkan oleh
+  kematian ini: V1–V6, V9, V10, V12 (25 Sep), V7 (27 Sep, setelah #152), V11
+  (28 Sep, setelah job semai #168), V8 (30 Sep, setelah `AI-01` #183).
+  Baris ini sebelumnya masih menulis V11 "terblokir" — basi sejak 28 Sep, dan
+  dikoreksi 28 Okt.
+
+  **V13 (rollback < 5 menit) satu-satunya yang tersisa, dan ia sekarang
+  MUSTAHIL dibuktikan** di instance ini: rollback hanya bisa diukur terhadap
+  deployment yang hidup. Itu justru baris yang paling dibutuhkan runbook ini.
+  `F-05` diubah `review` → `blocked` di papan. Lihat
   `docs/reports/F-05/README.md`. Pelonggaran baris DoD "ter-deploy ke staging"
-  di `CLAUDE.md` **tetap**, sampai Dev A mengumumkan staging siap.
+  di `CLAUDE.md` **tetap**, dan sekarang tanpa pilihan lain.
 - **Login ke `/mentor` dan `/admin` di staging** memulangkan siapa pun ke
   `/login`, juga pengguna yang sesinya sah. Kalau kamu sedang menangani insiden
   dan tidak bisa masuk konsol, itu sebabnya — bukan sesimu. Sebabnya **#176**,

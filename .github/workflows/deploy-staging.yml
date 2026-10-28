@@ -17,10 +17,42 @@ on:
         description: 'Semai konten ke database staging (pnpm seed + seed:content). Idempoten, hanya INSERT ... ON CONFLICT DO NOTHING.'
         type: boolean
         default: false
-  workflow_run:
-    workflows: ['CI']
-    types: [completed]
-    branches: [main]
+# ── Pemicu otomatis DIMATIKAN 28 Okt 2026 — infrastrukturnya tidak ada ──
+#
+# Staging Railway mati sekitar 26 Okt (kredit trial habis; #151). Diukur
+# 28 Okt: `api` dan `ai` menjawab `404 Application not found` dari edge
+# Railway — bukan 502 dari service yang sakit, tapi service yang sudah
+# tidak ada. Web di Vercel tetap 200, tanpa backend.
+#
+# Akibatnya ENAM run berturut-turut gagal di job `migrasi` (`read
+# ECONNRESET`), dan itu benar: migrasi gagal SEBELUM apa pun ter-deploy,
+# `web` tidak pernah naik mendahului API-nya, dan `tandai` tidak memajukan
+# penanda untuk deploy yang tidak pernah sehat. Yang rusak bukan pipeline.
+#
+# Kenapa dimatikan dan bukan dibiarkan merah: merah yang SELALU merah
+# berhenti dibaca, dan ia akan menutupi masalah deploy sungguhan nanti —
+# bentuk kegagalan yang sama dengan `cancelled` di #165, yang terbaca
+# seperti "seseorang membatalkannya" alih-alih seperti kegagalan.
+#
+# `workflow_dispatch` di atas SENGAJA dipertahankan: deploy manual tetap
+# mungkin, jadi pipeline ini masih bisa diuji begitu infrastrukturnya ada.
+#
+# ── KONDISI YANG MEMBATALKAN CATATAN INI ──
+#
+# Begitu ada staging yang hidup lagi — Railway dengan metode bayar, atau
+# penyedia lain — HIDUPKAN KEMBALI blok di bawah dan hapus catatan ini.
+# CLAUDE.md mensyaratkan ini: komentar yang menjelaskan kenapa sesuatu
+# belum dikerjakan WAJIB menyebut kondisi yang membatalkannya, kalau tidak
+# ia jadi pembenaran permanen — persis yang terjadi pada catatan
+# `ReconcileBalanceService` "sengaja TIDAK dijadwalkan", yang bertahan tiga
+# minggu setelah sebabnya hilang (#203).
+#
+# Jangan membaca "pemicu mati" sebagai "deploy staging tidak dipakai lagi".
+#
+#  workflow_run:
+#    workflows: ['CI']
+#    types: [completed]
+#    branches: [main]
 
 # Satu deploy pada satu waktu. Jangan batalkan yang sedang berjalan: migrasi
 # yang terputus di tengah unggahan lebih sulit dibaca daripada antrean.
