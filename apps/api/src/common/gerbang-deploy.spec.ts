@@ -96,3 +96,44 @@ describe('gerbang deploy staging — daftar ABAIKAN (isu #160)', () => {
     expect(YAML).not.toMatch(/^\s*paths-ignore\s*:/m);
   });
 });
+
+/**
+ * Pemicu otomatis `workflow_run` — mati atau hidup, keduanya sah; yang TIDAK
+ * sah adalah mati tanpa kondisi pembatalnya tertulis.
+ *
+ * Dimatikan 28 Okt 2026 karena staging Railway tidak ada lagi (#151). Yang
+ * dijaga di sini bukan keadaan matinya, melainkan **bahwa alasannya menyebut
+ * apa yang membatalkannya.** CLAUDE.md mensyaratkan itu, dan repo ini sudah
+ * punya bekas lukanya: catatan `ReconcileBalanceService` "sengaja TIDAK
+ * dijadwalkan" bertahan TIGA MINGGU setelah sebabnya hilang, karena
+ * kalimatnya tidak pernah menyebut kapan ia berhenti berlaku (#203).
+ *
+ * Jadi test ini dirancang untuk MATI SENDIRI: begitu pemicunya dihidupkan
+ * kembali, cabangnya tidak berlaku dan ia berhenti menuntut apa pun.
+ */
+describe('pemicu deploy staging — mati boleh, mati tanpa alasan tidak', () => {
+  const aktif = /^\s*workflow_run\s*:/m.test(YAML);
+
+  it('workflow_dispatch SELALU ada — deploy manual tidak boleh ikut hilang', () => {
+    // Tanpa ini, mematikan pemicu otomatis berarti pipeline deploy tidak
+    // bisa diuji sama sekali, dan pipeline yang tidak bisa dijalankan sudah
+    // pernah rusak diam-diam di repo ini (#165).
+    expect(/^\s*workflow_dispatch\s*:/m.test(YAML)).toBe(true);
+  });
+
+  it.runIf(!aktif)('pemicu MATI wajib menyebut kondisi yang membatalkannya', () => {
+    expect(YAML).toMatch(/KONDISI YANG MEMBATALKAN/);
+    // Dan kondisinya harus menyebut apa yang harus TERJADI, bukan cuma
+    // bahwa ia sementara. "Sementara" tanpa syarat adalah permanen.
+    expect(YAML).toMatch(/HIDUPKAN KEMBALI/);
+  });
+
+  it.runIf(!aktif)('blok pemicunya DIKOMENTARI, bukan dihapus', () => {
+    // Menghapusnya berarti menghidupkannya kembali menuntut menulis ulang
+    // dari ingatan — dan `workflow_run` punya tiga baris yang mudah salah
+    // (`workflows`, `types`, `branches`).
+    expect(YAML).toMatch(/#\s*workflow_run\s*:/);
+    expect(YAML).toMatch(/#\s*workflows:\s*\['CI'\]/);
+    expect(YAML).toMatch(/#\s*branches:\s*\[main\]/);
+  });
+});

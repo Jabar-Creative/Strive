@@ -69,7 +69,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `F-01` | Monorepo pnpm, TypeScript strict, ESLint, Prettie… | A | W1 | 1 | `done` | `3836fed` | 2026-09-15 | PR #4 ter-merge. 4 AC terbukti + penegakan versi Python (keputusan 1 PR #3), 5 jalur diuji. |
 | `F-03` | CI: lint, typecheck, unit test, build, migrasi ke… | A | W1 | 1 | `done` | `973d7cf` | 2026-09-15 | PR #11 ter-merge. PR merah dibuktikan lewat PR #7 sungguhan, CI 77 dtk, migrasi terhadap DB kosong + verifikasi 31 tabel & trigger. |
 | `F-04` | Migrasi 001_init.sql + codegen tipe Kysely | A | W1 | 1,5 | `done` | `9aa3037` | 2026-09-15 | PR #5 ter-merge. 31 tabel cocok PRD §9.1 (nol hilang, nol berlebih). Trigger append-only, partisi attempt_date, PK surrogate squad_members terbukti. BELUM di-review Dev B. |
-| `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `review` | #149 | 2026-09-25 | Workflow CD di #149. Image api diperbaiki #150. **V1–V13 dijalankan 25–30 Sep (#164): DUA BELAS terbukti** (V1–V6 health/CORS/header/bentuk galat, V9 webhook ditolak-tapi-hampa, V10 login bertahan muat ulang di Chrome, V12 WSS+canRead menjawab). Tetap `review` karena SATU menahan, dan tidak satu pun soal kode: V7 **lulus 27 Sep** setelah #152 hidup (10 lolos, ke-11 429, XFF acak tetap 429), V11 **lulus 28 Sep** setelah job semai #168 dijalankan (attempt sungguhan → koin 8, ledger satu entri, kirim ulang tidak menggandakan), V13 rollback butuh akses Railway — dan itu SATU-SATUNYA yang tersisa: V8 **lulus 30 Sep** setelah AI-01 (#183) mendarat (rute bisnis 401 tanpa token, `/docs` 404), dengan catatan gagal-tertutup di #184. Dua cacat ditemukan JUSTRU karena V dijalankan: `/admin` memulangkan pengguna yang sudah masuk (#154) dan sign-out lewat Bearer tidak mencabut apa pun. Tiga env yang gagal TERBUKA ditutup #156. Sembilan temuan dipecah jadi isu #154–#163, plus #165. DoD di CLAUDE.md tidak dikembalikan — itu pengumuman Dev A. |
+| `F-05` | Deploy staging otomatis dari main (web, api, ai, … | A | W1 | 1,5 | `blocked` | #149 | 2026-09-25 | Workflow CD di #149. Image api diperbaiki #150. **V1–V13 dijalankan 25–30 Sep (#164): DUA BELAS terbukti** (V1–V6 health/CORS/header/bentuk galat, V9 webhook ditolak-tapi-hampa, V10 login bertahan muat ulang di Chrome, V12 WSS+canRead menjawab). Tetap `review` karena SATU menahan, dan tidak satu pun soal kode: V7 **lulus 27 Sep** setelah #152 hidup (10 lolos, ke-11 429, XFF acak tetap 429), V11 **lulus 28 Sep** setelah job semai #168 dijalankan (attempt sungguhan → koin 8, ledger satu entri, kirim ulang tidak menggandakan), V13 rollback butuh akses Railway — dan itu SATU-SATUNYA yang tersisa: V8 **lulus 30 Sep** setelah AI-01 (#183) mendarat (rute bisnis 401 tanpa token, `/docs` 404), dengan catatan gagal-tertutup di #184. Dua cacat ditemukan JUSTRU karena V dijalankan: `/admin` memulangkan pengguna yang sudah masuk (#154) dan sign-out lewat Bearer tidak mencabut apa pun. Tiga env yang gagal TERBUKA ditutup #156. Sembilan temuan dipecah jadi isu #154–#163, plus #165. DoD di CLAUDE.md tidak dikembalikan — itu pengumuman Dev A. **V13 MUSTAHIL DIBUKTIKAN pada instance ini — diubah `review` → `blocked` 28 Okt 2026.** Staging Railway mati sekitar 26 Okt (kredit trial habis, #151): `api` dan `ai` menjawab `404 Application not found` dari edge Railway — service-nya sudah tidak ada, bukan sakit. Enam `Deploy staging` gagal berturut-turut di job `migrasi` (`read ECONNRESET`), dan pemicu `workflow_run` dimatikan karena merah yang selalu merah berhenti dibaca (#165). V13 bukan tertunda: rollback hanya bisa diukur terhadap deployment yang hidup, dan peringatan itu tertulis tiga kali (13, 17, 20 Okt) dengan kalimat yang sama. `blocked`, bukan `review`, karena yang menahannya sekarang KEPUTUSAN BIAYA di luar kode — sejenis dengan `P-02`/`K-03`/`SA-04` yang menunggu vendor. Dua belas V lain tetap terbukti dan tidak dibatalkan oleh ini; deploy sukses terakhir `a56cb96` (20 Okt) dan tag `staging-live` masih menunjuk ke situ. |
 | `F-10` | Kunci 8 keputusan produk (PRD §5) | AB | W1 | 0,5 | `done` | `8fe9dc6` | 2026-09-14 | PRD §5 TERKUNCI, pemutus Fatih Maulana. Nol angka berubah. |
 | `F-02` | docker-compose dev: PostgreSQL 16, Redis 7, MinIO… | B | W1 | 0,5 | `done` | `fefab70` | 2026-09-15 | PR #3 di-review & merge. AC terbukti: clone bersih → app hidup 2m24s, 3 container `(healthy)`. Bukti: `docs/reports/F-02/` |
 | `F-06` | Token design system -> tailwind.config, init Shad… | B | W1 | 1 | `done` | `b060129` | 2026-09-15 | PR #12 ter-merge & di-review. 10/10 token cocok PRD §14.1, kontras teks utama 15,68-18,24:1 di kedua mode. Bukti hidup: /_specimen. Menutup isu #16. |
@@ -161,9 +161,9 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 |---|---:|---:|
 | Total | 80 | 78,5 |
 | `done` | 68 | 65,0 |
-| `review` | 1 | 1,5 |
+| `review` | 0 | 0,0 |
 | `in_progress` | 0 | 0,0 |
-| `blocked` | 4 | 3,5 |
+| `blocked` | 5 | 5,0 |
 | `todo` | 7 | 8,5 |
 
 ---
@@ -177,7 +177,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 
 | Epik | Nama | Hari | Item | Selesai | Blocked |
 |---|---|---:|---:|---:|---:|
-| `E0` | Fondasi & Setup | 10,5 | 12 | 11/12 · **86%** | — |
+| `E0` | Fondasi & Setup | 10,5 | 12 | 11/12 · **86%** | 1 |
 | `E1` | Auth & RBAC | 6,5 | 7 | 6/7 · **92%** | 1 |
 | `E4` | Coin & Wallet | 4,0 | 4 | 4/4 · **100%** | — |
 | `E2` | Learning Engine | 7,5 | 5 | 5/5 · **100%** | — |
@@ -194,7 +194,7 @@ Status yang sah: `todo` · `in_progress` · `blocked` · `review` · `done`
 | `E13` | Prompt Lab | 1,5 | 2 | 2/2 · **100%** | — |
 | `E9` | Panel Superadmin | 2,5 | 5 | 4/5 · **80%** | 1 |
 | `E10` | Pengerasan & Rilis | 6,0 | 5 | 3/5 · **50%** | — |
-| | **Total** | **78,5** | **80** | **68/80 · 83%** | **4** |
+| | **Total** | **78,5** | **80** | **68/80 · 83%** | **5** |
 
 ---
 

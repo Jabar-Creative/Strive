@@ -4,9 +4,18 @@ Dipakai saat deploy staging yang baru saja naik merusak API, worker, layanan
 AI, atau web. Target: versi sebelumnya melayani lagi dalam **di bawah 5 menit**
 setelah keputusan rollback diambil.
 
-Prosedur ini **belum pernah dijalankan dan diukur**. V13 di `docs/reports/F-05/`
-bertanda tidak terbukti. Jangan menulis "sudah bisa di bawah 5 menit" sebelum
-ada stopwatch dari satu kali rollback sungguhan.
+Prosedur ini **belum pernah dijalankan dan diukur**, dan sejak 28 Okt 2026 ia
+**tidak bisa diukur sama sekali**: staging Railway yang jadi sasarannya sudah
+tidak ada (#151 — `404 Application not found`). V13 di `docs/reports/F-05/`
+bertanda tidak terbukti, dan sekarang mustahil.
+
+Jangan menulis "sudah bisa di bawah 5 menit" sebelum ada stopwatch dari satu
+kali rollback sungguhan. Dan jangan membaca "tidak bisa diukur" sebagai
+"prosedurnya salah": langkah-langkah di bawah tetap yang akan dijalankan
+begitu ada staging lagi — yang hilang buktinya, bukan rencananya.
+
+**Kondisi yang membatalkan catatan ini:** staging hidup kembali. Saat itu,
+jalankan prosedur ini SEKALI dengan stopwatch sebelum mengandalkannya.
 
 Empat proses, dua penyedia:
 
