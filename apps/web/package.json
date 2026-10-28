@@ -12,7 +12,7 @@
   "dependencies": {
     "@strive/contracts": "workspace:*",
     "@strive/ui": "workspace:*",
-    "better-auth": "^1.7.5",
+    "better-auth": "^1.7.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^13.4.1",

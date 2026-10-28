@@ -23,7 +23,7 @@
     "@socket.io/redis-adapter": "8.3.0",
     "@socket.io/redis-emitter": "5.1.0",
     "@strive/contracts": "workspace:*",
-    "better-auth": "1.7.5",
+    "better-auth": "1.7.7",
     "bullmq": "^6.3.8",
     "ioredis": "^6.0.0",
     "kysely": "^0.27.5",
