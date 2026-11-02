@@ -5,7 +5,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { OPSI_JOB_AI, QUEUE, bullConnection, createBullConnection } from '../src/infra/bullmq';
 import { createDatabase, type DB } from '../src/infra/kysely';
-import { AMBANG_MENGGANTUNG_MENIT, AiJobsService } from '../src/modules/ai';
+import {
+  AMBANG_MENGGANTUNG_MENIT,
+  AiJobsService,
+  type BarisJobAi,
+  type PenyelesaiJobAi,
+} from '../src/modules/ai';
 import {
   GalatAiPermanen,
   GalatAiSementara,
@@ -62,10 +67,37 @@ class KlienUji implements AiServiceClient {
   }
 }
 
+/** Finalisasi tiruan — MENCATAT panggilan dan bisa disuruh melempar/menggantung. */
+class PenyelesaiUji implements PenyelesaiJobAi {
+  suksesDipanggil: { jobId: string; baris: BarisJobAi; hasil: AiRunResult }[] = [];
+  gagalDipanggil: { jobId: string; baris: BarisJobAi }[] = [];
+  lemparSukses: (() => Error) | null = null;
+  lemparGagal: (() => Error) | null = null;
+  /** Audit T3: sukses yang TIDAK PERNAH selesai — janji menggantung. */
+  gantungSukses = false;
+
+  constructor(readonly kind: BarisJobAi['kind']) {}
+
+  async sukses(jobId: string, baris: BarisJobAi, hasil: AiRunResult): Promise<void> {
+    if (this.gantungSukses) return new Promise<void>(() => undefined);
+    if (this.lemparSukses) throw this.lemparSukses();
+    this.suksesDipanggil.push({ jobId, baris, hasil });
+  }
+
+  async gagal(jobId: string, baris: BarisJobAi): Promise<void> {
+    if (this.lemparGagal) throw this.lemparGagal();
+    this.gagalDipanggil.push({ jobId, baris });
+  }
+}
+
 /** Menjalankan worker sungguhan sampai antreannya kosong, lalu menutupnya. */
-async function jalankanWorker(klien: KlienUji, opsi: { backoffMs?: number } = {}): Promise<void> {
+async function jalankanWorker(
+  klien: KlienUji,
+  opsi: { backoffMs?: number; penyelesai?: PenyelesaiJobAi[]; batasHookMs?: number } = {},
+): Promise<void> {
   const jobs = new AiJobsService(db, queue);
-  const dispatch = new AiDispatchService(jobs, klien);
+  const dispatch = new AiDispatchService(jobs, klien, opsi.penyelesai ?? []);
+  if (opsi.batasHookMs !== undefined) dispatch.batasHookMs = opsi.batasHookMs;
   const w = new Worker(QUEUE.ai, (job) => dispatch.proses(job), {
     connection: bullConnection(redisUrl),
     concurrency: 1,
@@ -337,7 +369,13 @@ describe('AI-06 — dispatcher ai_jobs (PostgreSQL + Redis nyata)', () => {
     `.execute(db);
 
     const jobs = new AiJobsService(db, queue);
-    expect(await jobs.sapuMenggantung()).toEqual({ disapu: 1 });
+    // Balikan ARRAY (audit T1): baris yang disapu harus bisa dibawa ke hook
+    // `gagal` pemanggilnya — `{ disapu: 1 }` tidak membawa apa-apa.
+    const disapu = await jobs.sapuMenggantung();
+    expect(disapu).toHaveLength(1);
+    expect(disapu[0]!.id).toBe(id);
+    expect(disapu[0]!.userId).toBe(PENGGUNA);
+    expect(disapu[0]!.kind).toBe('ats_cv');
 
     const r = await baris(id);
     expect(r.status).toBe('failed');
@@ -359,7 +397,7 @@ describe('AI-06 — dispatcher ai_jobs (PostgreSQL + Redis nyata)', () => {
     `.execute(db);
 
     const jobs = new AiJobsService(db, queue);
-    expect(await jobs.sapuMenggantung()).toEqual({ disapu: 0 });
+    expect(await jobs.sapuMenggantung()).toHaveLength(0);
     expect((await baris(id)).status).toBe('running');
   }, 40_000);
 
@@ -375,7 +413,7 @@ describe('AI-06 — dispatcher ai_jobs (PostgreSQL + Redis nyata)', () => {
     `.execute(db);
 
     const jobs = new AiJobsService(db, queue);
-    expect(await jobs.sapuMenggantung()).toEqual({ disapu: 0 });
+    expect(await jobs.sapuMenggantung()).toHaveLength(0);
     expect((await baris(id)).status).toBe('queued');
   }, 40_000);
 
@@ -451,5 +489,191 @@ describe('AI-06 — dispatcher ai_jobs (PostgreSQL + Redis nyata)', () => {
     const id = await buatDanAntre();
     await jalankanWorker(klien);
     expect((await baris(id)).status).toBe('done');
+  }, 40_000);
+});
+
+describe('AI-07 — finalisasi per kind (hook PENYELESAI_JOB_AI)', () => {
+  it('lingkungan siap', () => {
+    expect(reachable, `DATABASE_URL/REDIS_URL tidak bisa dipakai`).toBe(true);
+  });
+
+  it('hook sukses menerima jobId, baris milik pengguna, dan hasil — setelah baris done', async () => {
+    if (!reachable) return;
+    const klien = new KlienUji();
+    const hook = new PenyelesaiUji('ats_cv');
+    const id = await buatDanAntre();
+    await jalankanWorker(klien, { penyelesai: [hook] });
+
+    expect((await baris(id)).status).toBe('done');
+    expect(hook.suksesDipanggil).toHaveLength(1);
+    const a = hook.suksesDipanggil[0]!;
+    expect(a.jobId).toBe(id);
+    // `userId` wajib datang dari `mulai()` — finalisasi butuh pemiliknya
+    // untuk settle hold dan menulis cv_documents.
+    expect(a.baris.userId).toBe(PENGGUNA);
+    expect(a.baris.kind).toBe('ats_cv');
+    expect(a.baris.input).toEqual({ cv: 'isi' });
+    expect(a.hasil).toEqual(klien.hasil);
+    expect(hook.gagalDipanggil).toHaveLength(0);
+  }, 40_000);
+
+  it('hook sukses MELEMPAR → baris failed, hook gagal dipanggil, LLM tidak dibayar ulang', async () => {
+    if (!reachable) return;
+    const klien = new KlienUji();
+    const hook = new PenyelesaiUji('ats_cv');
+    hook.lemparSukses = () => new GalatAiPermanen('gudung objek penuh', 'INTERNAL_ERROR');
+    const id = await buatDanAntre();
+    await jalankanWorker(klien, { penyelesai: [hook] });
+
+    // Baris sudah `done` (biaya tercatat) saat hook melempar — status
+    // ditulis ulang `failed` supaya kegagalannya TERLIHAT, bukan selesai
+    // yang bohong. Tidak ada rethrow: pengantaran ulang hanya menemukan
+    // status bukan antre dan melewatinya.
+    const r = await baris(id);
+    expect(r.status).toBe('failed');
+    expect(r.error_message).toContain('Finalisasi gagal');
+    expect(r.error_code).toBe('INTERNAL_ERROR');
+    expect(klien.panggilan, 'LLM dipanggil lebih dari sekali').toHaveLength(1);
+    expect(hook.gagalDipanggil).toHaveLength(1);
+    // Audit T2: output yang tidak pernah diserahkan DIBUANG (jsonb berisi
+    // CV + pdf base64, bisa ~1 MB, menyesatkan sekaligus menimbun PII),
+    // tapi kolom BIAYA dipertahankan — LLM-nya benar-benar dijalankan dan
+    // dibayar; menghapusnya menghapus jejak belanja.
+    expect(r.output).toBeNull();
+    expect(r.model).toBe('gpt-4o-mini');
+    expect(String(r.cost_usd)).toBe('0.000042');
+  }, 40_000);
+
+  it('galat permanen dari layanan → hook gagal TEPAT SEKALI, sukses tidak pernah', async () => {
+    if (!reachable) return;
+    const klien = new KlienUji();
+    klien.lempar = () => new GalatAiPermanen('Layanan AI menolak job (422)');
+    const hook = new PenyelesaiUji('ats_cv');
+    const id = await buatDanAntre();
+    await jalankanWorker(klien, { penyelesai: [hook] });
+
+    expect((await baris(id)).status).toBe('failed');
+    // Percobaan sisa BullMQ tetap datang, tapi `mulai()` memulangkan null —
+    // hook tidak boleh ikut terpanggil untuk pengantaran yang sama.
+    expect(hook.gagalDipanggil).toHaveLength(1);
+    expect(hook.suksesDipanggil).toHaveLength(0);
+  }, 40_000);
+
+  it('gagal sementara lalu SEMBUH → hook gagal tidak dipanggil, sukses sekali', async () => {
+    if (!reachable) return;
+    const klien = new KlienUji();
+    let tersendat = 0;
+    klien.lempar = () => {
+      tersendat += 1;
+      if (tersendat >= 2) klien.lempar = null;
+      return new Error('jaringan tersendat');
+    };
+    const hook = new PenyelesaiUji('ats_cv');
+    const id = await buatDanAntre();
+    await jalankanWorker(klien, { penyelesai: [hook] });
+
+    // Hook gagal hanya untuk keadaan terminal. Percobaan pertama yang
+    // gagal sementara BUKAN kegagalan — kalau hook dipanggil di situ,
+    // pengguna dapat "refund" padahal job-nya berhasil di percobaan kedua.
+    expect((await baris(id)).status).toBe('done');
+    expect(hook.suksesDipanggil).toHaveLength(1);
+    expect(hook.gagalDipanggil).toHaveLength(0);
+  }, 40_000);
+
+  it('hook kind LAIN tidak dipanggil — finalisasi berlaku per kind', async () => {
+    if (!reachable) return;
+    const klien = new KlienUji();
+    const hookPrompt = new PenyelesaiUji('prompt_run');
+    const id = await buatDanAntre(); // kind 'ats_cv'
+    await jalankanWorker(klien, { penyelesai: [hookPrompt] });
+
+    expect((await baris(id)).status).toBe('done');
+    expect(hookPrompt.suksesDipanggil).toHaveLength(0);
+    expect(hookPrompt.gagalDipanggil).toHaveLength(0);
+  }, 40_000);
+
+  it('hook GAGAL yang melempar tidak menjatuhkan apa pun — baris tetap failed', async () => {
+    if (!reachable) return;
+    const klien = new KlienUji();
+    klien.lempar = () => new GalatAiPermanen('Layanan AI menolak job (422)');
+    const hook = new PenyelesaiUji('ats_cv');
+    hook.lemparGagal = () => new Error('kirim notifikasi gagal');
+    const id = await buatDanAntre();
+    await jalankanWorker(klien, { penyelesai: [hook] });
+
+    // `jobs.gagal()` sudah menulis baris SEBELUM hook dipanggil, jadi
+    // kegagalan hook tidak boleh mengubah apa pun — hanya tercatat.
+    const r = await baris(id);
+    expect(r.status).toBe('failed');
+    expect(r.error_message).toContain('422');
+    // Hook melempar sebelum mencatat — bukti panggilannya adalah baris yang
+    // tetap `failed` dan worker yang tetap selesai tanpa exception.
+  }, 40_000);
+
+  // ── Audit AI-07: T1 (hold pada job tersapu) dan T3 (hook menggantung) ──
+
+  it('T1: `sapu()` dispatcher memanggil hook gagal untuk job yang disapu — hold tidak menggantung', async () => {
+    if (!reachable) return;
+    // `sapuMenggantung()` sendiri hanya MENULIS `failed`. Sebelum T1, tidak ada
+    // satu pun pemanggil hook untuk baris yang disapu, jadi hold koin
+    // `ref_type='ai_job'` job itu menggantung PERMANEN — reaper hold KL-8 hanya
+    // mengenal ref `scan`. Jalur pemanggilnya: penjadwal `ai-reaper`.
+    const hook = new PenyelesaiUji('ats_cv');
+    const id = await buatDanAntre();
+    await sql`
+      UPDATE ai_jobs SET status = 'running',
+        created_at = now() - ${sql.lit(AMBANG_MENGGANTUNG_MENIT + 5)} * interval '1 minute'
+      WHERE id = ${id}
+    `.execute(db);
+
+    const dispatch = new AiDispatchService(new AiJobsService(db, queue), new KlienUji(), [hook]);
+    expect(await dispatch.sapu()).toBe(1);
+
+    // Hook menerima baris MILIK PEMILIKNYA — itulah yang dipakai untuk
+    // melepas hold yang benar.
+    expect(hook.gagalDipanggil).toHaveLength(1);
+    expect(hook.gagalDipanggil[0]!.jobId).toBe(id);
+    expect(hook.gagalDipanggil[0]!.baris.userId).toBe(PENGGUNA);
+    expect(hook.gagalDipanggil[0]!.baris.kind).toBe('ats_cv');
+    expect(hook.suksesDipanggil).toHaveLength(0);
+    expect((await baris(id)).status).toBe('failed');
+  }, 40_000);
+
+  it('T1: job yang MASIH MUDA → sapu() memulangkan 0 dan hook tidak dipanggil', async () => {
+    if (!reachable) return;
+    const hook = new PenyelesaiUji('ats_cv');
+    const id = await buatDanAntre();
+    await sql`
+      UPDATE ai_jobs SET status = 'running',
+        created_at = now() - ${sql.lit(AMBANG_MENGGANTUNG_MENIT - 5)} * interval '1 minute'
+      WHERE id = ${id}
+    `.execute(db);
+
+    const dispatch = new AiDispatchService(new AiJobsService(db, queue), new KlienUji(), [hook]);
+    expect(await dispatch.sapu()).toBe(0);
+    expect(hook.gagalDipanggil).toHaveLength(0);
+    expect((await baris(id)).status).toBe('running');
+  }, 40_000);
+
+  it('T3: hook sukses yang TIDAK PERNAH selesai dibatasi waktu — baris failed, slot worker kembali', async () => {
+    if (!reachable) return;
+    // Dua hook yang menggantung mematikan SELURUH antrean (concurrency 2)
+    // tanpa satu galat pun. Bukti slot kembali: `jalankanWorker` menunggu
+    // antrean kosong lalu menutup worker — kalau hook benar-benar menggantung
+    // tanpa pagar, baris ini tidak pernah selesai dan test timeout.
+    const klien = new KlienUji();
+    const hook = new PenyelesaiUji('ats_cv');
+    hook.gantungSukses = true;
+    const id = await buatDanAntre();
+    await jalankanWorker(klien, { penyelesai: [hook], batasHookMs: 50 });
+
+    const r = await baris(id);
+    expect(r.status).toBe('failed');
+    expect(r.error_message).toContain('Finalisasi gagal');
+    expect(r.error_message).toContain('tidak selesai dalam 50 ms');
+    // Hook `gagal` tetap dipanggil: finalisasi yang timeout adalah kegagalan
+    // sah yang harus dibersihkan (mis. lepas hold).
+    expect(hook.gagalDipanggil).toHaveLength(1);
+    expect(klien.panggilan, 'LLM dibayar dua kali oleh pengantaran ulang').toHaveLength(1);
   }, 40_000);
 });

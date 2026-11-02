@@ -8,9 +8,9 @@ import {
 import { type Job, type Queue, Worker } from 'bullmq';
 
 import { JADWAL_QUEUE, QUEUE, bullConnection } from '../infra/bullmq';
-import { AiJobsService } from '../modules/ai';
 import { OrderExpiryService } from '../modules/payment';
 import { ScanService } from '../modules/scan';
+import { AiDispatchService } from './ai-dispatch.service';
 import { LeagueRollupService } from './league-rollup.service';
 import { MetricsService } from './metrics.service';
 import { OutboxWorkerService } from './outbox.service';
@@ -159,10 +159,12 @@ export const JADWAL: readonly JobBerkala[] = [
     id: 'ai-reaper',
     setiapMs: 5 * MENIT,
     alasan:
-      'Menyapu ai_jobs yang mengendap `running` (isu #131). Lima menit sama ' +
-      'dengan reaper hold, dan ambangnya 30 menit — jadi irama ini hanya ' +
-      'menentukan seberapa cepat baris yang SUDAH mengendap jadi terlihat, ' +
-      'bukan apakah job sehat ikut tersapu.',
+      'Menyapu ai_jobs yang mengendap `running` (isu #131) LALU memanggil ' +
+      'hook `gagal` per baris — tanpa itu hold koin ref `ai_job` menggantung ' +
+      'permanen (audit AI-07, T1). Lima menit sama dengan reaper hold, dan ' +
+      'ambangnya 30 menit — jadi irama ini hanya menentukan seberapa cepat ' +
+      'baris yang SUDAH mengendap jadi terlihat, bukan apakah job sehat ikut ' +
+      'tersapu.',
   },
   {
     id: 'order-expiry',
@@ -198,7 +200,10 @@ export class PenjadwalService implements OnApplicationBootstrap, OnApplicationSh
     private readonly metrics: MetricsService,
     private readonly partition: PartitionService,
     private readonly reconcile: ReconcileBalanceService,
-    private readonly aiJobs: AiJobsService,
+    // Bukan `AiJobsService.sapuMenggantung()` langsung — audit AI-07, T1:
+    // menulis `failed` saja meninggalkan hold koin `ai_job` menggantung
+    // permanen. `sapu()` di dispatcher juga memanggil hook `gagal` per baris.
+    private readonly aiDispatch: AiDispatchService,
     private readonly orders: OrderExpiryService,
   ) {}
 
@@ -214,7 +219,7 @@ export class PenjadwalService implements OnApplicationBootstrap, OnApplicationSh
       'streak-warning': () => this.streak.run(),
       'league-rollup': () => this.league.run(),
       metrics: () => this.metrics.runOnce(),
-      'ai-reaper': () => this.aiJobs.sapuMenggantung(),
+      'ai-reaper': () => this.aiDispatch.sapu(),
       'order-expiry': () => this.orders.run(),
       partition: () => this.partition.run(),
       'reconcile-balance': () => this.reconcile.run(),
