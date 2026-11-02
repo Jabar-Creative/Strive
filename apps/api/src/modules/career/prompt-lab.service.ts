@@ -7,8 +7,7 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import type { Kysely, Transaction } from 'kysely';
-import { sql } from 'kysely';
+import type { Kysely } from 'kysely';
 
 import { DATABASE, type DB } from '../../infra/kysely';
 import {
@@ -20,6 +19,8 @@ import {
 } from '../ai';
 import { PricingConfigService } from '../payment';
 import { CoinLedgerService } from '../wallet';
+
+import { pastikanKuotaAi } from './kuota-ai';
 
 /**
  * `PL-01` sisi Node — `POST /career/prompt-lab/run` (PRD §7 E13, §10.3).
@@ -35,10 +36,11 @@ import { CoinLedgerService } from '../wallet';
  *
  * ── Kuota PL-4: 10 run AI/hari, GABUNGAN ──
  *
- * prompt_runs + cv_documents + mastery_sessions, dihitung SATU query SQL
- * dengan hari LOKAL pengguna (`AT TIME ZONE s.timezone`; streaks.timezone —
- * pelajaran #193: satu sumber dengan penulis attempt). "Hari ini" = sejak
- * tengah malam lokal, bukan 24 jam bergulir.
+ * Helper bersama `kuota-ai.ts` (dipakai juga CV builder AI-07): percobaan
+ * dihitung dari hold ledger `ref_type IN ('prompt_run','ai_job')` plus
+ * `mastery_sessions`, hari LOKAL pengguna (`AT TIME ZONE st.timezone`;
+ * streaks.timezone — pelajaran #193: satu sumber dengan penulis attempt).
+ * "Hari ini" = sejak tengah malam lokal, bukan 24 jam bergulir.
  *
  * ── Idempotensi ⚡ ──
  *
@@ -50,13 +52,8 @@ import { CoinLedgerService } from '../wallet';
  * dan dicatat — klien sinkron kita memakai retry berurutan.
  */
 
-type Trx = Transaction<DB>;
-
 /** §7 E13 PL-2: sinkron, timeout 30 detik — DI BAWAH 60 dtk milik klien AI. */
 export const BATAS_RUN_MS = 30_000;
-
-/** PL-4: 10 run AI/hari (gabungan lintas fitur AI). */
-export const KUOTA_AI_HARIAN = 10;
 
 /** Batas per bagian — sama dengan `promptLabSectionsSchema` (koreksi F-08 T-4). */
 const MAKS_BAGIAN = 2000;
@@ -112,7 +109,7 @@ export class PromptLabService {
     const runId = await this.db.transaction().execute(async (trx) => {
       await trx.selectFrom('users').select('id').where('id', '=', userId).forUpdate().execute();
 
-      await this.pastikanKuota(trx, userId);
+      await pastikanKuotaAi(trx, userId);
 
       const baris = await trx
         .insertInto('prompt_runs')
@@ -209,61 +206,6 @@ export class PromptLabService {
           },
         });
       }
-    }
-  }
-
-  /**
-   * PL-4 — SATU query, dua keputusan penting di dalamnya (audit PL-01):
-   *
-   * 1. Sisi kiri TIDAK boleh `created_at >= (now() AT TIME ZONE tz)::date`:
-   *    date yang dibandingkan ke timestamptz dikonversi menurut zona SESI
-   *    (UTC), bukan zona pengguna — jendela tengah malam lokal bolong dan
-   *    pengguna zona barat kehilangan kuota. Kedua sisi dilemparkan ke date
-   *    LOKAL dulu (pola integrations-health.service).
-   * 2. Attempt prompt dihitung dari `coin_ledger` (hold ref prompt_run),
-   *    BUKAN dari baris prompt_runs: baris run yang gagal dihapus, dan
-   *    percobaan gagal tetap memanggil LLM vendor — pengaman biaya harus
-   *    menghitung PERCOBAAN. Ledger append-only, tidak bisa bolong.
-   *
-   * Dipanggil DI DALAM TRX1 SETELAH baris users dikunci FOR UPDATE — cek
-   * sebelum transaksi balapan (11 request paralel membaca hitungan lama).
-   */
-  private async pastikanKuota(trx: Trx, userId: string): Promise<void> {
-    const r = await sql<{ n: string }>`
-      SELECT (
-        (SELECT count(*) FROM coin_ledger cl
-          JOIN streaks st ON st.user_id = cl.user_id
-          WHERE cl.user_id = s.user_id
-            AND cl.ref_type = 'prompt_run'
-            AND cl.entry_type = 'hold'
-            AND (cl.created_at AT TIME ZONE st.timezone)::date
-                = (now() AT TIME ZONE st.timezone)::date)
-      + (SELECT count(*) FROM cv_documents cv
-          JOIN streaks st ON st.user_id = cv.user_id
-          WHERE cv.user_id = s.user_id
-            AND (cv.created_at AT TIME ZONE st.timezone)::date
-                = (now() AT TIME ZONE st.timezone)::date)
-      + (SELECT count(*) FROM mastery_sessions ms
-          JOIN streaks st ON st.user_id = ms.user_id
-          WHERE ms.user_id = s.user_id
-            AND (ms.created_at AT TIME ZONE st.timezone)::date
-                = (now() AT TIME ZONE st.timezone)::date)
-      ) AS n
-      FROM streaks s WHERE s.user_id = ${userId}`.execute(trx);
-
-    const jumlah = Number(r.rows[0]?.n ?? 0);
-    if (jumlah >= KUOTA_AI_HARIAN) {
-      // Nest 10 belum punya TooManyRequestsException — 429 eksplisit.
-      throw new HttpException(
-        {
-          error: {
-            code: 'DAILY_AI_QUOTA_EXCEEDED',
-            message: `Kuota ${KUOTA_AI_HARIAN} run AI/hari sudah habis — kembali besok`,
-            details: { terpakai: jumlah },
-          },
-        },
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
     }
   }
 

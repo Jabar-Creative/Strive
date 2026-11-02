@@ -214,8 +214,38 @@ describe('POST /career/prompt-lab/run (PL-01 Node)', () => {
     expect(await saldo(AKU)).toBe(800); // tepat 10×20
   });
 
-  it('PL-4: kuota GABUNGAN — cv_documents ikut dihitung', async () => {
+  it('PL-4/CV-9: percobaan CV (hold ai_job di ledger) ikut dihitung — AI-07', async () => {
     if (!reachable) return;
+    // Sejak AI-07, percobaan scan CV menulis hold ref 'ai_job' SEBELUM LLM
+    // dijalankan — itu satu-satunya hitungan percobaan CV yang jujur (baris
+    // cv_documents hanya lahir kalau scan BERHASIL). Sepuluh percobaan CV
+    // harus menutup kuota yang sama dengan sepuluh run prompt.
+    for (let i = 0; i < 10; i++) {
+      await db.transaction().execute(async (trx) => {
+        await coins.hold(trx, {
+          userId: AKU,
+          amount: 1,
+          refType: 'ai_job',
+          // ref_id bertipe uuid — nanti di AI-07 refId ini memang jobId.
+          refId: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
+        });
+      });
+    }
+    const { klien, dipanggil } = klienAiPalsu({});
+    svc = new PromptLabService(db, coins, new PricingConfigService(db), klien);
+
+    await expect(svc.run(AKU, BAGIAN, 'kunci-gabung-ai-job')).rejects.toMatchObject({
+      status: 429,
+      response: { error: { code: 'DAILY_AI_QUOTA_EXCEEDED' } },
+    });
+    expect(dipanggil).not.toHaveBeenCalled(); // LLM tidak boleh jalan
+  });
+
+  it('PL-4/CV-9: cv_documents SENDIRIAN tidak lagi dihitung — percobaan CV pindah ke ledger', async () => {
+    if (!reachable) return;
+    // Arah sebalikkan dari test di atas: mempertahankan sisi cv_documents
+    // SETELAH hold 'ai_job' ada berarti scan CV yang berhasil terhitung DUA
+    // KALI (hold + baris dokumen). Sisi cv_documents dibuang dari query.
     await db
       .insertInto('cv_documents')
       .values(
@@ -230,7 +260,8 @@ describe('POST /career/prompt-lab/run (PL-01 Node)', () => {
     const { klien } = klienAiPalsu({});
     svc = new PromptLabService(db, coins, new PricingConfigService(db), klien);
 
-    await expect(svc.run(AKU, BAGIAN, 'kunci-gabung')).rejects.toMatchObject({ status: 429 });
+    const hasil = await svc.run(AKU, BAGIAN, 'kunci-cvdoc');
+    expect(hasil.balance).toBe(980); // jalan normal, bukan 429
   });
 
   it('PL-4: PERCOBAAN GAGAL ikut dihitung (ledger hold, bukan baris run) — audit T2', async () => {
