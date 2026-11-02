@@ -25,14 +25,23 @@ def _sanitasi_ctx(daftar_galat: list[dict[str, Any]]) -> list[dict[str, Any]]:
     # diteruskan mentah ke JSONResponse, json.dumps melempar TypeError dan
     # 422 yang sah berubah 500 (ditemukan lewat validator BagianPrompt, PL-01).
     # Stringify menjaga pesan validator tetap terbaca tanpa membawa objeknya.
+    #
+    # Kunci di luar daftar putih dibuang SELURUHNYA: pydantic v2 menyertakan
+    # `input` (nilai mentah permintaan — bisa seluruh teks CV, PII) dan `url`
+    # di tiap butir galat (audit AI-07 temuan 2). type/loc/msg cukup untuk
+    # klien mencabang, dan ctx tetap lewat jalur stringify di bawah.
+    kunci_sah = ("type", "loc", "msg", "ctx")
+    hasil: list[dict[str, Any]] = []
     for galat in daftar_galat:
-        ctx = galat.get("ctx")
+        bersih = {kunci: galat[kunci] for kunci in kunci_sah if kunci in galat}
+        ctx = bersih.get("ctx")
         if isinstance(ctx, dict):
-            galat["ctx"] = {
+            bersih["ctx"] = {
                 kunci: nilai if isinstance(nilai, _JENIS_DASAR) else str(nilai)
                 for kunci, nilai in ctx.items()
             }
-    return daftar_galat
+        hasil.append(bersih)
+    return hasil
 
 
 class GalatLayanan(Exception):

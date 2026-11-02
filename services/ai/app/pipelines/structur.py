@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Literal, Protocol
+from typing import Any, Callable, Literal, Protocol
 
 from pydantic import BaseModel, Field, ValidationError
 
@@ -253,7 +253,7 @@ class AmbilSimpan(Protocol):
 
 async def susun_cv(
     sumber: str,
-    llm: LlmKlien,
+    llm: LlmKlien | Callable[[], LlmKlien],
     cache: AmbilSimpan | None = None,
     target_role: str = "",
     bahasa: str = "id",
@@ -263,29 +263,45 @@ async def susun_cv(
     Panggilan LLM maksimal DUA: JSON tidak valid dijawab satu kali dengan
     instruksi perbaikan, lalu gagal dengan 422 `LLM_OUTPUT_INVALID`
     (§12.3; kode di luar §10.2 — dicatat di #197 untuk batas klien).
+
+    `llm` boleh instance ATAU pabriknya. Pabrik hanya dipanggil saat cache
+    MISS: jawaban yang sudah tersimpan tidak butuh vendor, dan 503 kunci
+    kosong tidak boleh mendahului cache hit (audit AI-07, cache-first).
+    Nama model ikut disimpan di cache supaya laporan cache hit tetap utuh
+    tanpa menyentuh klien.
     """
+    buat_llm: Callable[[], LlmKlien] = llm if callable(llm) else (lambda: llm)
+    klien: LlmKlien | None = None
+
     parameter: dict[str, Any] = {"target_role": target_role, "bahasa": bahasa}
     kunci = kunci_cache(sumber, parameter, PROMPT_VERSION)
 
     if cache is not None:
         tersimpan = await cache.ambil(kunci)
         if tersimpan is not None:
-            cv = StructuredCV.model_validate_json(tersimpan)
-            return HasilSusun(
-                cv=cv,
-                prompt_version=PROMPT_VERSION,
-                model=llm.model_nama,
-                dari_cache=True,
-            )
+            try:
+                bungkus = json.loads(tersimpan)
+                cv = StructuredCV.model_validate(bungkus["cv"])
+                return HasilSusun(
+                    cv=cv,
+                    prompt_version=PROMPT_VERSION,
+                    model=str(bungkus.get("model") or ""),
+                    dari_cache=True,
+                )
+            except (ValueError, KeyError, TypeError):
+                # Entri rusak/usang bentuk lama → jalankan sebagai miss.
+                # Cache adalah penghemat biaya, bukan kebenaran (aturan 7).
+                pass
 
     permintaan = buat_permintaan_pengguna(sumber, target_role=target_role, bahasa=bahasa)
+    klien = buat_llm()  # baru di sini — cache hit tidak pernah sampai baris ini
     pemakaian: PemakaianLlm | None = None
     cv: StructuredCV | None = None
     galat_terakhir: Exception | None = None
 
     for percobaan, tambahan in enumerate(("", INSTRUKSI_PERBAIKAN)):
         try:
-            teks, pakai = await llm.json(
+            teks, pakai = await klien.json(
                 SYSTEM_PROMPT_ATS_CV,
                 permintaan + tambahan,
                 TEMPERATURE_PENYUSUNAN,
@@ -317,13 +333,13 @@ async def susun_cv(
     bersih, temuan = validasi_keterlacakan(sumber, cv)
 
     if cache is not None:
-        await cache.simpan(kunci, bersih.model_dump_json())
+        await cache.simpan(kunci, json.dumps({"model": klien.model_nama, "cv": bersih.model_dump()}))
 
     return HasilSusun(
         cv=bersih,
         temuan=temuan,
         prompt_version=PROMPT_VERSION,
-        model=llm.model_nama,
+        model=klien.model_nama,
         pemakaian=pemakaian,
         dari_cache=False,
     )

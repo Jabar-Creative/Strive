@@ -57,6 +57,17 @@ async def batasi_body(request: Request, call_next):
     # temuan audit AI-02): host cacat bisa membuatnya tidak berawalan /v1/
     # dan melewati gerbang ini.
     if request.scope["path"].startswith("/v1/"):
+        # Chunked tidak membawa Content-Length — batas di atas bisa dilewati
+        # hanya dengan memotong header (audit AI-07 temuan 3). Satu-satunya
+        # pemanggil sah (httpx di Core API) SELALU mengirim Content-Length,
+        # jadi chunked di sini pasti bukan klien kita: tolak sebelum byte
+        # pertama dibaca.
+        if request.headers.get("transfer-encoding", "").lower() == "chunked":
+            return Response(
+                status_code=413,
+                content='{"error":{"code":"PAYLOAD_TOO_LARGE","message":"Body chunked tidak diterima — kirim Content-Length"}}',
+                media_type="application/json",
+            )
         panjang = request.headers.get("content-length")
         if panjang is not None and panjang.isdigit() and int(panjang) > BATAS_BODY:
             return Response(
