@@ -1,52 +1,69 @@
 # HANDOFF — Peta Lanjutan untuk Sesi Claude Berikutnya
 
 > Berkas ini ditulis atas permintaan pemilik (18 Okt 2026, diperbarui
-> 25 Okt 2026) supaya sesi Claude di laptop lain bisa langsung melanjutkan
+> 25 Okt dan **5 Nov 2026**) supaya sesi Claude di laptop lain bisa melanjutkan
 > tanpa membaca ulang seminggu riwayat. Baca berkas ini + `docs/BACKLOG.md`
 > (papan) + PR/isu terbuka. Protokol kerja: `AGENTS.md` (sembilan langkah,
 > WAJIB).
 
-## Keadaan sesaat (25 Okt, malam)
+## Keadaan sesaat (5 Nov 2026, siang)
 
-- **15 PR gelombang 18–20 Okt SUDAH SEMUA MERGE** (#229–#247, merge 20
-  Okt). Yang menunggu review Fatih (Dev A) tinggal TUJUH:
-  - base `main`, mandiri: **#251** (laporan setup 23 Okt) · **#252**
-    (PL-01 Node+UI) · **#253** (P-04 done) · **#254** (deps next 15.5.28);
-  - bertumpuk: **#255** (PL-02, base `pl01-node-run` = branch #252) →
-    **#258** (PR-03, base `pl02-template-riwayat`) → **#259** (PR-04, base
-    `pr03-antrean-rubrik`).
-  Urutan merge: #252 dulu, GitHub otomatis me-retarget #255 ke main begitu
-  basenya masuk, lalu #258, #259. Aturan stack tetap: jangan
-  `--delete-branch` sebelum seluruh tumpukan masuk.
-- **Papan per 25 Okt malam**: 80 item · 78,5 dev-hari; done 66 (63,5) ·
-  todo 8 (9,5) · lain 6 (5,5). Sisa antrean W7 Dev B: **K-04 (UI klinik),
-  AI-07 (UI CV builder)**.
-- **Isu yang masih menahan pekerjaan**: #90 (kredensial sandbox Copyleaks
-  — menahan K-03/K-04 jalur scan nyata) · #57 (kredensial Midtrans; P-04
-  sudah `done` lewat rute nyata #243, tapi alur bayar SUNGGUHAN dengan
-  uang vendor tetap tak terbukti) · #257 (batas `comment` review hanya di
-  client — kepemilikan Dev A, kode error kontrak §10.2) · #248–#250, #256
-  (fondasi, sebagian milik Dev A).
-- Papan per branch sudah membawa status masing-masing; SETELAH merge,
-  jalankan ulang skrip recompute ringkasan dari `AGENTS.md` (konflik tabel
-  ringkasan TIDAK PERNAH diselesaikan memilih satu sisi — aturan keras 11).
+Potret lengkap dengan angka per epik: **`docs/reports/progres-05-nov-2026.md`**.
+Ringkasnya:
+
+- **Papan: 68/80 item · 65,0/78,5 dev-hari = 82,8%.** `todo` 7 (8,5) ·
+  `blocked` 5 (5,0) · `review` 0 · `in_progress` 0.
+- **Nol PR terbuka. CI `main` hijau** (`bb2b569`). Seluruh gelombang 18–28
+  Okt sudah merge — tidak ada tumpukan yang perlu diurut lagi.
+- **Commit terakhir 28 Okt.** Tujuh hari tanpa commit sebelum 5 Nov; bukan
+  pekerjaan yang hilang, hanya jeda — tulis apa adanya di laporan harian.
+- **Kalender sudah mendahului pekerjaan**: hari kerja ke-39 dari 40
+  (rencana W8 berakhir 6 Nov). 97,5% kalender vs 82,8% pekerjaan. Rencana
+  delapan minggu **tidak akan tutup**; `DELIVERY-PLAN.md` §7 sudah
+  merekomendasikan sembilan minggu sejak hari pertama.
+- **Sembilan dari tujuh belas epik TUNTAS** — seluruh mesin retensi.
+  Yang tertinggal: `MT` Mastery Track **12%**, `K` klinik 50%,
+  `R` pengerasan 50%.
+- **Antrean Dev A KOSONG**: keempat kartu A yang tersisa `blocked`, dan nol
+  di antaranya bisa dibuka dengan menulis kode. Kapasitas Dev A tersedia
+  penuh untuk mengambil kartu Dev B (pola `Q-04`/`ST-01`, 22 Sep).
+- **Staging MATI sejak ~26 Okt** — `404 Application not found`, kredit trial
+  Railway habis. `F-05` pindah `review` → `blocked`: dua belas V terbukti,
+  **V13 rollback jadi mustahil**. Pemicu deploy otomatis sudah dimatikan
+  (#264). Web Vercel tetap 200 tanpa backend — jangan dibaca sebagai
+  "staging ada".
 
 ## Pekerjaan berikutnya (urut)
 
-1. **Respons review** tujuh PR begitu Fatih turun (diutamakan di atas
-   item baru).
-2. **K-04 UI klinik** — periksa dulu seberapa jauh bisa dibuktikan tanpa
-   kredensial Copyleaks (#90): pola P-04 terbukti bisa dipakai (verifikasi
-   seluas permukaan yang ada, status jujur `blocked`/`done` sesuai AC yang
-   benar-benar terbukti; lihat PR #235 → #253).
-3. **AI-07 UI CV builder** — perhatikan #197 (kode error ai_jobs di luar
-   §10.2) dan #207 (bom dekompresi FlateDecode, wajib sebelum /v1/cv
-   diekspos): dua isu itu didesain justru untuk item ini, jangan
-   dilewati saat membangunnya.
-4. Wireframe Stitch: prompt siap tempel di `docs/wireframe-stitch/` —
-   Stitch butuh login Google pemilik, agent tidak bisa mewakili.
+Empat kartu **siap dikerjakan sekarang**, tanpa menunggu apa pun:
 
-## Playbook lingkungan MESIN INI (WSL) — hasil hari ini
+1. **`MT-02` Wawancara terpandu** (1,5) dan **`MT-03` Review personal
+   statement** (1,0) — `MT` adalah epik paling tertinggal (12%), dan
+   `MT-04` (UI) menunggu keduanya. Kerjakan berpasangan.
+2. **`AI-07` UI CV builder** (1,0) — **baca #197 dan #207 lebih dulu**: kode
+   galat `ai_jobs` di luar §10.2, dan bom dekompresi FlateDecode yang wajib
+   ditahan sebelum `/v1/cv` diekspos. Dua isu itu ditulis justru untuk item
+   ini; jangan dilewati.
+3. **`K-04` UI klinik** (1,0) — periksa dulu seberapa jauh bisa dibuktikan
+   tanpa kredensial Copyleaks (#90). Pola `P-04` (#235 → #253) terbukti
+   bisa dipakai: verifikasi seluas permukaan yang ADA, status jujur
+   `blocked`/`done` sesuai AC yang benar-benar terbukti.
+4. Lalu `MT-04` (butuh 1–2) dan `R-01` E2E (butuh `K-04`).
+
+Yang **bukan** pekerjaan kode dan tetap menahan 5,0 dev-hari: kredensial
+Midtrans (#57), Copyleaks (#90), Retool (#77), penyedia staging + metode
+bayar (`F-05`), dan keputusan satu-domain (#176).
+
+Wireframe Stitch: prompt siap tempel di `docs/wireframe-stitch/` — Stitch
+butuh login Google pemilik, agent tidak bisa mewakili.
+
+## Playbook lingkungan — mesin **WSL** (`D:\STRIVE`)
+
+> Dulu berjudul "MESIN INI". Sesi 5 Nov berjalan di **macOS**, jadi judulnya
+> dibuat eksplisit: isi di bawah berlaku untuk laptop WSL, bukan untuk setiap
+> mesin yang membaca berkas ini. Di macOS yang relevan cuma dua barisnya —
+> Docker Desktop harus hidup sebelum suite integrasi, dan `pnpm i` setelah
+> `git pull`.
 
 - **Docker**: daemon bisa mati; nyalakan lewat
   `powershell.exe Start-Process 'C:\Program Files\Docker\Docker\Docker Desktop.exe'`
@@ -91,7 +108,7 @@
   yang ditinggal MENGHALANGI `pnpm lint` (worktree ikut ter-scan) —
   `git worktree remove --force` (unlock dulu bila terkunci).
 
-## Hal yang mudah terlupakan (dari hari ini)
+## Hal yang mudah terlupakan (dari sesi 18–25 Okt)
 
 - `git status` SEBELUM `git add -A` — screenshot/berkas sesi lain mudah
   tersapu (kejadian hampir: PNG wireframe).
