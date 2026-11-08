@@ -124,6 +124,25 @@ export function mulaiGenerate(state: CvState): CvState {
   };
 }
 
+/**
+ * Kunci idempotensi untuk percobaan yang baru dimulai — keputusan #245:
+ * kunci itu milik SATU PERCOBAAN.
+ *
+ * Percobaan lama yang sudah BERAKHIR di server (`done`/`failed`) wajib kunci
+ * BARU: server memutar ulang (replay) job lama untuk kunci yang sama, dan
+ * hasil percobaan "baru" diam-diam jadi hasil lama — form yang diedit
+ * pengguna diabaikan tanpa biaya baru. Ditemukan saat verifikasi browser
+ * AI-07 (9 Nov): generate kedua setelah hasil tiba menampilkan skor lama.
+ *
+ * Dari `idle` (belum pernah mulai, atau gagal MULAI karena jaringan/galat
+ * awal) kunci LAMA dipertahankan: itu percobaan yang sama yang dikirim
+ * ulang, dan kunci itulah yang membuat pengiriman ulang aman.
+ */
+export function kunciPercobaanBaru(faseJobLama: FaseJobCv, kunciLama: string | null): string {
+  if (faseJobLama === 'selesai' || faseJobLama === 'gagalJob') return crypto.randomUUID();
+  return kunciLama ?? crypto.randomUUID();
+}
+
 /** 202 {job_id} diterima — polling dimulai. */
 export function jobDiterima(state: CvState, jobId: string): CvState {
   return { ...state, jobId };
@@ -215,6 +234,10 @@ export function pesanGalatCv(code: string, biaya: number | null): string {
       return 'Hanya PDF dan DOCX yang diterima.';
     case 'FILE_TOO_LARGE':
       return `Dokumen melebihi batas 8 MB.`;
+    case 'SOURCE_TOO_SHORT':
+      return 'Isian terlalu sedikit untuk disusun jadi CV — lengkapi ringkasan dan pengalamanmu, atau unggah dokumen.';
+    case 'DOCUMENT_TOO_LONG':
+      return 'Dokumen terlalu panjang (di atas 15.000 kata) — ringkas dulu lalu unggah ulang.';
     case 'KEY_CONFLICT':
       return 'Percobaan yang sama masih berjalan — tunggu hasilnya, lalu mulai percobaan baru.';
     case 'VALIDATION_ERROR':

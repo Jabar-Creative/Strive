@@ -13,6 +13,7 @@ import {
   isiProfil,
   isiTargetRole,
   jobDiterima,
+  kunciPercobaanBaru,
   mulaiCv,
   mulaiGenerate,
   pesanGalatCv,
@@ -104,7 +105,7 @@ export function CvBuilderScreen() {
   }, []);
 
   const generate = useCallback(() => {
-    if (!kunciRef.current) kunciRef.current = crypto.randomUUID();
+    kunciRef.current = kunciPercobaanBaru(state.faseJob, kunciRef.current);
     setState((s) => mulaiGenerate(s));
     const body =
       state.sumber === 'upload'
@@ -137,8 +138,9 @@ export function CvBuilderScreen() {
         setState((s) => generateGagal(s, e instanceof ApiError ? e.code : 'NETWORK')),
       );
     // Kunci TIDAK di-nol-kan di finally: percobaan ini masih berjalan di
-    // server. Kunci baru lahir lewat `ulangiPercobaan` (tombol coba lagi).
-  }, [api, state.sumber, state.targetRole, state.berkas, state.profil]);
+    // server. Kunci baru lahir lewat rotasi di atas saat percobaan berikutnya
+    // dimulai dari hasil terminal, atau lewat `ulangiPercobaan`.
+  }, [api, state.faseJob, state.sumber, state.targetRole, state.berkas, state.profil]);
 
   const ulangi = useCallback(() => {
     kunciRef.current = crypto.randomUUID(); // percobaan baru = kunci baru (#245)
