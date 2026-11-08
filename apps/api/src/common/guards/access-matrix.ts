@@ -113,6 +113,9 @@ export const ACCESS_MATRIX: readonly AccessRule[] = [
   { route: 'GET /reviews/mine', allow: BELAJAR },
   { route: 'GET /payments/orders/:id', allow: BELAJAR },
   { route: 'GET /career/cv/:id', allow: BELAJAR },
+  // AI-07: status job CV untuk polling UI. BELAJAR seperti rute career
+  // lainnya; job orang lain tetap 404 di service (pola kepemilikan §2.5).
+  { route: 'GET /career/cv/jobs/:id', allow: BELAJAR },
   { route: 'GET /career/prompt-lab/history', allow: BELAJAR },
   { route: 'GET /mastery/sessions', allow: BELAJAR },
   { route: 'GET /mentor/queue', allow: KONSOL },
