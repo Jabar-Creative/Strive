@@ -202,7 +202,9 @@ def buat_klien_dari_settings() -> LlmKlien:
     bukan diam-diam memanggil OpenAI dengan kunci kosong."""
     s = get_settings()
     if s.LLM_PROVIDER == "openai":
-        return KlienOpenAI(api_key=s.OPENAI_API_KEY, model=s.LLM_MODEL)
+        return KlienOpenAI(
+            api_key=s.OPENAI_API_KEY, model=s.LLM_MODEL, base_url=s.LLM_BASE_URL
+        )
     raise GalatLayanan(
         503,
         "PROVIDER_UNAVAILABLE",

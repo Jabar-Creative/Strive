@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o"
+    # Titik akhir API kompatibel chat/completions. Bawaan tetap OpenAI
+    # resmi; variabel ini untuk verifikasi lokal ujung-ke-ujung TANPA
+    # kunci vendor (stub yang menjawab bentuk yang sama), bukan untuk
+    # produksi — jalur produksi tidak menyetelnya.
+    LLM_BASE_URL: str = "https://api.openai.com/v1"
 
     # ── Auth service-to-service ─────────────────────────────────────────
     # HANYA Core API yang boleh memanggil service ini (item AI-01).
