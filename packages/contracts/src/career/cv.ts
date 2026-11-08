@@ -27,7 +27,7 @@ export const cvKontakSchema = z.object({
 
 /** Satu pengalaman kerja dalam profil CV. */
 export const cvPengalamanSchema = z.object({
-  judul: z.string().min(1).max(200),
+  posisi: z.string().min(1).max(200),
   perusahaan: z.string().min(1).max(200),
   mulai: z.string().min(1).max(20),
   selesai: z.string().max(20).optional(),

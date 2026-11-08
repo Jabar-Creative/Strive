@@ -539,6 +539,43 @@ def test_susun_dari_profil_memuat_semua_bagian() -> None:
         assert bagian in teks
 
 
+def test_susun_dari_profil_bentuk_kontrak_node() -> None:
+    """Audit AI-07 T1/T3: profil persis bentuk kontrak zod Node tidak boleh
+    gagal validasi atau kehilangan field — dulu `posisi` vs `judul` bertabrakan
+    dan website/jurusan dibuang pydantic secara diam-diam."""
+    profil = ProfilCv.model_validate(
+        {
+            "nama": "Rina Melati",
+            "kontak": {
+                "email": "rina.melati@yopmail.com",
+                "telepon": "+628120000000",
+                "linkedin": "linkedin.com/in/rina",
+                "website": "rina.dev",
+            },
+            "pengalaman": [
+                {
+                    "posisi": "Backend Engineer",
+                    "perusahaan": "PT Nusantara Digital",
+                    "mulai": "2022-03",
+                }
+            ],
+            "pendidikan": [
+                {
+                    "gelar": "S1",
+                    "institusi": "Universitas Gadjah Mada",
+                    "mulai": "2018-08",
+                    "selesai": "2022-03",
+                    "jurusan": "Informatika",
+                }
+            ],
+            "keterampilan": ["Go"],
+        }
+    )
+    teks = susun_dari_profil(profil)
+    for bagian in ("rina.dev", "Backend Engineer", "S1 (Informatika)"):
+        assert bagian in teks
+
+
 def test_susun_dari_profil_deterministik() -> None:
     assert susun_dari_profil(profil_lengkap()) == susun_dari_profil(profil_lengkap())
 

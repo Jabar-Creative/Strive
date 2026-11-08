@@ -8,7 +8,10 @@ tidak pernah di kode, tidak pernah di log (docs/PRD.md §12 aturan 2).
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_BAWAAN_LLM_BASE_URL = "https://api.openai.com/v1"
 
 
 class Settings(BaseSettings):
@@ -36,8 +39,23 @@ class Settings(BaseSettings):
     # Titik akhir API kompatibel chat/completions. Bawaan tetap OpenAI
     # resmi; variabel ini untuk verifikasi lokal ujung-ke-ujung TANPA
     # kunci vendor (stub yang menjawab bentuk yang sama), bukan untuk
-    # produksi — jalur produksi tidak menyetelnya.
-    LLM_BASE_URL: str = "https://api.openai.com/v1"
+    # produksi — jalur produksi tidak menyetelnya. Salah konfigurasi di
+    # produksi berarti OPENAI_API_KEY dikirim sebagai Bearer ke URL itu,
+    # jadi nilainya selain bawaan DI TOLAK KERAS saat NODE_ENV=production
+    # (audit AI-07 C1).
+    LLM_BASE_URL: str = _BAWAAN_LLM_BASE_URL
+
+    @model_validator(mode="after")
+    def _llm_base_url_produksi(self) -> "Settings":
+        if (
+            self.NODE_ENV == "production"
+            and self.LLM_BASE_URL.rstrip("/") != _BAWAAN_LLM_BASE_URL
+        ):
+            raise ValueError(
+                "LLM_BASE_URL non-bawaan ditolak di production: nilai ini hanya "
+                "untuk verifikasi lokal, dan kunci API akan dikirim ke titik akhir itu."
+            )
+        return self
 
     # ── Auth service-to-service ─────────────────────────────────────────
     # HANYA Core API yang boleh memanggil service ini (item AI-01).

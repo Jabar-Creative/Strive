@@ -77,7 +77,8 @@ export interface KontakCv {
 }
 
 export interface PengalamanCv {
-  judul: string;
+  /** `posisi`, SATU nama dengan `Pengalaman` layanan AI (audit AI-07 T1). */
+  posisi: string;
   perusahaan: string;
   mulai: string;
   selesai?: string;
@@ -240,7 +241,13 @@ export class CvBuilderService {
       if (!/^[A-Za-z0-9+/=\r\n]+$/.test(b64)) {
         galatCv('document_base64 bukan base64 sah', 'document_base64');
       }
-      const dok = Buffer.from(b64, 'base64');
+      // Bungkus baris (gaya MIME, kolom 76) SAH di sini, tapi layanan AI
+      // memakai `b64decode(validate=True)` yang MENOLAK baris baru — dan
+      // kegagalan di sana datang setelah koin di-hold dan kuota harian
+      // terpakai (audit AI-07 T2). Dinormalisasi SEKARANG, dan yang
+      // disimpan ke `ai_jobs.input` adalah hasil bersihnya.
+      const bersih = b64.replace(/[\r\n]/g, '');
+      const dok = Buffer.from(bersih, 'base64');
       if (dok.byteLength === 0) galatCv('Dokumen kosong', 'document_base64');
       if (dok.byteLength > MAKS_DOKUMEN_BYTE) {
         throw new BadRequestException({
@@ -268,7 +275,7 @@ export class CvBuilderService {
         source: 'upload',
         target_role: input.target_role,
         language: input.language,
-        document_base64: b64,
+        document_base64: bersih,
       };
     }
 
@@ -299,7 +306,7 @@ export class CvBuilderService {
         galatCv('profile.pengalaman maksimal 50 entri', 'profile.pengalaman');
       }
       for (const x of p.pengalaman) {
-        teks(x.judul, 'pengalaman.judul', true);
+        teks(x.posisi, 'pengalaman.posisi', true);
         teks(x.perusahaan, 'pengalaman.perusahaan', true);
         teks(x.mulai, 'pengalaman.mulai', true);
         teks(x.selesai, 'pengalaman.selesai', false);

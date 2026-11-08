@@ -60,7 +60,7 @@ const INPUT_PROFIL: CvGenerateInput = {
     nama: 'Rina Melati',
     headline: 'Mahasiswa statistika semester akhir',
     kontak: { email: 'rina-ai07@yopmail.com' },
-    pengalaman: [{ judul: 'Intern Data', perusahaan: 'PT Contoh', mulai: '2024-01' }],
+    pengalaman: [{ posisi: 'Intern Data', perusahaan: 'PT Contoh', mulai: '2024-01' }],
     keterampilan: ['SQL', 'Python'],
   },
 };
@@ -474,6 +474,61 @@ describe('POST /career/cv — service (AI-07 Node)', () => {
       .where('id', '=', jobId)
       .executeTakeFirstOrThrow();
     expect((job.input as { source?: string })['source']).toBe('upload');
+  });
+
+  it('interop (audit T1): profil lengkap bentuk kontrak — posisi, jurusan, website — diterima utuh', async () => {
+    if (!reachable) return;
+    const { builder } = rakit();
+    const jobId = await builder.buat(
+      AKU,
+      {
+        target_role: 'Data Analyst',
+        language: 'id',
+        source: 'profile',
+        profile: {
+          nama: 'Rina Melati',
+          kontak: { email: 'x-ai07@yopmail.com', website: 'rina.dev' },
+          pengalaman: [{ posisi: 'Intern Data', perusahaan: 'PT Contoh', mulai: '2024-01' }],
+          pendidikan: [{ gelar: 'S1', institusi: 'UGM', mulai: '2020', jurusan: 'Statistika' }],
+          keterampilan: ['SQL'],
+        },
+      },
+      'interop-1',
+    );
+    const job = await db
+      .selectFrom('ai_jobs')
+      .selectAll()
+      .where('id', '=', jobId)
+      .executeTakeFirstOrThrow();
+    const profil = (job.input as { profile?: Record<string, unknown> })['profile'];
+    // Bentuk yang sampai ke layanan AI harus sama persis dengan kontrak zod:
+    // pydantic di sana menuntut `posisi`, dan website/jurusan kini dibacanya.
+    expect(profil).toMatchObject({
+      pengalaman: [{ posisi: 'Intern Data' }],
+      pendidikan: [{ jurusan: 'Statistika' }],
+      kontak: { website: 'rina.dev' },
+    });
+  });
+
+  it('interop (audit T2): base64 MIME-wrapped diterima dan disimpan TANPA baris baru', async () => {
+    if (!reachable) return;
+    const { builder } = rakit();
+    // Bungkus 20 kolom gaya MIME — lolos charset Node, tapi `b64decode(validate=True)`
+    // di layanan AI menolak \n; normalisasi wajib terjadi sebelum ai_jobs.input.
+    const bungkus = PDF_KECIL.replace(/(.{20})/g, '$1\n');
+    const jobId = await builder.buat(
+      AKU,
+      { target_role: 'Data Analyst', language: 'id', source: 'upload', document_base64: bungkus },
+      'interop-2',
+    );
+    const job = await db
+      .selectFrom('ai_jobs')
+      .selectAll()
+      .where('id', '=', jobId)
+      .executeTakeFirstOrThrow();
+    const tersimpan = (job.input as { document_base64?: string })['document_base64'];
+    expect(tersimpan).not.toMatch(/[\r\n]/);
+    expect(tersimpan).toBe(PDF_KECIL);
   });
 
   it('validasi: profile tanpa nama → VALIDATION_ERROR menunjuk bagian penyebab', async () => {

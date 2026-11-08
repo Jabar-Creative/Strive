@@ -462,6 +462,9 @@ class Kontak(BaseModel):
     email: str | None = None
     telepon: str | None = None
     linkedin: str | None = None
+    # Kontrak Node mengirim website/jurusan (audit AI-07 T3); tanpa field ini
+    # pydantic diam-diam membuangnya — data yang diisi pengguna lenyap.
+    website: str | None = None
 
 
 class Pengalaman(BaseModel):
@@ -477,6 +480,7 @@ class Pendidikan(BaseModel):
     institusi: str
     mulai: str | None = None
     selesai: str | None = None
+    jurusan: str | None = None
 
 
 class ProfilCv(BaseModel):
@@ -503,7 +507,12 @@ def susun_dari_profil(profil: ProfilCv) -> str:
         bagian.append(profil.headline)
     kontak = " · ".join(
         nilai
-        for nilai in (profil.kontak.email, profil.kontak.telepon, profil.kontak.linkedin)
+        for nilai in (
+            profil.kontak.email,
+            profil.kontak.telepon,
+            profil.kontak.linkedin,
+            profil.kontak.website,
+        )
         if nilai
     )
     if kontak:
@@ -522,7 +531,8 @@ def susun_dari_profil(profil: ProfilCv) -> str:
         bagian.append("PENDIDIKAN")
         for d in profil.pendidikan:
             tahun = f" ({d.mulai} - {d.selesai})" if d.mulai and d.selesai else ""
-            bagian.append(f"{d.gelar}, {d.institusi}{tahun}")
+            gelar = f"{d.gelar} ({d.jurusan})" if d.jurusan else d.gelar
+            bagian.append(f"{gelar}, {d.institusi}{tahun}")
     if profil.keterampilan:
         bagian.append("KETERAMPILAN: " + ", ".join(profil.keterampilan))
 
