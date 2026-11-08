@@ -24,10 +24,19 @@ import { PromptLabService } from './prompt-lab.service';
  * Skor ATS DETERMINISTIK, tanpa LLM (CV-6).
  *
  * `CvFinalizeService` didaftarkan SEKALIGUS sebagai penyedia token
- * `PENYELESAI_JOB_AI` kind `ats_cv`. `useExisting`, bukan kelas langsung:
- * dispatcher menyuntik multi-provider dan hanya instance INI yang boleh
- * menyelesaikan job CV — dua binding kelas akan membuat dua instance.
- * WorkerModule mengimpor modul ini supaya hook-nya terlihat di sisi pool.
+ * `PENYELESAI_JOB_AI` kind `ats_cv`, dan binding itu WAJIB diekspor:
+ * `AiDispatchService` hidup di WorkerModule, jadi tanpa `exports` tokennya
+ * tidak pernah terlihat di sana — `@Optional()` dispatcher menjadikannya `[]`
+ * dan job berjalan "sukses" tanpa finalisasi, hold koin menggantung diam-diam.
+ * Bug persis ini lolos semua test unit dan baru ketahuan saat stack e2e
+ * dijalankan sungguhan (verifikasi AI-07, 9 Nov).
+ *
+ * `useFactory` membungkus instance dalam ARRAY, karena kontrak dispatcher
+ * (penyelesai-job-ai.ts) adalah `PenyelesaiJobAi[]` — `useExisting` akan
+ * mengikat SATU instance dan `for..of` di dispatcher melempar. Kalau
+ * penyedia KEDUA muncul (mis. mastery interview), binding sejenis di modul
+ * lain akan MENIMPA satu ini saat keduanya diimpor bersama; saat itu
+ * tokennya perlu berevolusi jadi registry pengumpul. Satu penyedia hari ini.
  */
 @Module({
   imports: [KyselyModule, StorageModule, WalletModule, PaymentModule, AiModule],
@@ -37,8 +46,12 @@ import { PromptLabService } from './prompt-lab.service';
     PromptLabService,
     CvBuilderService,
     CvFinalizeService,
-    { provide: PENYELESAI_JOB_AI, useExisting: CvFinalizeService },
+    {
+      provide: PENYELESAI_JOB_AI,
+      useFactory: (cv: CvFinalizeService) => [cv],
+      inject: [CvFinalizeService],
+    },
   ],
-  exports: [CareerReadService],
+  exports: [CareerReadService, PENYELESAI_JOB_AI],
 })
 export class CareerModule {}
