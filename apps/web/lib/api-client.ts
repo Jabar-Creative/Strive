@@ -28,6 +28,8 @@ import type { AntreanMentorItem, HasilValidasi } from './mentor-console';
 import type { AntreanItem, HasilSubmit } from './review-queue';
 import type {
   CheckoutResponse,
+  CvGenerateRequest,
+  CvJobResponse,
   HubResponse,
   ListNotificationsResponse,
   MarkNotificationReadResponse,
@@ -44,6 +46,8 @@ export type {
   CheckoutResponse,
   CoinEntryType,
   CoinLedgerEntry,
+  CvGenerateRequest,
+  CvJobResponse,
   HubResponse,
   ListNotificationsResponse,
   MarkNotificationReadResponse,
@@ -290,12 +294,13 @@ export function createApiClient(config: ApiClientConfig) {
     /**
      * GET /me — A-05. Bentuk lengkap `MyProfile` hidup di
      * `apps/api/src/modules/users/profile.service.ts`; web hanya menuntut
-     * `id` (namespace draf review per pengguna — temuan audit PR-03) dan
+     * `id` (namespace draf review per pengguna — temuan audit PR-03) plus
+     * `display_name` sejak AI-07 (prefill nama form profil CV) dan
      * sengaja tidak menyalin field lain, supaya kontrak tidak berganda di
      * dua tempat yang menua dengan kecepatan berbeda.
      */
     getMe(opts?: Pick<RequestOptions, 'signal'>) {
-      return request<{ id: string }>('/me', { signal: opts?.signal });
+      return request<{ id: string; display_name: string }>('/me', { signal: opts?.signal });
     },
 
     /**
@@ -443,6 +448,33 @@ export function createApiClient(config: ApiClientConfig) {
         }>;
         next_cursor: string | null;
       }>('/career/prompt-lab/history', { signal: opts?.signal });
+    },
+
+    /**
+     * POST /career/cv (⚡) — AI-07, ASINKRON: balasan `202 {job_id}`, hasil
+     * datang lewat polling `cvJobStatus`. Kunci idempoten MILIK PERCOBAAN
+     * (pola prompt-lab): retry atas percobaan yang sama memakai kunci SAMA;
+     * percobaan baru setelah job gagal memakai kunci BARU (keputusan #245 —
+     * kunci lama masih memegang hold job yang gagal).
+     */
+    generateCv(
+      body: CvGenerateRequest,
+      idempotencyKey: string,
+      opts?: Pick<RequestOptions, 'signal'>,
+    ) {
+      return request<{ job_id: string }>('/career/cv', {
+        method: 'POST',
+        body,
+        idempotencyKey,
+        signal: opts?.signal,
+      });
+    },
+
+    /** GET /career/cv/jobs/:id — status job untuk polling UI (AI-07). */
+    cvJobStatus(jobId: string, opts?: Pick<RequestOptions, 'signal'>) {
+      return request<CvJobResponse>(`/career/cv/jobs/${encodeURIComponent(jobId)}`, {
+        signal: opts?.signal,
+      });
     },
 
     /**
