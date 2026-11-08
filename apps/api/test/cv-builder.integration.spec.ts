@@ -385,7 +385,7 @@ describe('POST /career/cv — service (AI-07 Node)', () => {
       .where('idempotency_key', '=', 'kunci-paralel')
       .execute();
     expect(hold).toHaveLength(1);
-    expect(hold[0].amount).toBe(-40); // koin terpotong TEPAT SEKALI
+    expect(hold[0]?.amount).toBe(-40); // koin terpotong TEPAT SEKALI
     expect(antre.add).toHaveBeenCalledTimes(1); // replay/conflict tidak enqueue ulang
   });
 
