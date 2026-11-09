@@ -219,6 +219,24 @@ def test_parameter_berbeda_cache_berbeda() -> None:
     assert len(asyncio.run(dua_peran()).panggilan) == 2
 
 
+def test_cache_hit_tidak_membangun_klien() -> None:
+    """Audit AI-07: klien vendor dibangun hanya saat cache MISS — pabrik
+    yang melempar 503 (kunci kosong) tidak boleh mendahului cache hit."""
+
+    async def jalan():
+        cache = CacheDict()
+        await susun_cv(SUMBER_BUDI, LlmPalsu([cv_json()]), cache=cache)
+
+        def pabrik_melempar():
+            raise AssertionError("pabrik klien dipanggil pada cache hit")
+
+        return await susun_cv(SUMBER_BUDI, pabrik_melempar, cache=cache)
+
+    hasil = asyncio.run(jalan())
+    assert hasil.dari_cache is True
+    assert hasil.model == "palsu-1"  # nama model ikut tersimpan di cache
+
+
 def test_prompt_version_memasuki_kunci_cache() -> None:
     a = kunci_cache("sumber", {"target_role": "", "bahasa": "id"}, PROMPT_VERSION)
     b = kunci_cache("sumber", {"target_role": "", "bahasa": "id"}, "ats-cv/lama")

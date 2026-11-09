@@ -17,10 +17,11 @@ client = TestClient(app)
 # Empat jalur persis konstanta JALUR_AI di apps/api (isu #132).
 JALUR = ["/v1/cv", "/v1/prompt", "/v1/interview", "/v1/statement"]
 
-# Rute yang masih skeleton AI-01 (503 NOT_IMPLEMENTED). `/v1/prompt` sudah
-# punya implementasi nyata (PL-01): dengan input kosong ia menjawab 422
-# VALIDATION_ERROR, bukan 503 — jadi tidak boleh ikut parametrize 503 lagi.
-JALUR_SKELETON = ["/v1/cv", "/v1/interview", "/v1/statement"]
+# Rute yang masih skeleton AI-01 (503 NOT_IMPLEMENTED). `/v1/prompt` (PL-01)
+# dan `/v1/cv` (AI-07) sudah punya implementasi nyata: dengan input kosong
+# keduanya menjawab 422 VALIDATION_ERROR, bukan 503 — jadi tidak boleh ikut
+# parametrize 503 lagi.
+JALUR_SKELETON = ["/v1/interview", "/v1/statement"]
 
 BODY = {"job_id": "11111111-1111-4111-8111-111111111111", "input": {}}
 
@@ -62,6 +63,16 @@ def test_prompt_sudah_diimplementasi_bukan_503(token_terpasang: str) -> None:
     # bentuk), bukan 503 skeleton.
     hasil = client.post(
         "/v1/prompt", json=BODY, headers={"Authorization": f"Bearer {token_terpasang}"}
+    )
+    assert hasil.status_code == 422
+    assert hasil.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_cv_sudah_diimplementasi_bukan_503(token_terpasang: str) -> None:
+    # Sejak AI-07, /v1/cv juga memvalidasi isi input sungguhan: input tanpa
+    # `source` ditolak 422 VALIDATION_ERROR, bukan 503 skeleton.
+    hasil = client.post(
+        "/v1/cv", json=BODY, headers={"Authorization": f"Bearer {token_terpasang}"}
     )
     assert hasil.status_code == 422
     assert hasil.json()["error"]["code"] == "VALIDATION_ERROR"
@@ -140,6 +151,21 @@ def test_body_melebihi_batas_413() -> None:
         "/v1/cv",
         content=b"x",
         headers={"Content-Length": str(11 * 1024 * 1024)},
+    )
+    assert hasil.status_code == 413
+    assert hasil.json()["error"]["code"] == "PAYLOAD_TOO_LARGE"
+
+
+def test_body_chunked_ditolak_413() -> None:
+    # Audit AI-07 temuan 3: chunked tidak membawa Content-Length, jadi batas
+    # body bisa dilewati cuma dengan memotong header. Pemanggil sah (httpx di
+    # Core API) selalu mengirim Content-Length — tolak chunked di middleware,
+    # sebelum satu byte body dibaca. TestClient mengirim chunked lewat
+    # header eksplisit; yang diuji keputusan middleware, bukan transport.
+    hasil = client.post(
+        "/v1/cv",
+        content=b"x",
+        headers={"Transfer-Encoding": "chunked"},
     )
     assert hasil.status_code == 413
     assert hasil.json()["error"]["code"] == "PAYLOAD_TOO_LARGE"

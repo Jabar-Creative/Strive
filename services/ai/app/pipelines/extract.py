@@ -16,8 +16,10 @@ AI-02: "ditolak dengan pesan yang jelas").
 from __future__ import annotations
 
 import io
+import logging
 import statistics
 import zipfile
+import zlib
 from collections.abc import Iterator
 from typing import Any, Literal
 
@@ -27,6 +29,9 @@ from pdfminer.pdfdocument import PDFEncryptionError, PDFPasswordIncorrect
 from pydantic import BaseModel, Field
 
 from app.core.errors import GalatLayanan
+from app.pipelines.anggaran_pdf import anggaran_muai
+
+_log = logging.getLogger(__name__)
 
 # ── Batas (KL-1 dan §10.2) ────────────────────────────────────────────────
 
@@ -37,6 +42,22 @@ MAKS_MUAI_DOCX = 100 * 1024 * 1024
 """DOCX adalah ZIP: 25 MB terkompresi bisa memuai ratusan MB saat dibuka.
 Batas ini dihitung dari jumlah `file_size` (TERURAI) seluruh entri SEBELUM
 kontennya dipercaya — penjaga zip-bomb, dibaca lebih dulu daripada isi."""
+
+MAKS_MUAI_STREAM = 32 * 1024 * 1024
+MAKS_MUAI_TOTAL = 150 * 1024 * 1024
+"""Bom dekompresi FlateDecode PDF (isu #207). pdfminer memanggil
+`zlib.decompress` sekali jalan tanpa batas output; rasio ekspansi DEFLATE
+±1032:1 membuat PDF 60 KB bisa memuai ratusan MB dan mematikan container.
+Stream diukur SATU PER SATU dengan `decompressobj` ber-`max_length`
+(hitung panjang, hasilnya dibuang) SEBELUM pdfplumber dibuka. Cap per-stream
+menahan bom tunggal, cap total menahan bom yang dipecah banyak stream kecil.
+
+Yang TIDAK dijangkau (sengaja, didokumentasikan di isu #207): filter non-
+Flate (LZW, RunLength — pdfminer mendukungnya tapi nyaris tak dipakai CV
+modern) dan stream bersarang DALAM konten stream lain — pdfminer tidak
+mem-parse ulang konten terurai sebagai objek, dan ObjStm dilarang memuat
+objek stream oleh spesifikasi PDF, jadi setiap stream yang benar-benar
+didekompresi pdfminer adalah objek tingkat atas yang sudah tersapu di sini."""
 
 MAKS_KATA = 15_000
 MIN_KARAKTER_SUMBER = 120
@@ -100,9 +121,103 @@ def ekstrak_dokumen(data: bytes) -> HasilEkstraksi:
 # ── PDF ───────────────────────────────────────────────────────────────────
 
 
-def _ekstrak_pdf(data: bytes) -> tuple[str, list[Temuan]]:
+def _ukuran_muai(segmen: bytes, batas: int) -> int | None:
+    """Panjang terurai segmen zlib, berhenti begitu melampaui `batas`.
+
+    `None` kalau segmen bukan zlib — bukan berarti buruk: sebagian stream PDF
+    memang tanpa filter, dan biarkan pdfplumber yang memutuskan. Penting:
+    hasil dekompresi DIBUANG per potongan, tidak pernah ditumpuk — mengukur
+    bom 64 MB tidak boleh memakan memori 64 MB (`flush()` TIDAK dipakai karena
+    versi itu tanpa `max_length`).
+    """
+    pengurai = zlib.decompressobj()
+    total = 0
+    potongan = 1024 * 1024
     try:
-        with pdfplumber.open(io.BytesIO(data)) as pdf:
+        while True:
+            keluar = pengurai.decompress(segmen, potongan)
+            total += len(keluar)
+            if total > batas:
+                return total
+            if pengurai.eof or not pengurai.unconsumed_tail:
+                return total
+            segmen = pengurai.unconsumed_tail
+    except zlib.error:
+        return None
+
+
+def _periksa_bom_stream(data: bytes) -> None:
+    """Penolakan CEPAT bom dekompresi sebelum pdfplumber menyentuhnya (isu #207).
+
+    Perannya sejak audit AI-07 (temuan 1) hanya itu: menolak cepat. Penegakan
+    anggaran yang sesungguhnya ada di TITIK DEKOMPRESI parser
+    (`anggaran_pdf.py`), karena scanner literal ini memandai byte secara
+    literal sementara parser membaca struktur PDF sungguhan — kata "stream" di
+    komentar membuat pasangan segmennya salah, dan /Filter berantai didekompresi
+    parser lebih dari satu pass. Varian seperti itu tidak mungkin ditutup dari
+    luar parser; yang bisa ditutup dari luar hanyalah kasus biasa, lebih murah
+    ditolak sebelum parser dibuka."""
+    total = 0
+    pos = 0
+    while True:
+        mulai = data.find(b"stream", pos)
+        if mulai == -1:
+            return
+        # "stream" di dalam "endstream" bukan awal stream — lompati.
+        if mulai >= 3 and data[mulai - 3 : mulai] == b"end":
+            pos = mulai + 6
+            continue
+        isi_mulai = mulai + 6
+        if data[isi_mulai : isi_mulai + 2] == b"\r\n":
+            isi_mulai += 2
+        elif data[isi_mulai : isi_mulai + 1] in (b"\r", b"\n"):
+            isi_mulai += 1
+        akhir = data.find(b"endstream", isi_mulai)
+        if akhir == -1:
+            return
+        segmen = data[isi_mulai:akhir]
+        muai = _ukuran_muai(segmen, MAKS_MUAI_TOTAL - total)
+        if muai is not None:
+            total += muai
+            if muai > MAKS_MUAI_STREAM:
+                _catat_bom(len(segmen), muai, "per-stream")
+                raise _galat(
+                    422,
+                    "DOCUMENT_TOO_LONG",
+                    f"Stream PDF memuai {muai // (1024 * 1024)} MB saat dibuka "
+                    f"(batas {MAKS_MUAI_STREAM // (1024 * 1024)} MB) — dokumen "
+                    "terlalu berat untuk diproses.",
+                )
+            if total > MAKS_MUAI_TOTAL:
+                _catat_bom(len(segmen), total, "total")
+                raise _galat(
+                    422,
+                    "DOCUMENT_TOO_LONG",
+                    f"Total isi stream PDF memuai {total // (1024 * 1024)} MB "
+                    f"saat dibuka (batas {MAKS_MUAI_TOTAL // (1024 * 1024)} MB) "
+                    "— dokumen terlalu berat untuk diproses.",
+                )
+        pos = akhir + 9
+
+
+def _catat_bom(terkompres: int, muai: int, jenis: str) -> None:
+    # Isu #207 meminta penolakan ini TERLIHAT, bukan cuma tertahan: tanpa
+    # catatan, DoS bentuk ini tidak meninggalkan jejak apa pun.
+    _log.warning(
+        "bom dekompresi PDF ditolak (%s): %d byte terkompresi memuai %d byte",
+        jenis,
+        terkompres,
+        muai,
+    )
+
+
+def _ekstrak_pdf(data: bytes) -> tuple[str, list[Temuan]]:
+    # Penolakan cepat dulu; anggaran sesungguhnya dipasang MENYELIMUTI parser
+    # (audit AI-07 temuan 1): pdfminer mendekompresi stream secara malas saat
+    # halaman dibaca, jadi anggaran harus melingkupi seluruh blok `with`.
+    _periksa_bom_stream(data)
+    try:
+        with anggaran_muai(MAKS_MUAI_STREAM, MAKS_MUAI_TOTAL), pdfplumber.open(io.BytesIO(data)) as pdf:
             if len(pdf.pages) > MAKS_HALAMAN:
                 raise _galat(
                     422,
@@ -144,6 +259,12 @@ def _ekstrak_pdf(data: bytes) -> tuple[str, list[Temuan]]:
     except GalatLayanan:
         raise
     except Exception as ex:
+        # Anggaran dekompresi (anggaran_pdf.py) melempar GalatLayanan dari
+        # DALAM parser; pdfplumber membungkusnya, jadi galat yang benar harus
+        # diambil balik dari rantai sebelum dianggap "PDF rusak".
+        galat_anggaran = _cari_di_rantai(ex, GalatLayanan)
+        if galat_anggaran is not None:
+            raise galat_anggaran from ex
         # pdfplumber membungkus SEMUA galat pdfminer menjadi
         # `PdfminerException` berpesan kosong — jenis aslinya (termasuk
         # enkripsi) hanya hidup di rantai `__cause__`. Byte datang dari
@@ -166,14 +287,21 @@ def _ekstrak_pdf(data: bytes) -> tuple[str, list[Temuan]]:
 Kata = dict[str, Any]
 
 
-def _dalam_rantai(ex: BaseException, jenis: tuple[type[BaseException], ...]) -> bool:
-    """Cari `jenis` di rantai penyebab (`__cause__`/`__context__`) exception."""
+def _cari_di_rantai(
+    ex: BaseException, jenis: type[BaseException] | tuple[type[BaseException], ...]
+) -> BaseException | None:
+    """Kembalikan instance `jenis` pertama di rantai `__cause__`/`__context__`."""
     kini: BaseException | None = ex
     while kini is not None:
         if isinstance(kini, jenis):
-            return True
+            return kini
         kini = kini.__cause__ or kini.__context__
-    return False
+    return None
+
+
+def _dalam_rantai(ex: BaseException, jenis: tuple[type[BaseException], ...]) -> bool:
+    """Cari `jenis` di rantai penyebab (`__cause__`/`__context__`) exception."""
+    return _cari_di_rantai(ex, jenis) is not None
 
 
 def _baris_dari_kata(kata: list[Kata], toleransi: float = 4.0) -> Iterator[list[Kata]]:
@@ -334,6 +462,9 @@ class Kontak(BaseModel):
     email: str | None = None
     telepon: str | None = None
     linkedin: str | None = None
+    # Kontrak Node mengirim website/jurusan (audit AI-07 T3); tanpa field ini
+    # pydantic diam-diam membuangnya — data yang diisi pengguna lenyap.
+    website: str | None = None
 
 
 class Pengalaman(BaseModel):
@@ -349,6 +480,7 @@ class Pendidikan(BaseModel):
     institusi: str
     mulai: str | None = None
     selesai: str | None = None
+    jurusan: str | None = None
 
 
 class ProfilCv(BaseModel):
@@ -375,7 +507,12 @@ def susun_dari_profil(profil: ProfilCv) -> str:
         bagian.append(profil.headline)
     kontak = " · ".join(
         nilai
-        for nilai in (profil.kontak.email, profil.kontak.telepon, profil.kontak.linkedin)
+        for nilai in (
+            profil.kontak.email,
+            profil.kontak.telepon,
+            profil.kontak.linkedin,
+            profil.kontak.website,
+        )
         if nilai
     )
     if kontak:
@@ -394,7 +531,8 @@ def susun_dari_profil(profil: ProfilCv) -> str:
         bagian.append("PENDIDIKAN")
         for d in profil.pendidikan:
             tahun = f" ({d.mulai} - {d.selesai})" if d.mulai and d.selesai else ""
-            bagian.append(f"{d.gelar}, {d.institusi}{tahun}")
+            gelar = f"{d.gelar} ({d.jurusan})" if d.jurusan else d.gelar
+            bagian.append(f"{gelar}, {d.institusi}{tahun}")
     if profil.keterampilan:
         bagian.append("KETERAMPILAN: " + ", ".join(profil.keterampilan))
 

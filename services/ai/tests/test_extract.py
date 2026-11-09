@@ -14,6 +14,7 @@ FILE_TOO_LARGE · UNSUPPORTED_FILE_TYPE · DOCUMENT_TOO_LONG · SOURCE_TOO_SHORT
 
 import io
 import zipfile
+import zlib
 
 import pytest
 from docx import Document
@@ -344,6 +345,172 @@ def test_docx_bom_dekompresi_ditolak() -> None:
     assert info.value.code == "FILE_TOO_LARGE"
 
 
+def buat_pdf_bom_stream(muai: int, jumlah: int = 1) -> bytes:
+    """PDF sah bentuknya (<25 MB) dengan stream FlateDecode yang memuai `muai` byte per stream.
+
+    Isu #207: nol terkompresi ratusan kali lipat — 64 MB muai jadi ±60 KB
+    terkompresi, jauh di bawah cap input 25 MB yang sudah ada.
+    """
+    bagian = [b"%PDF-1.4\n"]
+    for i in range(jumlah):
+        kompres = zlib.compress(b"\x00" * muai, 9)
+        bagian.append(
+            f"{i + 1} 0 obj\n<< /Length {len(kompres)} /Filter /FlateDecode >>\nstream\n".encode()
+            + kompres
+            + b"\nendstream\nendobj\n"
+        )
+    return b"".join(bagian) + b"%%EOF"
+
+
+def test_pdf_bom_stream_tunggal_ditolak_sebelum_pdfplumber() -> None:
+    """Isu #207: 60 KB terkompres memuai 64 MB — ditolak, bukan dimuat ke memori."""
+    with pytest.raises(GalatLayanan) as info:
+        ekstrak_dokumen(buat_pdf_bom_stream(64 * 1024 * 1024))
+    assert info.value.code == "DOCUMENT_TOO_LONG"
+    assert info.value.status == 422
+    assert "memuai" in info.value.message.lower()
+
+
+def test_pdf_bom_banyak_stream_kena_batas_total() -> None:
+    """Tiap stream di bawah batas per-stream (30 MB < 32 MB), jumlahnya yang melampaui total."""
+    with pytest.raises(GalatLayanan) as info:
+        ekstrak_dokumen(buat_pdf_bom_stream(30 * 1024 * 1024, jumlah=6))
+    assert info.value.code == "DOCUMENT_TOO_LONG"
+    assert info.value.status == 422
+
+
+# ── Regresi audit AI-07 (temuan 1): guard literal #207 bisa dilewati ──────
+#
+# Dua bypass yang terbukti lewat probe terukur (alokasi parser tetap
+# ratusan MB meski guard meloloskan): kata "stream" di teks lain membuat
+# scanner salah memasangkan segmen, dan /Filter berantai didekompresi
+# parser lebih dari satu pass sedangkan scanner hanya mengukur satu.
+# Penegakan yang benar ada di TITIK DEKOMPRESI parser (lihat
+# app/pipelines/anggaran_pdf.py); test di bawah adalah penjaganya.
+#
+# PDF dibangun lengkap (Catalog/Pages/Page/Contents + xref), bukan cuma
+# tumpukan objek: pdfminer hanya mendekode stream yang DIREFERENSIKAN
+# halaman, jadi tanpa rantai referensi ini bypass tidak pernah tersentuh
+# parser dan testnya bohong.
+
+
+def _rakit_pdf(objek: dict[int, bytes]) -> bytes:
+    out = bytearray(b"%PDF-1.4\n")
+    ofset: dict[int, int] = {}
+    for n in sorted(objek):
+        ofset[n] = len(out)
+        out += f"{n} 0 obj\n".encode() + objek[n] + b"\nendobj\n"
+    maks = max(objek)
+    px = len(out)
+    out += b"xref\n" + f"0 {maks + 1}\n".encode() + b"0000000000 65535 f \n"
+    for n in range(1, maks + 1):
+        out += (
+            (f"{ofset.get(n, 0):010d} 00000 n \n").encode() if n in ofset else b"0000000000 65535 f \n"
+        )
+    out += f"trailer\n<< /Size {maks + 1} /Root 1 0 R >>\nstartxref\n{px}\n%%EOF".encode()
+    return bytes(out)
+
+
+def _pdf_konten(isi: bytes, filt: bytes = b"/FlateDecode", komentar: bytes = b"") -> bytes:
+    """Satu halaman yang content stream-nya = `isi` dengan `/Filter` = `filt`."""
+    stream = (
+        b"<< /Length "
+        + str(len(isi)).encode()
+        + b" /Filter "
+        + filt
+        + b" >>\nstream\n"
+        + isi
+        + b"\nendstream"
+    )
+    objek = {
+        1: b"<< /Type /Catalog /Pages 2 0 R >>",
+        2: b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        3: b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+        b"/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        4: stream,
+        5: b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    }
+    pdf = _rakit_pdf(objek)
+    if not komentar:
+        return pdf
+    return bytearray(b"%PDF-1.4\n") + komentar + pdf[len(b"%PDF-1.4\n") :]
+
+
+def _kompres_lapis(muai: int, lapis: int) -> bytes:
+    isi = b"\x00" * muai
+    for _ in range(lapis):
+        isi = zlib.compress(isi, 9)
+    return isi
+
+
+def buat_pdf_komentar_stream(muai: int) -> bytes:
+    """Bypass 1a: komentar `%stream` di atas objek membuat scanner literal
+    memasangkan segmen yang salah, stream bom di bawahnya tak pernah terukur."""
+    return _pdf_konten(zlib.compress(b"\x00" * muai, 9), b"/FlateDecode", komentar=b"%stream catatan\n")
+
+
+def buat_pdf_rantai_filter(muai: int, lapis: int = 2) -> bytes:
+    """Bypass 1b: `/Filter [/FlateDecode /FlateDecode]` diterapkan parser
+    BERURUTAN; scanner hanya menjalankan satu pass zlib per segmen, jadi muai
+    lapis kedua ke atas tidak pernah diukur."""
+    rantai = b" ".join([b"/FlateDecode"] * lapis)
+    return _pdf_konten(_kompres_lapis(muai, lapis), b"[" + rantai + b"]")
+
+
+def buat_pdf_rantai_banyak_objek(muai: int, jumlah: int, lapis: int = 2) -> bytes:
+    """Varian 1b lintas halaman: tiap dekompresi di bawah cap per-stream,
+    jumlah totalnya yang melampaui anggaran dokumen — hanya anggaran kumulatif
+    di titik dekompresi yang bisa menangkapnya."""
+    isi = _kompres_lapis(muai, lapis)
+    stream = (
+        b"<< /Length "
+        + str(len(isi)).encode()
+        + b" /Filter ["
+        + b" ".join([b"/FlateDecode"] * lapis)
+        + b"] >>\nstream\n"
+        + isi
+        + b"\nendstream"
+    )
+    id_font = 3 + jumlah * 2
+    objek: dict[int, bytes] = {1: b"<< /Type /Catalog /Pages 2 0 R >>"}
+    kids = []
+    for i in range(jumlah):
+        hal = 3 + i * 2
+        objek[hal] = (
+            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents {hal + 1} 0 R "
+            f"/Resources << /Font << /F1 {id_font} 0 R >> >> >>".encode()
+        )
+        objek[hal + 1] = stream
+        kids.append(f"{hal} 0 R")
+    objek[2] = f"<< /Type /Pages /Kids [{' '.join(kids)}] /Count {jumlah} >>".encode()
+    objek[id_font] = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
+    return _rakit_pdf(objek)
+
+
+def test_pdf_bom_komentar_stream_ditolak_di_titik_dekompresi() -> None:
+    """Scanner literal dibutakan komentar; stream 40 MB di bawahnya harus
+    tetap ditolak oleh anggaran di titik dekompresi parser."""
+    with pytest.raises(GalatLayanan) as info:
+        ekstrak_dokumen(buat_pdf_komentar_stream(40 * 1024 * 1024))
+    assert info.value.code == "DOCUMENT_TOO_LONG"
+
+
+def test_pdf_bom_rantai_filter_ditolak_di_titik_dekompresi() -> None:
+    """160 MB nol terkompres dua lapis jadi ±100 KB; scanner mengukur pass
+    pertama saja (lolos), parser menjalankan pass kedua penuh."""
+    with pytest.raises(GalatLayanan) as info:
+        ekstrak_dokumen(buat_pdf_rantai_filter(160 * 1024 * 1024))
+    assert info.value.code == "DOCUMENT_TOO_LONG"
+
+
+def test_pdf_bom_rantai_banyak_objek_kena_anggaran_total() -> None:
+    """6 halaman x 2 lapis x 26 MB: tiap dekompresi < 32 MB (cap per-stream),
+    kumulatif 156 MB > 150 MB (anggaran dokumen)."""
+    with pytest.raises(GalatLayanan) as info:
+        ekstrak_dokumen(buat_pdf_rantai_banyak_objek(26 * 1024 * 1024, jumlah=6))
+    assert info.value.code == "DOCUMENT_TOO_LONG"
+
+
 # ── Penyusunan dari profil ────────────────────────────────────────────────
 
 
@@ -369,6 +536,43 @@ def profil_lengkap() -> ProfilCv:
 def test_susun_dari_profil_memuat_semua_bagian() -> None:
     teks = susun_dari_profil(profil_lengkap())
     for bagian in ("Rina Melati", "PT Nusantara Digital", "2022-03", "S1 Informatika", "Kafka"):
+        assert bagian in teks
+
+
+def test_susun_dari_profil_bentuk_kontrak_node() -> None:
+    """Audit AI-07 T1/T3: profil persis bentuk kontrak zod Node tidak boleh
+    gagal validasi atau kehilangan field — dulu `posisi` vs `judul` bertabrakan
+    dan website/jurusan dibuang pydantic secara diam-diam."""
+    profil = ProfilCv.model_validate(
+        {
+            "nama": "Rina Melati",
+            "kontak": {
+                "email": "rina.melati@yopmail.com",
+                "telepon": "+628120000000",
+                "linkedin": "linkedin.com/in/rina",
+                "website": "rina.dev",
+            },
+            "pengalaman": [
+                {
+                    "posisi": "Backend Engineer",
+                    "perusahaan": "PT Nusantara Digital",
+                    "mulai": "2022-03",
+                }
+            ],
+            "pendidikan": [
+                {
+                    "gelar": "S1",
+                    "institusi": "Universitas Gadjah Mada",
+                    "mulai": "2018-08",
+                    "selesai": "2022-03",
+                    "jurusan": "Informatika",
+                }
+            ],
+            "keterampilan": ["Go"],
+        }
+    )
+    teks = susun_dari_profil(profil)
+    for bagian in ("rina.dev", "Backend Engineer", "S1 (Informatika)"):
         assert bagian in teks
 
 

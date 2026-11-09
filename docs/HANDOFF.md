@@ -1,48 +1,53 @@
 # HANDOFF — Peta Lanjutan untuk Sesi Claude Berikutnya
 
 > Berkas ini ditulis atas permintaan pemilik (18 Okt 2026, diperbarui
-> 25 Okt 2026) supaya sesi Claude di laptop lain bisa langsung melanjutkan
+> 9 Nov 2026) supaya sesi Claude di laptop lain bisa langsung melanjutkan
 > tanpa membaca ulang seminggu riwayat. Baca berkas ini + `docs/BACKLOG.md`
 > (papan) + PR/isu terbuka. Protokol kerja: `AGENTS.md` (sembilan langkah,
 > WAJIB).
 
-## Keadaan sesaat (25 Okt, malam)
+## Keadaan sesaat (9 Nov 2026, malam)
 
-- **15 PR gelombang 18–20 Okt SUDAH SEMUA MERGE** (#229–#247, merge 20
-  Okt). Yang menunggu review Fatih (Dev A) tinggal TUJUH:
-  - base `main`, mandiri: **#251** (laporan setup 23 Okt) · **#252**
-    (PL-01 Node+UI) · **#253** (P-04 done) · **#254** (deps next 15.5.28);
-  - bertumpuk: **#255** (PL-02, base `pl01-node-run` = branch #252) →
-    **#258** (PR-03, base `pl02-template-riwayat`) → **#259** (PR-04, base
-    `pr03-antrean-rubrik`).
-  Urutan merge: #252 dulu, GitHub otomatis me-retarget #255 ke main begitu
-  basenya masuk, lalu #258, #259. Aturan stack tetap: jangan
-  `--delete-branch` sebelum seluruh tumpukan masuk.
-- **Papan per 25 Okt malam**: 80 item · 78,5 dev-hari; done 66 (63,5) ·
-  todo 8 (9,5) · lain 6 (5,5). Sisa antrean W7 Dev B: **K-04 (UI klinik),
-  AI-07 (UI CV builder)**.
-- **Isu yang masih menahan pekerjaan**: #90 (kredensial sandbox Copyleaks
-  — menahan K-03/K-04 jalur scan nyata) · #57 (kredensial Midtrans; P-04
-  sudah `done` lewat rute nyata #243, tapi alur bayar SUNGGUHAN dengan
-  uang vendor tetap tak terbukti) · #257 (batas `comment` review hanya di
-  client — kepemilikan Dev A, kode error kontrak §10.2) · #248–#250, #256
-  (fondasi, sebagian milik Dev A).
-- Papan per branch sudah membawa status masing-masing; SETELAH merge,
-  jalankan ulang skrip recompute ringkasan dari `AGENTS.md` (konflik tabel
-  ringkasan TIDAK PERNAH diselesaikan memilih satu sisi — aturan keras 11).
+- **PR #267 (AI-07 CV builder, base `main`, branch `ai07-cv-builder`)
+  menunggu review Fatihmaull.** Isi: M1-M7 lengkap (guard unggah #207,
+  rute /v1/cv, hook finalisasi + penyapu, kuota gabungan, sisi Node,
+  UI /career, verifikasi penuh). Sudah rebase di atas main (10 PR baru
+  dari tim masuk sejak 25 Okt, origin/main `bb2b569`); duplikat
+  pra-squash gugur, komit dependensi better-auth milik sendiri gugur
+  karena main sudah menaikkannya (#263). GERBANG TUJUH hijau di atas
+  hasil rebase: lint, typecheck, unit (contracts 6, web 178, api 362),
+  integrasi 631/631, pytest 149, build, audit-deps (0 baru, 0 basi).
+- **Dua bug e2e sudah diperbaiki DI DALAM PR** (bukan ditunda): binding
+  `PENYELESAI_JOB_AI` tak diekspor (`07d2333`) dan replay idempotensi
+  percobaan kedua (`9831e6f`). Audit agent-security: 0 kritis/tinggi,
+  4 temuan dipasang `dad03f9`. Bukti: `docs/reports/AI-07/`.
+- **SETELAH merge #267: tutup isu #207 manual** (body PR sengaja TIDAK
+  memakai kata kunci auto-close) lalu jalankan ulang recompute ringkasan
+  dari `AGENTS.md` (konflik tabel ringkasan tidak pernah diselesaikan
+  memilih satu sisi, aturan keras 11).
+- **Papan per 9 Nov malam**: 80 item · 78,5 dev-hari; done 68 (65,0) ·
+  review 1 (1,0) · blocked 6 (6,0) · todo 5 (6,5). K-04 kini `blocked`
+  menunggu #90 (lihat barisnya untuk alasan lengkap dan yang sudah siap
+  dipakai dari AI-07).
+- **Isu yang masih menahan pekerjaan**: #90 (kredensial sandbox
+  Copyleaks; menahan K-03 dan K-04) · #57 (kredensial Midtrans; alur
+  bayar sungguhan tetap tak terbukti) · #257 (batas `comment` review
+  hanya di client, milik Dev A).
+- Laporan sesi ini: `docs/reports/auto-mode-26-11-09.md` (auto mode),
+  `docs/reports/daily-02-06-nov.md` (harian 2-6 Nov),
+  `docs/reports/AI-07/` (E2E).
 
 ## Pekerjaan berikutnya (urut)
 
-1. **Respons review** tujuh PR begitu Fatih turun (diutamakan di atas
-   item baru).
-2. **K-04 UI klinik** — periksa dulu seberapa jauh bisa dibuktikan tanpa
-   kredensial Copyleaks (#90): pola P-04 terbukti bisa dipakai (verifikasi
-   seluas permukaan yang ada, status jujur `blocked`/`done` sesuai AC yang
-   benar-benar terbukti; lihat PR #235 → #253).
-3. **AI-07 UI CV builder** — perhatikan #197 (kode error ai_jobs di luar
-   §10.2) dan #207 (bom dekompresi FlateDecode, wajib sebelum /v1/cv
-   diekspos): dua isu itu didesain justru untuk item ini, jangan
-   dilewati saat membangunnya.
+1. **Respons review #267** begitu Fatih turun (diutamakan di atas item
+   baru). Perhatikan catatan "apa yang bisa rusak" di body PR: binding
+   array `PENYELESAI_JOB_AI` akan TERTIMPA kalau modul lain mendaftarkan
+   penyedia kedua (evolusi ke registry saat itu terjadi).
+2. **Setelah merge**: tutup #207, recompute ringkasan papan, lihat
+   antrean todo berikutnya di papan (W8).
+3. **K-04 tetap blocked** sampai #90 terisi; jangan memaksakan AC skor
+   kemiripan dengan mock (pelajaran pola P-04: verifikasi seluas yang
+   nyata, status jujur).
 4. Wireframe Stitch: prompt siap tempel di `docs/wireframe-stitch/` —
    Stitch butuh login Google pemilik, agent tidak bisa mewakili.
 
@@ -90,6 +95,26 @@
 - venv layanan AI: `services/ai/.venv` (python3.13 sah). Agent-worktree
   yang ditinggal MENGHALANGI `pnpm lint` (worktree ikut ter-scan) —
   `git worktree remove --force` (unlock dulu bila terkunci).
+- **Worker live MENCURI job BullMQ dari suite integrasi** (pelajaran 9
+  Nov, 19 test merah palsu): MODE=worker yang masih hidup di Redis
+  bersama :56379 mengambil job yang seharusnya dikerjakan vitest.
+  Matikan SEMUA proses api/worker/web sebelum `test:integration`.
+- **Trigger append-only `coin_ledger` menolak DELETE** bahkan untuk data
+  rusak akibat bug sendiri: bereskan dengan entri `adjust` pengompensasi,
+  jangan lawan penjaganya; baris bukti bug memang sengaja dibiarkan.
+- **Distro WSL ini TIDAK punya docker CLI** (meski playbook lama menulis
+  `docker.exe`): kontainer PG/Redis/MinIO sudah berjalan dikelola dari
+  Windows; verifikasi lewat klien (psql/redis-cli) dan port localhost,
+  bukan `docker ps`.
+- **Stub LLM untuk e2e**: setelan `LLM_BASE_URL` (services/ai) mengarah
+  ke stub chat/completions :59998; validator pydantic menolak nilai itu
+  saat NODE_ENV=production. Cookie sesi API untuk curl: seed baris
+  `sessions` lalu kirim `better-auth.session_token=<token>.x`.
+- **Rebase branch yang sudah pernah terdorong**: duplikat pra-squash
+  menumpuk konflik di BACKLOG/lockfile; `git rebase --empty=drop
+  origin/main` + ambil sisi main untuk konflik duplikat, dan push ulang
+  dengan `--force-with-lease` HANYA setelah memverifikasi isi remote
+  murni komit sendiri (0 komit orang lain).
 
 ## Hal yang mudah terlupakan (dari hari ini)
 

@@ -6,6 +6,7 @@ import { RedisModule } from '../infra/redis';
 import { StorageModule } from '../infra/storage';
 import { AdminModule } from '../modules/admin';
 import { AiModule } from '../modules/ai';
+import { CareerModule } from '../modules/career';
 import { PaymentModule } from '../modules/payment';
 import { ScanModule } from '../modules/scan';
 import { WalletModule } from '../modules/wallet';
@@ -90,6 +91,12 @@ import { StreakWarningService } from './streak-warning.service';
     ScanModule,
     LeagueModule,
     RealtimeEmitterModule,
+    // AI-07: satu-satunya alasan impor ini adalah binding `PENYELESAI_JOB_AI`
+    // milik `CvFinalizeService`. Dispatcher menyuntik multi-provider itu dari
+    // konteks modul ini; tanpa impor, job `ats_cv` selesai di AI service tapi
+    // tidak pernah menulis `cv_documents` dan holdnya tidak pernah di-settle —
+    // kelas kesalahan yang sama dengan #86, modul yang berbeda.
+    CareerModule,
   ],
   providers: [
     ReconcileBalanceService,

@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI-07 - Laporan verifikasi CV Builder ATS (Node + layanan AI + UI)</title>
+<style>
+  :root { --bg:#fff; --fg:#16181d; --muted:#5b6270; --line:#e3e6ec; --card:#f7f8fa; --ok:#0f7b3f; --ok-bg:#e6f4ec; --warn:#8a5a00; --warn-bg:#fdf3e2; --bad:#b3261e; --bad-bg:#fdecea; --code:#f2f3f6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#e8eaef; --muted:#a0a7b4; --line:#2b2f37; --card:#1b1e24; --ok:#6ede9e; --ok-bg:#16301f; --warn:#f0c274; --warn-bg:#35280f; --bad:#ff8a80; --bad-bg:#3a1715; --code:#1f232a; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-size:28px; margin:0 0 8px; } h2 { font-size:21px; margin:44px 0 12px; padding-top:18px; border-top:1px solid var(--line); }
+  .lede { color:var(--muted); font-size:17px; margin:0 0 22px; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 26px; }
+  .chip { font-size:13px; padding:3px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); }
+  .chip.ok { color:var(--ok); border-color:var(--ok); background:var(--ok-bg); }
+  .chip.bad { color:var(--bad); border-color:var(--bad); background:var(--bad-bg); }
+  table { width:100%; border-collapse:collapse; margin:14px 0 22px; font-size:14px; }
+  th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--card); font-weight:600; }
+  code { background:var(--code); padding:1px 6px; border-radius:4px; font-size:13px; }
+  figure { margin:18px 0 26px; }
+  figure img { max-width:100%; border:1px solid var(--line); border-radius:8px; }
+  figcaption { color:var(--muted); font-size:13.5px; margin-top:6px; }
+  .ok { color:var(--ok); font-weight:600; } .bad { color:var(--bad); font-weight:600; }
+  ul { margin:8px 0 18px; padding-left:22px; }
+  li { margin:4px 0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 18px; margin:14px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>AI-07 · Laporan verifikasi CV Builder ATS</h1>
+<p class="lede">Verifikasi ujung-ke-ujung fitur generate CV ATS: dari form di browser,
+202 + polling, worker, layanan AI Python, skor deterministik, sampai PDF tersimpan
+dan bisa diunduh. Semua bukti di bawah diambil dari stack yang benar-benar berjalan,
+bukan dari membaca kode.</p>
+
+<div class="meta">
+  <span class="chip ok">Status: tuntas</span>
+  <span class="chip">Tanggal verifikasi: 9 Nov 2026</span>
+  <span class="chip">Environment: lokal (DB strive_e2e, API :3002, web :3005, AI :8000, stub LLM :59998, MinIO :59000)</span>
+  <span class="chip">Branch: ai07-cv-builder @ 654a10f</span>
+  <span class="chip">Penguji: Dev B (Kemal), rekan review: Fatihmaull</span>
+</div>
+
+<h2>1 · Ringkasan</h2>
+<p>Fitur CV builder (PRD §7 E8, §13.2) diverifikasi dalam dua lapis. Lapis test:
+25 test integrasi khusus CV, 56 test integrasi worker (worker-boot + dispatch +
+cv-builder), 177 test web, 145 test pytest layanan AI, lima gerbang (lint,
+typecheck, test, build, audit-deps) hijau dalam satu rangkaian. Lapis browser:
+stack e2e lokal dijalankan penuh dan golden path dijalani dari klik sampai PDF.</p>
+<p>Stack e2e memakai LLM stub (bentuk respons identik OpenAI) lewat setelan baru
+<code>LLM_BASE_URL</code>, jadi alur LLM-nya nyata sampai ke pemanggilan klien
+(bukti di log stub), tanpa kunci vendor. Skor ATS dihitung DETERMINISTIK di
+server: stub yang sama menghasilkan skor sama (34/100) di dua percobaan
+berbeda. Nilai 34 itu sah, bukan kegagalan: penghapus hasil halusinasi
+(<code>validasi_keterlacapan</code>) membuang kontak yang tidak ada di sumber,
+dan ATS menghukumnya.</p>
+<p>Verifikasi ini menemukan DUA bug yang lolos semua test tapi ketahuan di stack
+nyata, keduanya langsung diperbaiki dengan test penjaga baru (detail di bagian 4).</p>
+
+<h2>2 · Matriks skenario</h2>
+<table>
+  <tr><th>Skenario</th><th>Aksi</th><th>Expected</th><th>Hasil</th><th>Bukti</th></tr>
+  <tr>
+    <td>Golden path, sumber profil</td>
+    <td>Isi nama (prefill), headline, ringkasan, keterampilan, target role, klik Generate</td>
+    <td>202 + job_id, polling 2,5 dtk, hasil skor + temuan + tautan PDF</td>
+    <td class="ok">SESUAI (dua kali, skor sama 34/100)</td>
+    <td>gambar 02, 03, 06; POST 202 dan poll 200 di network</td>
+  </tr>
+  <tr>
+    <td>Skor + temuan hanya dari server</td>
+    <td>Baca panel hasil</td>
+    <td>Skor X/100, temuan berlabel severity dengan penalti, jumlah penalti konsisten dengan skor</td>
+    <td class="ok">34/100; lima temuan, 20+5+8+25+8=66</td>
+    <td>gambar 03</td>
+  </tr>
+  <tr>
+    <td>Unduh PDF</td>
+    <td>Klik tautan Unduh PDF (signed URL MinIO, kedaluwarsa 900 dtk)</td>
+    <td>PDF asli tersimpan</td>
+    <td class="ok">HTTP 200, 1780 byte, PDF 1.3 satu halaman</td>
+    <td>kunci <code>cvs/{job}.pdf</code> di cv_documents</td>
+  </tr>
+  <tr>
+    <td>Gagal: sumber terlalu pendek</td>
+    <td>Ringkasan "pendek" tanpa keterampilan, Generate</td>
+    <td>202, job gagal <code>SOURCE_TOO_SHORT</code>, koin dilepas penuh, UI menampilkan pesan + tombol percobaan baru</td>
+    <td class="ok">SESUAI; ledger hold -400 lalu release +400</td>
+    <td>gambar 05; job 993e0091</td>
+  </tr>
+  <tr>
+    <td>Pemulihan setelah gagal</td>
+    <td>Klik "Buat percobaan baru", isi ulang lengkap, Generate</td>
+    <td>Percobaan baru (job id BARU, bukan replay), sukses</td>
+    <td class="ok">job 65ede41b, done 34/100</td>
+    <td>gambar 06</td>
+  </tr>
+  <tr>
+    <td>Idempotensi setelah hasil (regresi)</td>
+    <td>Generate kedua setelah hasil tiba (pra-perbaikan)</td>
+    <td>Percobaan baru dengan job id baru</td>
+    <td class="bad">DULU REPLAY job lama (job id sama di network log) → diperbaiki di 654a10f</td>
+    <td>network #35 dan #37: job_id sama fdb9ca02</td>
+  </tr>
+  <tr>
+    <td>Tanpa sesi</td>
+    <td>Buka /career tanpa cookie</td>
+    <td>401 untuk semua rute data, UI tetap hidup</td>
+    <td class="ok">5 request 401 pra-login, semuanya 200 setelah cookie</td>
+    <td>network #11-15 vs #28+</td>
+  </tr>
+  <tr>
+    <td>Responsif 375px</td>
+    <td>Viewport 375×812</td>
+    <td>Tanpa scroll horizontal, tanpa elemen terpotong</td>
+    <td class="ok">scrollWidth 360 = clientWidth 360</td>
+    <td>gambar 04</td>
+  </tr>
+  <tr>
+    <td>Console dan network</td>
+    <td>Amati seluruh sesi</td>
+    <td>Nol error console, nol 4xx/5xx setelah login</td>
+    <td class="ok">45 pesan console, 0 error, 0 warning</td>
+    <td>log sesi Playwright</td>
+  </tr>
+  <tr>
+    <td>Pindah tab</td>
+    <td>Tab ATS CV → Prompt Lab → ATS CV</td>
+    <td>Kedua panel tetap terpasang, hasil CV selamat</td>
+    <td class="ok">hasil 34/100 tetap tampil</td>
+    <td>snapshots sesi</td>
+  </tr>
+  <tr>
+    <td>Unggah berkas (integrasi, bukan browser)</td>
+    <td>POST dengan PDF magic valid; file >8 MB; file .txt</td>
+    <td>PDF diterima; FILE_TOO_LARGE; UNSUPPORTED_FILE_TYPE</td>
+    <td class="ok">25/25 integrasi hijau (trio validasi)</td>
+    <td>test/cv-builder.integration.spec.ts</td>
+  </tr>
+  <tr>
+    <td>Kuota harian ke-11</td>
+    <td>10 percobaan AI lalu ke-11 (integrasi)</td>
+    <td>429 DAILY_AI_QUOTA_EXCEEDED, enqueue tidak terjadi</td>
+    <td class="ok">CV-9 hijau (add dipanggil tepat 10×)</td>
+    <td>idem</td>
+  </tr>
+  <tr>
+    <td>Konflik kunci paralel</td>
+    <td>Dua POST bersamaan, kunci sama (integrasi)</td>
+    <td>Satu job, satu hold -400, enqueue sekali; sisanya 409 atau replay</td>
+    <td class="ok">Hijau (dua hasil sah diterima, invariant dipegang)</td>
+    <td>idem</td>
+  </tr>
+</table>
+
+<h2>3 · Bukti pembukuan koin (ledger audit)</h2>
+<p>Urutan ledger seluruh sesi (satu user, 1000 koin awal):</p>
+<div class="card"><code>
+adjust +1000 (semai) · hold -400 @5c213596 (gagal pra-perbaikan, ORPHAN:
+hook belum diekspor, dikompensasi +400 sebagai reset e2e) ·
+hold -400 @a22a1642 → release +400 (gagal SOURCE_TOO_SHORT, pasca-perbaikan) ·
+hold -400 @c9a5034f (sukses, settled) · hold -400 @fdb9ca02 (sukses browser,
+settled) · hold -400 @993e0091 → release +400 (gagal browser, pasca-perbaikan) ·
+hold -400 @65ede41b (sukses percobaan ulang, settled)
+</code></div>
+<p>Hasil akhir: saldo 200 (3 generate sukses dibayar 1200 + 1 orphan pra-perbaikan),
+3 baris <code>cv_documents</code>, 3 audit <code>coin.settle</code>, 2 audit
+<code>coin.release</code>. Saldo, ledger, dan audit konsisten. Baris orphan
+@5c213596 adalah BUKTI bug pra-perbaikan, dibiarkan di DB e2e sebagai bukti
+dan dikompensasi lewat entri <code>adjust</code> (ledger append-only, DELETE
+ditolak trigger, dan itu memang aturannya).</p>
+
+<h2>4 · Katalog regresi (bug yang ditemukan dan diperbaiki)</h2>
+<table>
+  <tr><th>Bug</th><th>Pemicu</th><th>Gejala</th><th>Akar masalah</th><th>Expected setelah fix</th><th>Cara reproduce</th></tr>
+  <tr>
+    <td>Hook finalisasi tidak pernah berjalan (3a0c169)</td>
+    <td>Worker memproses job ats_cv, kondisi apa pun</td>
+    <td>Job done TANPA cv_documents, tanpa settle; job gagal TANPA release; saldo 600 menggantung</td>
+    <td>Binding <code>PENYELESAI_JOB_AI</code> tidak masuk <code>exports</code> CareerModule sehingga <code>@Optional()</code> dispatcher menerima array kosong; ditambah <code>useExisting</code> mengikat SATU instance padahal kontrak array</td>
+    <td>Setiap job terminal menjalankan hook: sukses = cv_documents + settle + PDF; gagal = release</td>
+    <td>Stack e2e nyata, atau lihat worker-boot baru: menuntut EFEK hook + bentuk array token</td>
+  </tr>
+  <tr>
+    <td>Replay diam-diam percobaan kedua (654a10f)</td>
+    <td>Generate kedua setelah hasil tiba, form diedit</td>
+    <td>202 dengan job_id LAMA, hasil lama tampil lagi, sunyi tanpa biaya dan tanpa proses ulang</td>
+    <td>Kunci idempotensi hanya diputar oleh tombol "coba lagi"; Generate langsung dari keadaan terminal ikut memakai kunci lama (server wajib replay per kontrak idempotensi)</td>
+    <td>Percobaan baru = kunci baru; dari idle (gagal mulai) kunci dipertahankan karena percobaan sama</td>
+    <td>Browser: generate, tunggu hasil, edit ringkasan, generate lagi; bandingkan job_id di network</td>
+  </tr>
+</table>
+
+<h2>5 · Batasan yang jujur</h2>
+<ul>
+  <li>Jalur unggah berkas DIVERIFIKASI di level integrasi (PDF magic, batas 8 MB, tipe), tidak diklik di browser; memilih berkas lewat file dialog diotomasi tidak dilakukan sesi ini.</li>
+  <li>Bahasa hanya <code>id</code>; varian <code>en</code> belum diuji e2e.</li>
+  <li><code>POLLING_TIMEOUT</code> tidak dipicu di browser (job selesai ~2 detik, jauh di bawah batas 5 menit); perilakunya diuji di level mesin (spec cv-builder).</li>
+  <li>Cache LLM (redis, kunci SHA-256) tidak diuji hit-nya sesi ini; percobaan ulang browser sukses memakai input identik dan tetap menghasilkan job BARU (dari_cache tidak memengaruhi pembukuan koin).</li>
+  <li>Stub mengembalikan StructuredCV yang sama untuk semua panggilan, jadi variasi keluaran LLM (retry dengan instruksi perbaikan, LLM_OUTPUT_INVALID) diverifikasi lewat test layanan AI, bukan stack ini.</li>
+</ul>
+
+<h2>6 · Verifikasi perintah (angka akhir)</h2>
+<ul>
+  <li>Gerbang satu rangkaian (di atas pohon hasil rebase ke origin/main): <code>pnpm lint</code> OK · <code>pnpm typecheck</code> OK · <code>pnpm test</code> OK (contracts 6, web 178, api 362) · <code>test:integration</code> OK 631/631 lintas 52 berkas (milik AI-07: worker-boot 4, ai-dispatch 27, cv-builder 27) · pytest 149 OK · <code>pnpm build</code> OK · <code>audit-deps</code> OK (0 baru, 0 basi).</li>
+  <li>Angka pra-rebase (rangkaian pertama, sebelum 10 PR main masuk): integrasi 56/56, unit API 355, web 177, pytest 145. Kenaikan angka pasca-rebase datang dari test milik PR lain di main, bukan perubahan perilaku AI-07.</li>
+  <li>Log lengkap rangkaian gerbang tersimpan di sesi pekerjaan; klaim di atas disalin dari outputnya.</li>
+  <li>Sabotase penjaga pernah dijalankan untuk aturan enqueue-setelah-commit dan kuota (sesi sebelumnya, dipulihkan md5 identik); penjaga baru worker-boot memerahkah dirinya sendiri saat binding dikembalikan ke cacat (diverifikasi manual saat reproduksi).</li>
+</ul>
+
+<h2>7 · Audit keamanan</h2>
+<p>Audit agent-security atas diff AI-07 dijalankan 9 Nov 2026. Ringkasnya: <strong>0 temuan kritis, 0 tinggi</strong>. Empat temuan di bawah kritis seluruhnya sudah diperbaiki dan dikunci test di komit <code>dad03f9</code> (sebelum rebase: <code>06ca171</code>) <em>sebelum</em> PR dibuka, jadi reviewer melihat kode yang sudah bersih, bukan janji perbaikan.</p>
+<table>
+  <thead><tr><th>ID</th><th>Tingkat</th><th>Masalah</th><th>Perbaikan (semua di dad03f9)</th></tr></thead>
+  <tbody>
+    <tr><td>T1</td><td>sedang</td><td>Kontrak Node menamai field pengalaman <code>judul</code>, layanan Python menuntut <code>posisi</code>. Klien yang setia kontrak pasti ditolak 422 deterministik, dan penolakan itu terjadi SETELAH koin di-hold dan kuota terhitung: pengguna kehilangan satu percobaan tanpa kesalahan apa pun.</td><td>Kontrak dan service Node seragam memakai <code>posisi</code>. Test interop baru: profil bentuk kontrak end-to-end diterima 202 dan tersonggok utuh ke <code>ai_jobs.input</code>.</td></tr>
+    <tr><td>T2</td><td>rendah</td><td>Base64 berseling newline (hasil transport MIME) lolos regex Node tapi ditolak <code>b64decode(validate=True)</code> Python: job gagal di worker padahal unggahan sah.</td><td>Node menormalkan <code>[\r\n]</code> sebelum validasi dan menyimpan versi bersih. Test: PDF yang dibungkus newline tiap 20 karakter tetap diterima, isi tersimpan tanpa sisipan.</td></tr>
+    <tr><td>T3</td><td>rendah</td><td><code>website</code> (kontak) dan <code>jurusan</code> (pendidikan) dihilangkan diam-diam oleh model Python: data pengguna menguap tanpa jejak.</td><td>Model Python menampung keduanya dan ikut menyusun teks sumber. Test <code>test_susun_dari_profil_bentuk_kontrak_node</code> mengunci keduanya muncul di teks.</td></tr>
+    <tr><td>C1</td><td>info</td><td><code>LLM_BASE_URL</code> (setelan stub untuk verifikasi lokal) bisa lolos ke produksi dan mengarahkan trafik LLM ke host arbitrer.</td><td>Validator pydantic menolak nilai non-default saat <code>NODE_ENV=production</code> (gagal-tertutup). 3 test: produksi non-default ditolak, default lolos, development bebas. <code>.env.example</code> diberi peringatan.</td></tr>
+  </tbody>
+</table>
+<p>Wilayah yang diperiksa dan bersih: injection dan XSS (semua input lewat zod + parameterized query), IDOR (upload di-resolve server lewat kepemilikan, storage key tidak pernah keluar), CSRF dan session (cookie better-auth, cek Origin), logika koin (hold→settle/release idempoten, satu jalur lewat CoinLedgerService), dekompresi (penjaga zip-bomb dan cap halaman sudah hidup dari M1), secret (nol hardcoded, <code>.env</code> tidak ter-track), dan storage (URL PDF selalu presigned, berumur pendek).</p>
+
+<figure>
+  <img src="images/01-career-initial.png" alt="Halaman /career: dua tab, sumber CV, target role, tombol generate mati sebelum isian lengkap" />
+  <figcaption>01 · Kondisi awal: tab ATS CV terpilih, biaya 400 koin dan catatan kuota tampil, tombol Generate masih terkunci.</figcaption>
+</figure>
+
+<figure>
+  <img src="images/02-form-terisi.png" alt="Form terisi: nama Rina Melati terprefill, sumber pakai profil Strive Academy, target role Data Analyst" />
+  <figcaption>02 · Sumber "Pakai profil", nama terisi otomatis dari profil, seluruh isian lengkap.</figcaption>
+</figure>
+
+<figure>
+  <img src="images/03-hasil-selesai.png" alt="Hasil generate: skor ATS 34/100, lima temuan berlabel error dan peringatan, tautan Unduh PDF" />
+  <figcaption>03 · Hasil percobaan pertama: 202 → polling → done dalam sekitar 2 detik. Lima temuan, penalti berjumlah 66, skor 34.</figcaption>
+</figure>
+
+<figure>
+  <img src="images/04-hasil-375px.png" alt="Tampilan 375px tanpa scroll horizontal" />
+  <figcaption>04 · Lebar 375px: tanpa scroll horizontal, temuan dan tautan tetap utuh.</figcaption>
+</figure>
+
+<figure>
+  <img src="images/05-gagal-job.png" alt="Keadaan gagal job: pesan SOURCE_TOO_SHORT dan tombol Buat percobaan baru" />
+  <figcaption>05 · Jalur gagal: sumber terlalu pendek ditolak layanan AI, koin kembali penuh, UI menawarkan percobaan baru.</figcaption>
+</figure>
+
+<figure>
+  <img src="images/06-sukses-setelah-ulangi.png" alt="Sukses setelah percobaan ulang: skor 34/100 kembali" />
+  <figcaption>06 · Pemulihan: percobaan baru sukses, skor deterministik sama karena sumber dan stub sama.</figcaption>
+</figure>
+
+</div>
+</body>
+</html>

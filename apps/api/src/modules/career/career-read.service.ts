@@ -25,6 +25,59 @@ export interface CvResult {
   created_at: Date;
 }
 
+export interface CvJobResult {
+  job_id: string;
+  status: 'queued' | 'running' | 'done' | 'failed';
+  created_at: Date;
+  completed_at: Date | null;
+  cv: CvResult | null;
+  /** Hanya untuk `failed`, dan HANYA ber-kode §10.2 (isu #197). */
+  failure: { code: string } | null;
+}
+
+/**
+ * Daftar TERTUTUP §10.2 — sumbernya PRD, ditulis sebagai konstanta yang
+ * dipakai pemetaan `failure.code`. `ai_jobs.error_code` menyimpan kode APA
+ * ADANYA sebagai kolom diagnosis (migrasi 009), termasuk kode layanan AI di
+ * luar daftar ini; yang menyajikannya ke pengguna WAJIB memetakan yang asing
+ * ke `INTERNAL_ERROR` — aturan yang tertulis di `ai-service.client.ts` sejak
+ * isu #190 dan baru punya pemakainya di sini (isu #197).
+ */
+const KODE_ERR_10_2 = new Set([
+  'UNAUTHENTICATED',
+  'FORBIDDEN_ROLE',
+  'NOT_OWNER',
+  'EMAIL_NOT_VERIFIED',
+  'EMAIL_TAKEN',
+  'INSUFFICIENT_COINS',
+  'DAILY_AI_QUOTA_EXCEEDED',
+  'DAILY_SCAN_QUOTA_EXCEEDED',
+  'ALREADY_PURCHASED',
+  'NO_FREEZE_CREDITS',
+  'SELF_REVIEW_FORBIDDEN',
+  'UNSUPPORTED_FILE_TYPE',
+  'FILE_TOO_LARGE',
+  'DOCUMENT_TOO_LONG',
+  'SOURCE_TOO_SHORT',
+  'RATE_LIMITED',
+  'NOT_FOUND',
+  'SQUAD_FULL',
+  'ALREADY_IN_SQUAD',
+  'SQUAD_MOVE_LIMIT',
+  'CARD_NOT_IN_LESSON',
+  'KEY_CONFLICT',
+  'LLM_OUTPUT_INVALID',
+  'INVALID_CURSOR',
+  'INVALID_PRICING_PAYLOAD',
+  'INVALID_SIGNATURE',
+  'PRICING_NOT_CONFIGURED',
+  'PRICING_VERSION_CONFLICT',
+  'PROVIDER_UNAVAILABLE',
+  'ROLE_CHANGE_FORBIDDEN',
+  'VALIDATION_ERROR',
+  'INTERNAL_ERROR',
+]);
+
 export interface PromptRunItem {
   id: string;
   job_id: string | null;
@@ -92,6 +145,89 @@ export class CareerReadService {
         ? await this.storage.signedDownloadUrl(bucketDocuments(), row.pdf_key)
         : null,
       created_at: row.created_at,
+    };
+  }
+
+  /**
+   * `GET /career/cv/jobs/:id` (AI-07) — satus job untuk polling UI.
+   *
+   * `user_id` masuk WHERE: job orang lain dan job yang tidak ada menjawab
+   * IDENTIK (pola `cvById`). `failure` hanya membawa kode §10.2;
+   * `error_message` mentah TIDAK PERNAH dikirim — kolom itu dapat memuat
+   * gema input pengguna dari sisi layanan AI (audit AI-07 T5).
+   */
+  async jobStatus(userId: string, jobId: string): Promise<CvJobResult> {
+    const job = await this.db
+      .selectFrom('ai_jobs')
+      .select(['id', 'status', 'error_code', 'created_at', 'completed_at'])
+      .where('id', '=', jobId)
+      .where('user_id', '=', userId)
+      .executeTakeFirst();
+
+    if (!job) {
+      throw new NotFoundException({
+        error: { code: 'NOT_FOUND', message: 'Job CV tidak ditemukan', details: { id: jobId } },
+      });
+    }
+
+    // `ai_jobs.status` bertipe `text` + CHECK `ai_jobs_status_valid` di sisi
+    // Postgres, jadi Kysely hanya melihat `string`. Dijaga di sini sekali,
+    // bukan di-cast: nilai asing (tak mungkin lewat constraint, mungkin lewat
+    // restore lintas versi) diperlakukan `failed` — sisi aman untuk polling.
+    const status = (['queued', 'running', 'done', 'failed'] as const).includes(
+      job.status as CvJobResult['status'],
+    )
+      ? (job.status as CvJobResult['status'])
+      : 'failed';
+
+    let cv: CvResult | null = null;
+    if (job.status === 'done') {
+      const row = await this.db
+        .selectFrom('cv_documents')
+        .select([
+          'id',
+          'job_id',
+          'structured',
+          'ats_score',
+          'ats_findings',
+          'pdf_key',
+          'created_at',
+        ])
+        .where('job_id', '=', jobId)
+        .where('user_id', '=', userId)
+        .executeTakeFirst();
+      if (row) {
+        cv = {
+          id: row.id,
+          job_id: row.job_id,
+          structured: row.structured,
+          ats_score: row.ats_score,
+          ats_findings: row.ats_findings,
+          // Ditandatangani SETELAH kepemilikan terbukti — alasan yang sama
+          // dengan `cvById`.
+          pdf_url: row.pdf_key
+            ? await this.storage.signedDownloadUrl(bucketDocuments(), row.pdf_key)
+            : null,
+          created_at: row.created_at,
+        };
+      }
+    }
+
+    return {
+      job_id: job.id,
+      status,
+      created_at: job.created_at,
+      completed_at: job.completed_at,
+      cv,
+      failure:
+        status === 'failed'
+          ? {
+              code:
+                job.error_code && KODE_ERR_10_2.has(job.error_code)
+                  ? job.error_code
+                  : 'INTERNAL_ERROR',
+            }
+          : null,
     };
   }
 

@@ -14,6 +14,20 @@ export interface BuatJobInput {
 }
 
 /**
+ * Satu baris `ai_jobs` yang siap dikerjakan — bentuk balikan `mulai()`.
+ *
+ * `userId` ikut dibawa (AI-07): finalisasi butuh pemiliknya untuk settle
+ * hold koin dan menulis `cv_documents`, dan dispatcher tidak boleh membaca
+ * tabel ini sendiri — satu pintu, `AiJobsService`.
+ */
+export interface BarisJobAi {
+  id: string;
+  userId: string;
+  kind: AiJobKind;
+  input: unknown;
+}
+
+/**
  * Pembukuan `ai_jobs` — `AI-06`, PRD §7 E8 `CV-2`/`CV-3`/`CV-8`, aturan keras 8.
  *
  * > Node **tidak pernah memanggil LLM langsung**. Node membuat `ai_jobs`,
@@ -105,16 +119,15 @@ export class AiJobsService {
    * menjalankan ulang pekerjaan yang sudah selesai berarti **membayar LLM dua
    * kali** untuk hasil yang sudah ada.
    */
-  async mulai(jobId: string): Promise<{ id: string; kind: AiJobKind; input: unknown } | null> {
-    return (
-      (await this.db
-        .updateTable('ai_jobs')
-        .set({ status: 'running' })
-        .where('id', '=', jobId)
-        .where('status', 'in', ['queued', 'running'])
-        .returning(['id', 'kind', 'input'])
-        .executeTakeFirst()) ?? null
-    );
+  async mulai(jobId: string): Promise<BarisJobAi | null> {
+    const r = await this.db
+      .updateTable('ai_jobs')
+      .set({ status: 'running' })
+      .where('id', '=', jobId)
+      .where('status', 'in', ['queued', 'running'])
+      .returning(['id', 'user_id', 'kind', 'input'])
+      .executeTakeFirst();
+    return r ? { id: r.id, userId: r.user_id, kind: r.kind, input: r.input } : null;
   }
 
   /**
@@ -131,7 +144,18 @@ export class AiJobsService {
    * `running` **selamanya** — tidak muncul di laporan gagal karena statusnya
    * bukan `failed`, tidak muncul sebagai antre karena bukan `queued`.
    *
-   * ── Ditandai `failed`, BUKAN diantrekan ulang ──
+   * ── Ditandai `failed`, BUKAN diantrekan ulang; barisnya DIKEMBALIKAN ──
+   *
+   * Balikan `BarisJobAi[]` bukan hiasan: sejak AI-07, selesai/gagalnya
+   * sebuah job punya efek samping per kind (hook `PENYELESAI_JOB_AI` —
+   * mis. melepas hold koin `ref_type='ai_job'`). Service ini tidak boleh
+   * mengenal hook itu (arah hubungannya dibalik dengan sengaja), jadi ia
+   * menyerahkan baris yang disapu ke pemanggilnya, dan dispatcher-lah yang
+   * memanggil hook `gagal` per baris (`AiDispatchService.sapu()`).
+   *
+   * Tanpa itu, hold koin job yang mengendap menggantung PERMANEN: reaper
+   * hold KL-8 hanya melepas ref `scan` (`ScanService.releaseStale()`), dan
+   * tidak ada penyapu lain yang mengenal ref `ai_job` (audit AI-07, T1).
    *
    * Antre ulang otomatis terasa lebih membantu dan dua hal membuatnya salah
    * di sini:
@@ -155,7 +179,7 @@ export class AiJobsService {
    * dengan `STALE_HOLD_MINUTES` reaper hold, dan itu disengaja: dua penyapu
    * dengan dua ambang berbeda akan membuat orang menebak yang mana berlaku.
    */
-  async sapuMenggantung(): Promise<{ disapu: number }> {
+  async sapuMenggantung(): Promise<BarisJobAi[]> {
     const r = await this.db
       .updateTable('ai_jobs')
       .set({
@@ -173,13 +197,13 @@ export class AiJobsService {
         '<',
         sql<Date>`now() - ${sql.lit(AMBANG_MENGGANTUNG_MENIT)} * interval '1 minute'`,
       )
-      .returning('id')
+      .returning(['id', 'user_id', 'kind', 'input'])
       .execute();
 
     if (r.length > 0) {
       this.log.warn(`${r.length} ai_job mengendap disapu jadi failed (isu #131)`);
     }
-    return { disapu: r.length };
+    return r.map((x) => ({ id: x.id, userId: x.user_id, kind: x.kind, input: x.input }));
   }
 
   /** `done` + seluruh bidang biaya (§12.3, `CV-8`). */
@@ -228,6 +252,18 @@ export class AiJobsService {
       .updateTable('ai_jobs')
       .set({
         status: 'failed',
+        // `output` DIBUANG: hasil yang tidak pernah diserahkan tidak boleh
+        // menempel di baris failed (audit AI-07, T2). Satu-satunya jalur yang
+        // menulis output lalu gagal adalah finalisasi yang melempar SETELAH
+        // `selesai()` — di situ PDF/CV tidak pernah sampai ke pengguna, dan
+        // output yang tersisa (jsonb berisi CV + pdf base64, bisa ~1 MB)
+        // menyesatkan pembaca baris sekaligus menimbun PII.
+        //
+        // Kolom BIAYA (model, prompt_version, token, cost_usd) DIPERTAHANKAN:
+        // LLM-nya benar-benar dijalankan dan dibayar; menghapusnya menghapus
+        // jejak belanja — prinsip yang sama dengan "token percobaan gagal tetap
+        // tercatat" di sisi Python (akuntansi biaya utuh).
+        output: null,
         error_message: pesan.slice(0, 1_000),
         error_code: kode ?? null,
         completed_at: sql`now()`,

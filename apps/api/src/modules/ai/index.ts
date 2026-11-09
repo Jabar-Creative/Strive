@@ -6,3 +6,4 @@
 export * from './ai.module';
 export * from './ai-jobs.service';
 export * from './ai-service.client';
+export * from './penyelesai-job-ai';

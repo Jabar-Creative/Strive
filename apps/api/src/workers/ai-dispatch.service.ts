@@ -2,23 +2,38 @@ import {
   Inject,
   Injectable,
   Logger,
+  Optional,
   type OnApplicationBootstrap,
   type OnApplicationShutdown,
 } from '@nestjs/common';
 import { Worker, type Job } from 'bullmq';
 
 import { QUEUE, bullConnection } from '../infra/bullmq';
-import { AiJobsService } from '../modules/ai';
+import { AiJobsService, PENYELESAI_JOB_AI, type BarisJobAi } from '../modules/ai';
 import {
   AI_SERVICE_CLIENT,
+  type AiRunResult,
   type AiServiceClient,
   kodeGalat,
   permanen,
 } from '../modules/ai/ai-service.client';
+import type { PenyelesaiJobAi } from '../modules/ai/penyelesai-job-ai';
 
 interface DataJob {
   jobId?: unknown;
 }
+
+/**
+ * Batas satu panggilan hook finalisasi — audit AI-07, T3.
+ *
+ * Hook berjalan di slot worker (`concurrency: 2`): dua hook yang promise-nya
+ * tak pernah selesai mematikan SELURUH antrean `ai` tanpa satu galat pun.
+ * Layanan AI sendiri sudah berbatas waktu (§12.3, 60 detik per percobaan di
+ * klien); hook-lah satu-satunya pemanggilan tak berpagar sebelumnya. 30 detik:
+ * hook menulis objek ke storage lalu SATU transaksi Postgres — jauh di bawah
+ * ambang penyapu `running` (30 menit), jadi tidak berebutan dengan sapuan.
+ */
+export const BATAS_HOOK_MS = 30_000;
 
 /**
  * Worker `ai-dispatch` — `AI-06`, PRD §8.1.
@@ -65,9 +80,21 @@ export class AiDispatchService implements OnApplicationBootstrap, OnApplicationS
   private readonly log = new Logger(AiDispatchService.name);
   private worker?: Worker;
 
+  /**
+   * Batas hook per panggilan — properti, bukan parameter konstruktor, supaya
+   * test bisa memendekkannya tanpa membuat Nest mencoba menyuntik `number`
+   * (kegagalan resolusi DI kelas isu #86).
+   */
+  batasHookMs = BATAS_HOOK_MS;
+
   constructor(
     private readonly jobs: AiJobsService,
     @Inject(AI_SERVICE_CLIENT) private readonly ai: AiServiceClient,
+    // AI-07: finalisasi per kind. `@Optional()` — tanpa pendaftar pun worker
+    // tetap boot; diuji langsung dengan konstruksi manual di spec dispatcher.
+    @Optional()
+    @Inject(PENYELESAI_JOB_AI)
+    private readonly penyelesai: PenyelesaiJobAi[] = [],
   ) {}
 
   /**
@@ -91,6 +118,30 @@ export class AiDispatchService implements OnApplicationBootstrap, OnApplicationS
       this.log.warn(`Worker antrean AI bermasalah: ${err.message}`);
     });
     return this.worker;
+  }
+
+  /**
+   * Menyapu job yang mengendap LALU memanggil hook `gagal` per baris —
+   * audit AI-07, T1.
+   *
+   * `sapuMenggantung()` menulis `failed` sendiri, dan sebelum method ini
+   * baris yang disapu TIDAK pernah menyentuh hook apa pun. Akibatnya hold
+   * koin `ref_type='ai_job'` pada job itu menggantung PERMANEN: reaper hold
+   * KL-8 hanya mengenal ref `scan`. Pemanggilnya penjadwal (`ai-reaper`),
+   * jadi sapuan berjalan di irama yang sama dengan penulisan `failed`-nya —
+   * tidak ada jendela di mana baris sudah `failed` tapi hold-nya belum
+   * dilepas.
+   *
+   * Kegagalan satu hook tidak menghentikan sisanya (`panggilGagal`
+   * non-throwing), dan method ini sendiri tidak melempar — penyapu berkala
+   * yang melempar hanya memutus iramanya sendiri.
+   */
+  async sapu(): Promise<number> {
+    const baris = await this.jobs.sapuMenggantung();
+    for (const b of baris) {
+      await this.panggilGagal(b.id, b);
+    }
+    return baris.length;
   }
 
   async onApplicationShutdown(): Promise<void> {
@@ -119,12 +170,14 @@ export class AiDispatchService implements OnApplicationBootstrap, OnApplicationS
     try {
       const hasil = await this.ai.run({ jobId, kind: baris.kind, input: baris.input });
       await this.jobs.selesai(jobId, hasil);
+      await this.finalisasi(jobId, baris, hasil);
     } catch (err) {
       const pesan = err instanceof Error ? err.message : String(err);
       const habis = this.terakhir(job) || permanen(err);
 
       if (habis) {
         await this.jobs.gagal(jobId, pesan, kodeGalat(err));
+        await this.panggilGagal(jobId, baris);
       } else {
         this.log.warn(`ai_job ${jobId} gagal percobaan ${job.attemptsStarted}: ${pesan}`);
       }
@@ -147,5 +200,74 @@ export class AiDispatchService implements OnApplicationBootstrap, OnApplicationS
   private terakhir(job: Job): boolean {
     const maks = job.opts.attempts ?? 1;
     return job.attemptsStarted >= maks;
+  }
+
+  /**
+   * `Promise.race` terhadap batas waktu — audit AI-07, T3.
+   *
+   * Race menempelkan penanganannya pada janji ASLI, jadi penolakan yang
+   * datang SETELAH batas (hook akhirnya melempar di menit ke-2) tetap
+   * terserap oleh race dan tidak menjadi `unhandledRejection`. Timer
+   * dibersihkan di `finally` supaya tidak menyalakan penolakannya setelah
+   * janji selesai normal.
+   *
+   * Janji yang kalah race TIDAK dibatalkan — tidak ada cara membatalkan
+   * janji JavaScript. Hook yang menggantung tetap menggantung di memorinya
+   * sendiri; yang dijaga adalah SLOT WORKER-NYA kembali.
+   */
+  private denganBatas<T>(janji: Promise<T>, label: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const kehabisan = new Promise<never>((_, tolak) => {
+      timer = setTimeout(
+        () => tolak(new Error(`${label} tidak selesai dalam ${this.batasHookMs} ms`)),
+        this.batasHookMs,
+      );
+    });
+    return Promise.race([janji, kehabisan]).finally(() => clearTimeout(timer));
+  }
+
+  /**
+   * Efek samping setelah baris `done` — AI-07.
+   *
+   * `jobs.selesai()` ditulis DULU (biaya, output, model): itu yang membuat
+   * job tercatat tuntas meskipun finalisasinya gagal. Hook yang melempar
+   * atau tidak pernah selesai (`denganBatas`, T3) menjadikan baris `failed`
+   * TANPA rethrow — `mulai()` hanya menerima
+   * `queued`/`running`, jadi pengantaran ulang BullMQ akan melewatinya;
+   * rethrow hanya menambah percobaan senyap tanpa pernah menjalankan LLM
+   * lagi (membayarnya dua kali justru yang dijaga).
+   *
+   * Hook `gagal` tetap dipanggil setelahnya: baris gagal mem-finalisasi
+   * adalah kegagalan yang sah untuk dibersihkan (mis. lepas hold).
+   */
+  private async finalisasi(jobId: string, baris: BarisJobAi, hasil: AiRunResult): Promise<void> {
+    for (const p of this.penyelesai) {
+      if (p.kind !== baris.kind || !p.sukses) continue;
+      try {
+        await this.denganBatas(p.sukses(jobId, baris, hasil), 'Hook sukses');
+      } catch (err) {
+        const pesan = err instanceof Error ? err.message : String(err);
+        this.log.error(`Finalisasi ai_job ${jobId} gagal: ${pesan}`);
+        await this.jobs.gagal(jobId, `Finalisasi gagal: ${pesan}`, kodeGalat(err));
+        await this.panggilGagal(jobId, baris);
+        return;
+      }
+    }
+  }
+
+  /** Hook `gagal` tidak boleh melempar — kegagalannya (termasuk menggantung) hanya dicatat. */
+  private async panggilGagal(jobId: string, baris: BarisJobAi): Promise<void> {
+    for (const p of this.penyelesai) {
+      if (p.kind !== baris.kind || !p.gagal) continue;
+      try {
+        await this.denganBatas(p.gagal(jobId, baris), 'Hook gagal');
+      } catch (err) {
+        this.log.warn(
+          `Hook gagal ai_job ${jobId} sendiri melempar: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
   }
 }

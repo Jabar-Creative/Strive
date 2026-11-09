@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
+import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { StructuredLogger, appOrigins, headerKeamanan } from './common';
@@ -41,10 +41,24 @@ async function bootstrapApi(): Promise<void> {
   // Logger JSON terstruktur (R-04, §17.1) dipasang SEBELUM modul dirakit,
   // supaya galat saat boot pun ikut terstruktur — dan galat saat boot justru
   // yang paling sering dibaca dari log agregat, bukan dari terminal.
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestApplication>(AppModule, {
     rawBody: true,
     logger: new StructuredLogger(),
+    // Parser default Express dibongkar DAN dipasang ulang manual di bawah —
+    // satu-satunya cara resmi menaikkan batas body untuk unggahan CV inline
+    // AI-07 (base64 PDF/DOCX sampai ~11 MB) tanpa melepas tangkapan `rawBody`
+    // milik webhook. `useBodyParser` platform-express lewat jalur pemasangan
+    // yang sama dengan `rawBody: true` (adaptor memasang parser lalu
+    // mendaftarkan rawBodyRequestListener atasnya), jadi tanda tangan
+    // Midtrans/Copyleaks tetap dihitung atas byte asli.
+    bodyParser: false,
   });
+
+  // Batas 11 MB = `cvGenerateRequestSchema.document_base64.max(11_000_000)`
+  // + amplop JSON. urlencoded ikut naik supaya tidak ada rute yang diam-diam
+  // berubah perilaku karena parser bawaannya hilang.
+  app.useBodyParser('json', { limit: '11mb' });
+  app.useBodyParser('urlencoded', { limit: '11mb', extended: true });
 
   // Prefiks /api/v1 — docs/PRD.md §10. `/health` dikecualikan agar probe
   // orkestrator tidak ikut terpengaruh saat versi API naik.
